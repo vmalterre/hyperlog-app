@@ -25,6 +25,14 @@ class ApiService {
     return _request('POST', endpoint, body: body);
   }
 
+  /// PUT request with JSON body
+  Future<Map<String, dynamic>> put(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
+    return _request('PUT', endpoint, body: body);
+  }
+
   /// Internal request handler
   Future<Map<String, dynamic>> _request(
     String method,
@@ -49,6 +57,11 @@ class ApiService {
         case 'POST':
           response = await _client
               .post(uri, headers: headers, body: jsonEncode(body))
+              .timeout(Duration(seconds: ApiConfig.connectTimeout));
+          break;
+        case 'PUT':
+          response = await _client
+              .put(uri, headers: headers, body: jsonEncode(body))
               .timeout(Duration(seconds: ApiConfig.connectTimeout));
           break;
         default:

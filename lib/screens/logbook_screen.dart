@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hyperlog/models/logbook_entry_short.dart';
 import 'package:hyperlog/screens/add_flight_screen.dart';
+import 'package:hyperlog/screens/flight_detail_screen.dart';
 import 'package:hyperlog/services/api_exception.dart';
 import 'package:hyperlog/services/flight_service.dart';
 import 'package:hyperlog/theme/app_colors.dart';
@@ -243,8 +244,17 @@ class _LogbookScreenState extends State<LogbookScreen> {
             aircraftType: entry.acftType,
             aircraftReg: entry.acftReg,
             trustLevel: entry.trustLevel,
-            onTap: () {
-              // TODO: Navigate to flight detail
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FlightDetailScreen(
+                    flightId: entry.id,
+                  ),
+                ),
+              );
+              // Refresh list in case flight was amended
+              _loadFlights();
             },
           );
         },

@@ -1,6 +1,7 @@
 import '../config/api_config.dart';
 import '../models/logbook_entry.dart';
 import '../models/logbook_entry_short.dart';
+import '../models/flight_history.dart';
 import 'api_exception.dart';
 import 'api_service.dart';
 import 'error_service.dart';
@@ -78,5 +79,125 @@ class FlightService {
       }
       rethrow;
     }
+  }
+
+  /// Update an existing flight entry
+  Future<LogbookEntry> updateFlight(String id, LogbookEntry entry) async {
+    try {
+      final response = await _api.put('${ApiConfig.flights}/$id', entry.toJson());
+      return LogbookEntry.fromJson(response['data']);
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+              e,
+              StackTrace.current,
+              message: 'Failed to update flight',
+              metadata: {'flightId': id},
+            );
+      }
+      rethrow;
+    }
+  }
+
+  /// Get flight history from blockchain
+  Future<FlightHistory> getFlightHistory(String id) async {
+    try {
+      final response = await _api.get('${ApiConfig.flights}/$id/history');
+      return FlightHistory.fromJson(response['data']);
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+              e,
+              StackTrace.current,
+              message: 'Failed to fetch flight history',
+              metadata: {'flightId': id},
+            );
+      }
+      rethrow;
+    }
+  }
+
+  /// Compute diffs between consecutive history versions
+  List<VersionDiff> computeHistoryDiffs(FlightHistory history, {String? pilotName}) {
+    final diffs = <VersionDiff>[];
+
+    for (int i = 0; i < history.history.length; i++) {
+      final current = history.history[i];
+      final pilotLicense = current.entry?.pilotLicense;
+
+      if (i == 0) {
+        // First entry is creation
+        diffs.add(VersionDiff(
+          txId: current.txId,
+          timestamp: current.timestamp,
+          changes: [],
+          isCreation: true,
+          pilotLicense: pilotLicense,
+          pilotName: pilotName,
+        ));
+        continue;
+      }
+
+      if (current.isDelete) {
+        diffs.add(VersionDiff(
+          txId: current.txId,
+          timestamp: current.timestamp,
+          changes: [],
+          isDeletion: true,
+          pilotLicense: pilotLicense,
+          pilotName: pilotName,
+        ));
+        continue;
+      }
+
+      final previous = history.history[i - 1];
+      if (previous.entry == null || current.entry == null) continue;
+
+      final changes = _compareEntries(previous.entry!, current.entry!);
+
+      diffs.add(VersionDiff(
+        txId: current.txId,
+        timestamp: current.timestamp,
+        changes: changes,
+        pilotLicense: pilotLicense,
+        pilotName: pilotName,
+      ));
+    }
+
+    return diffs.reversed.toList(); // Most recent first
+  }
+
+  List<FieldChange> _compareEntries(LogbookEntry old, LogbookEntry updated) {
+    final changes = <FieldChange>[];
+
+    void check(String field, String display, String? oldVal, String? newVal) {
+      if (oldVal != newVal) {
+        changes.add(FieldChange(
+          fieldName: field,
+          displayName: display,
+          oldValue: oldVal,
+          newValue: newVal,
+        ));
+      }
+    }
+
+    // Format helpers for dates/times
+    String formatDate(DateTime dt) => '${dt.day}/${dt.month}/${dt.year}';
+    String formatTime(DateTime dt) => '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+    check('flightDate', 'Flight Date', formatDate(old.flightDate), formatDate(updated.flightDate));
+    check('flightNumber', 'Flight Number', old.flightNumber, updated.flightNumber);
+    check('dep', 'Departure', old.dep, updated.dep);
+    check('dest', 'Destination', old.dest, updated.dest);
+    check('blockOff', 'Block Off', formatTime(old.blockOff), formatTime(updated.blockOff));
+    check('blockOn', 'Block On', formatTime(old.blockOn), formatTime(updated.blockOn));
+    check('aircraftType', 'Aircraft Type', old.aircraftType, updated.aircraftType);
+    check('aircraftReg', 'Registration', old.aircraftReg, updated.aircraftReg);
+    check('flightTime', 'Flight Time', old.flightTime.formatted, updated.flightTime.formatted);
+    check('landings', 'Landings', old.landings.total.toString(), updated.landings.total.toString());
+    check('role', 'Role', old.role, updated.role);
+    check('remarks', 'Remarks', old.remarks, updated.remarks);
+
+    return changes;
   }
 }
