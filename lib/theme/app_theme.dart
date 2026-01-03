@@ -81,7 +81,7 @@ class AppTheme {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: AppColors.nightRiderDark.withOpacity(0.5),
+          fillColor: AppColors.nightRiderDark.withValues(alpha: 0.5),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           border: OutlineInputBorder(

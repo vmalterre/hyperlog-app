@@ -1,13 +1,16 @@
-import 'integrations/ErrorReporter.dart';
+import 'integrations/error_reporter.dart';
 import 'integrations/crashlytics_error_reporter.dart';
 
 class ErrorService {
   static final ErrorService _instance = ErrorService._internal();
   factory ErrorService() => _instance;
 
-  ErrorService._internal();
+  ErrorService._internal() : reporter = CrashlyticsErrorReporter();
 
-  final ErrorReporter reporter = CrashlyticsErrorReporter();
+  /// Testing constructor that accepts a custom reporter
+  ErrorService.withReporter(this.reporter);
+
+  final ErrorReporter reporter;
 }
 
 //last_used_abnormal_error = 002

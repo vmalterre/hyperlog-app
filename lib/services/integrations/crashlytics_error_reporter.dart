@@ -1,5 +1,5 @@
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'ErrorReporter.dart';
+import 'error_reporter.dart';
 
 class CrashlyticsErrorReporter implements ErrorReporter {
   final FirebaseCrashlytics _crashlytics = FirebaseCrashlytics.instance;

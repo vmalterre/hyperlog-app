@@ -7,7 +7,13 @@ import 'error_service.dart';
 
 /// Service for flight-related API operations
 class FlightService {
-  final ApiService _api = ApiService();
+  final ApiService _api;
+  final ErrorService _errorService;
+
+  /// Constructor with optional dependency injection for testing
+  FlightService({ApiService? api, ErrorService? errorService})
+      : _api = api ?? ApiService(),
+        _errorService = errorService ?? ErrorService();
 
   /// Get all flights for a pilot (returns short format for list display)
   Future<List<LogbookEntryShort>> getFlightsForPilot(
@@ -23,7 +29,7 @@ class FlightService {
           .toList();
     } on ApiException catch (e) {
       if (e.isServerError) {
-        ErrorService().reporter.reportError(
+        _errorService.reporter.reportError(
               e,
               StackTrace.current,
               message: 'Failed to fetch flights',
@@ -41,7 +47,7 @@ class FlightService {
       return LogbookEntry.fromJson(response['data']);
     } on ApiException catch (e) {
       if (e.isServerError) {
-        ErrorService().reporter.reportError(
+        _errorService.reporter.reportError(
               e,
               StackTrace.current,
               message: 'Failed to fetch flight',
@@ -59,7 +65,7 @@ class FlightService {
       return LogbookEntry.fromJson(response['data']);
     } on ApiException catch (e) {
       if (e.isServerError) {
-        ErrorService().reporter.reportError(
+        _errorService.reporter.reportError(
               e,
               StackTrace.current,
               message: 'Failed to create flight',

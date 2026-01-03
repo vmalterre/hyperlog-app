@@ -82,7 +82,9 @@ class GlassTimePicker extends StatelessWidget {
               surface: AppColors.nightRiderDark,
               onSurface: AppColors.white,
             ),
-            dialogBackgroundColor: AppColors.nightRiderDark,
+            dialogTheme: DialogThemeData(
+              backgroundColor: AppColors.nightRiderDark,
+            ),
             timePickerTheme: TimePickerThemeData(
               backgroundColor: AppColors.nightRiderDark,
               hourMinuteColor: AppColors.glass50,

@@ -67,7 +67,7 @@ class _PrimaryButtonState extends State<PrimaryButton>
             boxShadow: isEnabled
                 ? [
                     BoxShadow(
-                      color: AppColors.denim.withOpacity(0.3),
+                      color: AppColors.denim.withValues(alpha: 0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),

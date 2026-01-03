@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hyperlog/services/error_service.dart';
-import 'package:hyperlog/services/integrations/AuthErrorCodes.dart';
+import 'package:hyperlog/services/integrations/auth_error_codes.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;

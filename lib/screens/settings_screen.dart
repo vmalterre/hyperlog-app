@@ -45,10 +45,10 @@ class SettingsScreen extends StatelessWidget {
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        color: AppColors.denim.withOpacity(0.2),
+                        color: AppColors.denim.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: AppColors.denim.withOpacity(0.3),
+                          color: AppColors.denim.withValues(alpha: 0.3),
                         ),
                       ),
                       child: const Icon(
@@ -266,7 +266,7 @@ class _SettingsItem extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.denim.withOpacity(0.1),
+                  color: AppColors.denim.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(

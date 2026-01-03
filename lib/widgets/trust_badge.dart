@@ -117,10 +117,10 @@ class TrustIcon extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: level.color.withOpacity(0.1),
+        color: level.color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(size * 0.25),
         border: Border.all(
-          color: level.color.withOpacity(0.2),
+          color: level.color.withValues(alpha: 0.2),
           width: 1,
         ),
       ),

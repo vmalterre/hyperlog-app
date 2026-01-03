@@ -57,7 +57,7 @@ class _FlightEntryCardState extends State<FlightEntryCard> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3),
+          color: Colors.black.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: _isPressed ? AppColors.denimBorder : AppColors.borderSubtle,
@@ -169,7 +169,7 @@ class FlightEntryCompact extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.2),
+          color: Colors.black.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.borderSubtle),
         ),

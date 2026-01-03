@@ -88,7 +88,9 @@ class GlassDatePicker extends StatelessWidget {
               surface: AppColors.nightRiderDark,
               onSurface: AppColors.white,
             ),
-            dialogBackgroundColor: AppColors.nightRiderDark,
+            dialogTheme: DialogThemeData(
+              backgroundColor: AppColors.nightRiderDark,
+            ),
           ),
           child: child!,
         );

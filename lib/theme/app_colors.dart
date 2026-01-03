@@ -25,27 +25,27 @@ class AppColors {
   static const Color endorsedGreen = Color(0xFF10B981);
 
   // Common opacity variants for glass-morphism
-  static Color glass50 = nightRider.withOpacity(0.5);
-  static Color glassDark50 = nightRiderDark.withOpacity(0.5);
-  static Color glassDark85 = nightRiderDark.withOpacity(0.85);
-  static Color glassDark90 = nightRiderDark.withOpacity(0.9);
+  static Color glass50 = nightRider.withValues(alpha: 0.5);
+  static Color glassDark50 = nightRiderDark.withValues(alpha: 0.5);
+  static Color glassDark85 = nightRiderDark.withValues(alpha: 0.85);
+  static Color glassDark90 = nightRiderDark.withValues(alpha: 0.9);
 
   // Border colors
-  static Color borderSubtle = white.withOpacity(0.05);
-  static Color borderVisible = white.withOpacity(0.1);
-  static Color borderStrong = white.withOpacity(0.3);
+  static Color borderSubtle = white.withValues(alpha: 0.05);
+  static Color borderVisible = white.withValues(alpha: 0.1);
+  static Color borderStrong = white.withValues(alpha: 0.3);
 
   // Trust level backgrounds (15% opacity)
-  static Color loggedBg = loggedBlue.withOpacity(0.15);
-  static Color trackedBg = trackedAmber.withOpacity(0.15);
-  static Color endorsedBg = endorsedGreen.withOpacity(0.15);
+  static Color loggedBg = loggedBlue.withValues(alpha: 0.15);
+  static Color trackedBg = trackedAmber.withValues(alpha: 0.15);
+  static Color endorsedBg = endorsedGreen.withValues(alpha: 0.15);
 
   // Trust level borders (30% opacity)
-  static Color loggedBorder = loggedBlue.withOpacity(0.3);
-  static Color trackedBorder = trackedAmber.withOpacity(0.3);
-  static Color endorsedBorder = endorsedGreen.withOpacity(0.3);
+  static Color loggedBorder = loggedBlue.withValues(alpha: 0.3);
+  static Color trackedBorder = trackedAmber.withValues(alpha: 0.3);
+  static Color endorsedBorder = endorsedGreen.withValues(alpha: 0.3);
 
   // Denim accents
-  static Color denimBg = denim.withOpacity(0.15);
-  static Color denimBorder = denim.withOpacity(0.3);
+  static Color denimBg = denim.withValues(alpha: 0.15);
+  static Color denimBorder = denim.withValues(alpha: 0.3);
 }

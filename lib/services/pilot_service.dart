@@ -6,7 +6,13 @@ import 'error_service.dart';
 
 /// Service for pilot-related API operations
 class PilotService {
-  final ApiService _api = ApiService();
+  final ApiService _api;
+  final ErrorService _errorService;
+
+  /// Constructor with optional dependency injection for testing
+  PilotService({ApiService? api, ErrorService? errorService})
+      : _api = api ?? ApiService(),
+        _errorService = errorService ?? ErrorService();
 
   /// Register a new pilot
   Future<Pilot> registerPilot({
@@ -25,7 +31,7 @@ class PilotService {
     } on ApiException catch (e) {
       // Log to Crashlytics if unexpected error
       if (e.isServerError) {
-        ErrorService().reporter.reportError(
+        _errorService.reporter.reportError(
               e,
               StackTrace.current,
               message: 'Failed to register pilot',
@@ -43,7 +49,7 @@ class PilotService {
       return Pilot.fromJson(response['data']);
     } on ApiException catch (e) {
       if (e.isServerError) {
-        ErrorService().reporter.reportError(
+        _errorService.reporter.reportError(
               e,
               StackTrace.current,
               message: 'Failed to get pilot',
