@@ -1,4 +1,4 @@
-import 'package:hyperlog/login_state.dart';
+import 'package:hyperlog/session_state.dart';
 import 'package:hyperlog/theme/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -31,9 +31,13 @@ void main() async {
     await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
   }
 
+  // Create session state and initialize before running app
+  final sessionState = SessionState();
+  await sessionState.initialize();
+
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => LoginState(),
+    ChangeNotifierProvider.value(
+      value: sessionState,
       child: const MyApp(),
     ),
   );
@@ -55,9 +59,17 @@ class _MyAppState extends State<MyApp> {
       theme: AppTheme.darkTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.dark,
-      home: Consumer<LoginState>(
-        builder: (context, loginState, _) {
-          return loginState.isLoggedIn
+      home: Consumer<SessionState>(
+        builder: (context, session, _) {
+          // Show loading while session initializes
+          if (!session.isInitialized) {
+            return const Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+          return session.isLoggedIn
               ? const HomeScreen(title: "HYPERLOG")
               : const AuthScreen();
         },

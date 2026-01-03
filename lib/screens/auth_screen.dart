@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:hyperlog/login_state.dart';
+import 'package:hyperlog/session_state.dart';
 import 'package:hyperlog/services/auth_service.dart';
 import 'package:hyperlog/services/error_service.dart';
 import 'package:hyperlog/utils/validator.dart';
@@ -73,7 +73,8 @@ class AuthScreenState extends State<AuthScreen>
       try {
         var user = await _authService.signUp(email, password);
         if (user != null && mounted) {
-          Provider.of<LoginState>(context, listen: false).logIn();
+          await Provider.of<SessionState>(context, listen: false)
+              .logIn(email: email);
         } else {
           try {
             throw Exception('abnormal error 001 on sign up');
@@ -124,7 +125,8 @@ class AuthScreenState extends State<AuthScreen>
       try {
         var user = await _authService.signIn(email, password);
         if (user != null && mounted) {
-          Provider.of<LoginState>(context, listen: false).logIn();
+          await Provider.of<SessionState>(context, listen: false)
+              .logIn(email: email);
         } else {
           try {
             throw Exception('abnormal error 002 on sign in');
@@ -161,13 +163,15 @@ class AuthScreenState extends State<AuthScreen>
       _errorMessage = null;
     });
 
+    const testEmail = 'testpilot@hyperlog.aero';
     try {
       var user = await _authService.signIn(
-        'testpilot@hyperlog.aero',
+        testEmail,
         'azertyuiop',
       );
       if (user != null && mounted) {
-        Provider.of<LoginState>(context, listen: false).logIn();
+        await Provider.of<SessionState>(context, listen: false)
+            .logIn(email: testEmail);
       }
     } catch (e) {
       if (mounted) {

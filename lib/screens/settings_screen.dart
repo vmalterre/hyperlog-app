@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:hyperlog/login_state.dart';
-import 'package:hyperlog/services/auth_service.dart';
+import 'package:hyperlog/session_state.dart';
 import 'package:hyperlog/theme/app_colors.dart';
 import 'package:hyperlog/theme/app_typography.dart';
 import 'package:hyperlog/widgets/glass_card.dart';
 import 'package:hyperlog/widgets/app_button.dart';
 
 class SettingsScreen extends StatelessWidget {
-  SettingsScreen({super.key});
-
-  final AuthService _authService = AuthService();
+  const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = _authService.getCurrentUser();
-    final userEmail = user?.email ?? 'Not signed in';
+    final session = Provider.of<SessionState>(context);
+    final pilot = session.currentPilot;
+    final pilotName = pilot?.name ?? 'Pilot Account';
+    final pilotLicense = pilot?.licenseNumber ?? 'Not registered';
 
     return Scaffold(
       backgroundColor: AppColors.nightRider,
@@ -63,12 +62,12 @@ class SettingsScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Pilot Account',
+                            pilotName,
                             style: AppTypography.h4,
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            userEmail,
+                            pilotLicense,
                             style: AppTypography.bodySmall,
                           ),
                         ],
@@ -172,7 +171,7 @@ class SettingsScreen extends StatelessWidget {
                 icon: Icons.logout,
                 fullWidth: true,
                 onPressed: () {
-                  Provider.of<LoginState>(context, listen: false).logOut();
+                  session.logOut();
                 },
               ),
               const SizedBox(height: 16),

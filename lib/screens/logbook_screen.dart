@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:hyperlog/models/logbook_entry_short.dart';
 import 'package:hyperlog/screens/add_flight_screen.dart';
 import 'package:hyperlog/screens/flight_detail_screen.dart';
 import 'package:hyperlog/services/api_exception.dart';
 import 'package:hyperlog/services/flight_service.dart';
+import 'package:hyperlog/session_state.dart';
 import 'package:hyperlog/theme/app_colors.dart';
 import 'package:hyperlog/theme/app_typography.dart';
 import 'package:hyperlog/widgets/glass_card.dart';
@@ -28,18 +30,27 @@ class _LogbookScreenState extends State<LogbookScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
-  // TODO: Get from user profile/auth state in a future phase
-  // For now, hardcoded for development
-  static const String _pilotLicense = 'UK-ATPL-123456';
-
   @override
   void initState() {
     super.initState();
     _loadFlights();
   }
 
+  String? get _pilotLicense {
+    return Provider.of<SessionState>(context, listen: false).pilotLicense;
+  }
+
   Future<void> _loadFlights() async {
     if (!mounted) return;
+
+    final license = _pilotLicense;
+    if (license == null) {
+      setState(() {
+        _errorMessage = 'No pilot profile found. Please complete registration.';
+        _isLoading = false;
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -47,7 +58,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
     });
 
     try {
-      final flights = await _flightService.getFlightsForPilot(_pilotLicense);
+      final flights = await _flightService.getFlightsForPilot(license);
       if (mounted) {
         setState(() {
           _logbookEntries = flights;
