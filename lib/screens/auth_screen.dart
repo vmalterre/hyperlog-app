@@ -190,7 +190,7 @@ class AuthScreenState extends State<AuthScreen>
       backgroundColor: AppColors.nightRider,
       body: Stack(
         children: [
-          // Animated pulsing grid background
+          // Animated pulsing grid background with gradient fades
           Positioned.fill(
             child: AnimatedBuilder(
               animation: _gridOpacity,
@@ -198,6 +198,46 @@ class AuthScreenState extends State<AuthScreen>
                 opacity: _gridOpacity.value,
                 child: CustomPaint(
                   painter: _GridPainter(),
+                ),
+              ),
+            ),
+          ),
+
+          // Top gradient fade (matches website hero-bg)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: MediaQuery.of(context).size.height * 0.3,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.nightRider,
+                    AppColors.nightRider.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Bottom gradient fade (matches website hero-bg)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: MediaQuery.of(context).size.height * 0.3,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    AppColors.nightRider,
+                    AppColors.nightRider.withValues(alpha: 0),
+                  ],
                 ),
               ),
             ),
@@ -460,7 +500,7 @@ class _FloatingNodesPainter extends CustomPainter {
       final nodeX = baseX + offset.dx;
       final nodeY = baseY + offset.dy;
 
-      // Draw connecting line (gradient fading out)
+      // Draw connecting line (gradient fading out) - 200px to match website
       final linePaint = Paint()
         ..shader = LinearGradient(
           colors: [
@@ -469,13 +509,13 @@ class _FloatingNodesPainter extends CustomPainter {
           ],
         ).createShader(Rect.fromPoints(
           Offset(nodeX, nodeY),
-          Offset(nodeX + 150, nodeY),
+          Offset(nodeX + 200, nodeY),
         ))
         ..strokeWidth = 1;
 
       canvas.drawLine(
         Offset(nodeX, nodeY),
-        Offset(nodeX + 150, nodeY),
+        Offset(nodeX + 200, nodeY),
         linePaint,
       );
 
