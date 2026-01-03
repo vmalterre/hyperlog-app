@@ -1,4 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#242526</color>
+    <!-- HyperLog Brand Colors -->
+    <color name="ic_launcher_background">#00213D</color>
+
+    <!-- Primary - Denim Blue -->
+    <color name="denim">#025EB5</color>
+    <color name="denim_light">#328DD8</color>
+    <color name="denim_lighter">#7DBEF4</color>
+    <color name="denim_dark">#00213D</color>
+
+    <!-- Neutrals -->
+    <color name="night_rider">#333333</color>
+    <color name="night_rider_dark">#242526</color>
+
+    <!-- Launch Screen -->
+    <color name="launch_background">#333333</color>
 </resources>
