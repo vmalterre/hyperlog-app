@@ -31,9 +31,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
   final PilotService _pilotService = PilotService();
 
   LogbookEntry? _entry;
-  FlightHistory? _history;
   List<VersionDiff>? _diffs;
-  String? _pilotName;
   bool _isLoading = true;
   String? _error;
   int _selectedTabIndex = 0; // 0 = Details, 1 = History
@@ -71,8 +69,6 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
 
       setState(() {
         _entry = entry;
-        _history = history;
-        _pilotName = pilotName;
         _diffs = _flightService.computeHistoryDiffs(history, pilotName: pilotName);
         _isLoading = false;
       });
