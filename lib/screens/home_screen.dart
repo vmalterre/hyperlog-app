@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hyperlog/theme/app_colors.dart';
 import 'package:hyperlog/screens/settings_screen.dart';
 import 'package:hyperlog/screens/logbook_screen.dart';
+import 'package:hyperlog/screens/statistics_screen.dart';
 import 'package:hyperlog/widgets/glass_bottom_nav.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -26,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final List<Widget> screens = [
       const LogbookScreen(),
+      const StatisticsScreen(),
       SettingsScreen(),
     ];
 
@@ -42,6 +44,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.book_outlined,
             activeIcon: Icons.book,
             label: 'Logbook',
+          ),
+          GlassBottomNavItem(
+            icon: Icons.bar_chart_outlined,
+            activeIcon: Icons.bar_chart,
+            label: 'Stats',
           ),
           GlassBottomNavItem(
             icon: Icons.settings_outlined,
