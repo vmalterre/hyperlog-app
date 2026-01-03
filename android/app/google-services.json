@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "988137830414",
+    "project_id": "hyperlog-7036c",
+    "storage_bucket": "hyperlog-7036c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:988137830414:android:2b3f2642a9a46b388de45f",
+        "android_client_info": {
+          "package_name": "aero.hyperlog.logbook"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyADKk1PdXH60r_9xNNTEEDsOJdaM33FpLI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
