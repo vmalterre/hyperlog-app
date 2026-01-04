@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/flight_history.dart';
-import '../models/logbook_entry.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'glass_card.dart';
@@ -73,25 +72,24 @@ class FlightHistoryTimeline extends StatelessWidget {
                   children: [
                     // Header with timestamp
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              _getEventIcon(diff),
-                              size: 16,
-                              color: _getDotColor(diff),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _getEventTitle(diff),
-                              style: AppTypography.body.copyWith(
-                                color: AppColors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                        Icon(
+                          _getEventIcon(diff),
+                          size: 16,
+                          color: _getDotColor(diff),
                         ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _getEventTitle(diff),
+                            style: AppTypography.body.copyWith(
+                              color: AppColors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         Text(
                           dateFormat.format(diff.timestamp),
                           style: AppTypography.caption.copyWith(
@@ -113,8 +111,8 @@ class FlightHistoryTimeline extends StatelessWidget {
                       ),
                     ),
 
-                    // Field changes
-                    if (diff.changes.isNotEmpty) ...[
+                    // Field changes (skip for verification upgrades - that's app-level info)
+                    if (diff.changes.isNotEmpty && !diff.isVerificationUpgrade) ...[
                       const SizedBox(height: 12),
                       ...diff.changes.map((change) => _buildChangeRow(change)),
                     ],
@@ -145,13 +143,7 @@ class FlightHistoryTimeline extends StatelessWidget {
   String _getEventTitle(VersionDiff diff) {
     if (diff.isCreation) return 'Flight Created';
     if (diff.isDeletion) return 'Flight Deleted';
-    if (diff.isVerificationUpgrade) {
-      final verification = diff.latestVerification;
-      if (verification != null) {
-        return 'Tracked via ${verification.source}';
-      }
-      return 'Flight Tracked';
-    }
+    if (diff.isVerificationUpgrade) return 'Flight Tracked';
     return 'Flight Amended';
   }
 
@@ -159,8 +151,7 @@ class FlightHistoryTimeline extends StatelessWidget {
     if (diff.isVerificationUpgrade) {
       final verification = diff.latestVerification;
       if (verification != null) {
-        final dateFormat = DateFormat('d MMM yyyy');
-        return 'Verified by ${verification.verifiedBy} on ${dateFormat.format(verification.verifiedAt)}';
+        return 'On ${verification.source}\nVerified by ${verification.verifiedBy}';
       }
     }
     final name = diff.pilotName ?? 'Pilot';
