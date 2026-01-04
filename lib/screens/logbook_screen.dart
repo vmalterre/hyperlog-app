@@ -243,7 +243,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
     }
 
     if (_noPilotProfile) {
-      return SliverToBoxAdapter(child: _buildWelcomeState());
+      return SliverToBoxAdapter(child: _buildEmptyState());
     }
 
     if (_errorMessage != null) {
@@ -370,44 +370,6 @@ class _LogbookScreenState extends State<LogbookScreen> {
     );
   }
 
-  Widget _buildWelcomeState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 60),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.flight_takeoff,
-              size: 64,
-              color: AppColors.denimLight,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Welcome to HyperLog',
-              style: AppTypography.h4,
-            ),
-            const SizedBox(height: 24),
-            PrimaryButton(
-              label: 'Log your first flight',
-              icon: Icons.add,
-              onPressed: () async {
-                final result = await Navigator.push<bool>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddFlightScreen(),
-                  ),
-                );
-                if (result == true) {
-                  _loadFlights();
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _StatItem extends StatelessWidget {
