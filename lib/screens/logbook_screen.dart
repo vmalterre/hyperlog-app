@@ -93,19 +93,25 @@ class _LogbookScreenState extends State<LogbookScreen> {
     return '$hours:${minutes.toString().padLeft(2, '0')}';
   }
 
-  // Filter entries based on selection
+  // Filter entries based on selection and sort by date descending
   List<LogbookEntryShort> get _filteredEntries {
     final now = DateTime.now();
+    List<LogbookEntryShort> filtered;
     switch (_selectedFilter) {
       case 1: // This Month
-        return _logbookEntries
+        filtered = _logbookEntries
             .where((e) => e.date.year == now.year && e.date.month == now.month)
             .toList();
+        break;
       case 2: // This Year
-        return _logbookEntries.where((e) => e.date.year == now.year).toList();
+        filtered = _logbookEntries.where((e) => e.date.year == now.year).toList();
+        break;
       default: // All
-        return _logbookEntries;
+        filtered = List.from(_logbookEntries);
     }
+    // Sort by date descending (most recent first)
+    filtered.sort((a, b) => b.date.compareTo(a.date));
+    return filtered;
   }
 
   @override
