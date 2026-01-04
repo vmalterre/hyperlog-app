@@ -127,11 +127,11 @@ class FlightHistoryTimeline extends StatelessWidget {
   }
 
   Color _getDotColor(VersionDiff diff) {
-    if (diff.isCreation) return AppColors.endorsedGreen;
+    if (diff.isCreation) return AppColors.loggedBlue;
     if (diff.isDeletion) return const Color(0xFFEF4444);
     if (diff.isEndorsementUpgrade) return AppColors.endorsedGreen;
     if (diff.isVerificationUpgrade) return AppColors.trackedAmber;
-    return AppColors.denim;
+    return const Color(0xFFEF4444); // Amendments in red
   }
 
   IconData _getEventIcon(VersionDiff diff) {
