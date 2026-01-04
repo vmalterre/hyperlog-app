@@ -156,11 +156,11 @@ class AuthScreenState extends State<AuthScreen>
   }
 
   Future<void> _alphaTestLogin() async {
-    await _alphaLogin('test@hyperlog.aero', 'ALPHA-TEST-001');
+    await _alphaLogin('test@hyperlog.aero', 'TEST-PILOT-001');
   }
 
   Future<void> _alphaDemoLogin() async {
-    await _alphaLogin('demo@hyperlog.aero', 'ALPHA-DEMO-001');
+    await _alphaLogin('demo@hyperlog.aero', 'DEMO-PILOT-001');
   }
 
   Future<void> _alphaLogin(String email, String license) async {
