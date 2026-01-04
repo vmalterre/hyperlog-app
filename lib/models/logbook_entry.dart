@@ -32,6 +32,37 @@ class Verification {
       };
 }
 
+/// Crew member on a flight
+class CrewMember {
+  final String pilotLicense;
+  final String pilotName;
+  final String role;
+  final DateTime joinedAt;
+
+  CrewMember({
+    required this.pilotLicense,
+    required this.pilotName,
+    required this.role,
+    required this.joinedAt,
+  });
+
+  factory CrewMember.fromJson(Map<String, dynamic> json) {
+    return CrewMember(
+      pilotLicense: json['pilotLicense'] ?? '',
+      pilotName: json['pilotName'] ?? '',
+      role: json['role'] ?? '',
+      joinedAt: DateTime.parse(json['joinedAt']),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'pilotLicense': pilotLicense,
+        'pilotName': pilotName,
+        'role': role,
+        'joinedAt': joinedAt.toUtc().toIso8601String(),
+      };
+}
+
 /// Flight time breakdown (values in minutes)
 class FlightTime {
   final int total;
@@ -118,6 +149,7 @@ class LogbookEntry {
   final String? remarks;
   final TrustLevel trustLevel;
   final List<Verification> verifications;
+  final List<CrewMember> crew;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -138,6 +170,7 @@ class LogbookEntry {
     this.remarks,
     this.trustLevel = TrustLevel.logged,
     this.verifications = const [],
+    this.crew = const [],
     required this.createdAt,
     required this.updatedAt,
   });
@@ -161,6 +194,10 @@ class LogbookEntry {
       trustLevel: _parseTrustLevel(json['trustLevel']),
       verifications: (json['verifications'] as List<dynamic>?)
               ?.map((v) => Verification.fromJson(v as Map<String, dynamic>))
+              .toList() ??
+          [],
+      crew: (json['crew'] as List<dynamic>?)
+              ?.map((c) => CrewMember.fromJson(c as Map<String, dynamic>))
               .toList() ??
           [],
       createdAt: DateTime.parse(json['createdAt']),

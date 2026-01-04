@@ -241,6 +241,55 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
 
           const SizedBox(height: 16),
 
+          // Crew section
+          if (_entry!.crew.isNotEmpty)
+            GlassContainer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Crew',
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ..._entry!.crew.map((member) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${member.pilotName} (${member.pilotLicense})',
+                            style: AppTypography.body.copyWith(color: AppColors.white),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.denim.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            member.role,
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.denim,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
+                ],
+              ),
+            ),
+
+          if (_entry!.crew.isNotEmpty)
+            const SizedBox(height: 16),
+
           // Trust level
           GlassContainer(
             child: Row(
