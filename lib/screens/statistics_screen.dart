@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:hyperlog/models/logbook_entry_short.dart';
+import 'package:hyperlog/models/logbook_entry.dart';
+import 'package:hyperlog/models/experience_totals.dart';
 import 'package:hyperlog/services/api_exception.dart';
 import 'package:hyperlog/services/flight_service.dart';
 import 'package:hyperlog/session_state.dart';
@@ -9,7 +10,11 @@ import 'package:hyperlog/theme/app_typography.dart';
 import 'package:hyperlog/widgets/trust_badge.dart';
 import 'package:hyperlog/widgets/trust_kpi_card.dart';
 import 'package:hyperlog/widgets/trust_evolution_chart.dart';
+import 'package:hyperlog/widgets/experience_kpi_card.dart';
 import 'package:hyperlog/widgets/app_button.dart';
+
+/// View options for the statistics screen
+enum StatisticsView { trust, experience }
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -20,10 +25,11 @@ class StatisticsScreen extends StatefulWidget {
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
   final FlightService _flightService = FlightService();
-  List<LogbookEntryShort> _flights = [];
+  List<LogbookEntry> _flights = [];
   bool _isLoading = true;
   bool _noPilotProfile = false;
   String? _errorMessage;
+  StatisticsView _selectedView = StatisticsView.trust;
 
   @override
   void initState() {
@@ -54,7 +60,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     });
 
     try {
-      final flights = await _flightService.getFlightsForPilot(license);
+      final flights = await _flightService.getFullFlightsForPilot(license);
       if (mounted) {
         setState(() {
           _flights = flights;
@@ -79,24 +85,27 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   int get endorsedCount =>
       _flights.where((f) => f.trustLevel == TrustLevel.endorsed).length;
 
+  // Experience totals
+  ExperienceTotals get _experienceTotals => ExperienceTotals.fromFlights(_flights);
+
   // Compute cumulative chart data by month
   List<TrustChartData> get _chartData {
     if (_flights.isEmpty) return [];
 
     // Sort flights by date
-    final sortedFlights = List<LogbookEntryShort>.from(_flights)
-      ..sort((a, b) => a.date.compareTo(b.date));
+    final sortedFlights = List<LogbookEntry>.from(_flights)
+      ..sort((a, b) => a.flightDate.compareTo(b.flightDate));
 
     // Group by month
-    final Map<String, List<LogbookEntryShort>> byMonth = {};
+    final Map<String, List<LogbookEntry>> byMonth = {};
     for (final flight in sortedFlights) {
-      final key = '${flight.date.year}-${flight.date.month.toString().padLeft(2, '0')}';
+      final key = '${flight.flightDate.year}-${flight.flightDate.month.toString().padLeft(2, '0')}';
       byMonth.putIfAbsent(key, () => []).add(flight);
     }
 
     // Generate all months from first to last flight
-    final firstDate = sortedFlights.first.date;
-    final lastDate = sortedFlights.last.date;
+    final firstDate = sortedFlights.first.flightDate;
+    final lastDate = sortedFlights.last.flightDate;
     final months = <DateTime>[];
 
     var current = DateTime(firstDate.year, firstDate.month);
@@ -167,6 +176,28 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 ),
               ),
 
+              // Toggle Row
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                  child: Row(
+                    children: [
+                      TabButton(
+                        label: 'Trust',
+                        isActive: _selectedView == StatisticsView.trust,
+                        onPressed: () => setState(() => _selectedView = StatisticsView.trust),
+                      ),
+                      const SizedBox(width: 12),
+                      TabButton(
+                        label: 'Experience',
+                        isActive: _selectedView == StatisticsView.experience,
+                        onPressed: () => setState(() => _selectedView = StatisticsView.experience),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
               // Content
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
@@ -198,6 +229,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       return _buildEmptyState();
     }
 
+    return _selectedView == StatisticsView.trust
+        ? _buildTrustView()
+        : _buildExperienceView();
+  }
+
+  Widget _buildTrustView() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -213,6 +250,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         TrustEvolutionChart(data: _chartData),
       ],
     );
+  }
+
+  Widget _buildExperienceView() {
+    return ExperienceKpiGrid(totals: _experienceTotals);
   }
 
   Widget _buildLoadingState() {
@@ -290,7 +331,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Log some flights to see your trust level statistics',
+              'Log some flights to see your statistics',
               style: AppTypography.bodySmall,
               textAlign: TextAlign.center,
             ),

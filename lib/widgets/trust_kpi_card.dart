@@ -3,17 +3,16 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'trust_badge.dart';
-import 'glass_card.dart';
 
-/// A KPI card displaying a trust level count with glass-morphism styling
+/// A KPI card displaying a trust level percentage with glass-morphism styling
 class TrustKpiCard extends StatelessWidget {
   final TrustLevel trustLevel;
-  final int count;
+  final double percentage;
 
   const TrustKpiCard({
     super.key,
     required this.trustLevel,
-    required this.count,
+    required this.percentage,
   });
 
   @override
@@ -74,9 +73,9 @@ class TrustKpiCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // Count value
+                    // Percentage value
                     Text(
-                      count.toString(),
+                      '${percentage.round()}%',
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 32,
                         fontWeight: FontWeight.w700,
@@ -117,23 +116,30 @@ class TrustKpiRow extends StatelessWidget {
     required this.endorsedCount,
   });
 
+  int get _totalCount => loggedCount + trackedCount + endorsedCount;
+
+  double _percentage(int count) {
+    if (_totalCount == 0) return 0;
+    return (count / _totalCount) * 100;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         TrustKpiCard(
           trustLevel: TrustLevel.logged,
-          count: loggedCount,
+          percentage: _percentage(loggedCount),
         ),
         const SizedBox(width: 12),
         TrustKpiCard(
           trustLevel: TrustLevel.tracked,
-          count: trackedCount,
+          percentage: _percentage(trackedCount),
         ),
         const SizedBox(width: 12),
         TrustKpiCard(
           trustLevel: TrustLevel.endorsed,
-          count: endorsedCount,
+          percentage: _percentage(endorsedCount),
         ),
       ],
     );

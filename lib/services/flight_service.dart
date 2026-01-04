@@ -41,6 +41,31 @@ class FlightService {
     }
   }
 
+  /// Get all flights for a pilot (returns full format for statistics)
+  Future<List<LogbookEntry>> getFullFlightsForPilot(
+      String licenseNumber) async {
+    try {
+      final response = await _api.get(
+        '${ApiConfig.pilots}/$licenseNumber${ApiConfig.flights}',
+      );
+
+      final List<dynamic> flightsJson = response['data'] ?? [];
+      return flightsJson
+          .map((json) => LogbookEntry.fromJson(json))
+          .toList();
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+              e,
+              StackTrace.current,
+              message: 'Failed to fetch flights for statistics',
+              metadata: {'licenseNumber': licenseNumber},
+            );
+      }
+      rethrow;
+    }
+  }
+
   /// Get a single flight by ID (returns full format)
   Future<LogbookEntry> getFlight(String id) async {
     try {

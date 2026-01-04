@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'glass_card.dart';
-import 'trust_badge.dart';
 
 /// Data point for the trust evolution chart
 class TrustChartData {
