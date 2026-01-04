@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
+import 'package:hyperlog/config/app_config.dart';
 import 'package:hyperlog/services/api_service.dart';
 import 'package:hyperlog/services/api_exception.dart';
 import '../mocks/mock_services.dart';
@@ -14,6 +15,8 @@ void main() {
 
   setUpAll(() {
     registerFallbackValues();
+    // Initialize AppConfig for tests (only runs once)
+    AppConfig.initialize(environment: 'dev');
   });
 
   setUp(() {
