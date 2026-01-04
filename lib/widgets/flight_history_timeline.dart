@@ -111,8 +111,8 @@ class FlightHistoryTimeline extends StatelessWidget {
                       ),
                     ),
 
-                    // Field changes (skip for verification upgrades - that's app-level info)
-                    if (diff.changes.isNotEmpty && !diff.isVerificationUpgrade) ...[
+                    // Field changes (skip for verification/endorsement upgrades - that's app-level info)
+                    if (diff.changes.isNotEmpty && !diff.isVerificationUpgrade && !diff.isEndorsementUpgrade) ...[
                       const SizedBox(height: 12),
                       ...diff.changes.map((change) => _buildChangeRow(change)),
                     ],
@@ -129,6 +129,7 @@ class FlightHistoryTimeline extends StatelessWidget {
   Color _getDotColor(VersionDiff diff) {
     if (diff.isCreation) return AppColors.endorsedGreen;
     if (diff.isDeletion) return const Color(0xFFEF4444);
+    if (diff.isEndorsementUpgrade) return AppColors.endorsedGreen;
     if (diff.isVerificationUpgrade) return AppColors.trackedAmber;
     return AppColors.denim;
   }
@@ -136,6 +137,7 @@ class FlightHistoryTimeline extends StatelessWidget {
   IconData _getEventIcon(VersionDiff diff) {
     if (diff.isCreation) return Icons.add_circle_outline;
     if (diff.isDeletion) return Icons.remove_circle_outline;
+    if (diff.isEndorsementUpgrade) return Icons.verified_user;
     if (diff.isVerificationUpgrade) return Icons.satellite_alt;
     return Icons.edit_outlined;
   }
@@ -143,11 +145,18 @@ class FlightHistoryTimeline extends StatelessWidget {
   String _getEventTitle(VersionDiff diff) {
     if (diff.isCreation) return 'Flight Created';
     if (diff.isDeletion) return 'Flight Deleted';
+    if (diff.isEndorsementUpgrade) return 'Flight Endorsed';
     if (diff.isVerificationUpgrade) return 'Flight Tracked';
     return 'Flight Amended';
   }
 
   String _getPilotInfo(VersionDiff diff) {
+    if (diff.isEndorsementUpgrade) {
+      final endorsement = diff.latestEndorsement;
+      if (endorsement != null) {
+        return 'by ${endorsement.endorserName} - ${endorsement.endorserLicense}';
+      }
+    }
     if (diff.isVerificationUpgrade) {
       final verification = diff.latestVerification;
       if (verification != null) {

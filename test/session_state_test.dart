@@ -12,7 +12,7 @@ void main() {
 
   // Helper to create valid pilot
   Pilot createTestPilot({
-    String licenseNumber = 'ALPHA-TEST-001',
+    String licenseNumber = 'TEST-PILOT-001',
     String name = 'Test Pilot',
     String email = 'test@hyperlog.aero',
   }) {
@@ -126,18 +126,18 @@ void main() {
 
       test('loads pilot data for known test email', () async {
         final testPilot = createTestPilot();
-        when(() => mockPilotService.getPilot('ALPHA-TEST-001'))
+        when(() => mockPilotService.getPilot('TEST-PILOT-001'))
             .thenAnswer((_) async => testPilot);
 
         await sessionState.logIn(email: 'test@hyperlog.aero');
 
         expect(sessionState.currentPilot, testPilot);
-        expect(sessionState.pilotLicense, 'ALPHA-TEST-001');
+        expect(sessionState.pilotLicense, 'TEST-PILOT-001');
       });
 
       test('handles case-insensitive email matching', () async {
         final testPilot = createTestPilot();
-        when(() => mockPilotService.getPilot('ALPHA-TEST-001'))
+        when(() => mockPilotService.getPilot('TEST-PILOT-001'))
             .thenAnswer((_) async => testPilot);
 
         await sessionState.logIn(email: 'TEST@HYPERLOG.AERO');
@@ -177,7 +177,7 @@ void main() {
       setUp(() async {
         // Set up logged-in state
         final testPilot = createTestPilot();
-        when(() => mockPilotService.getPilot('ALPHA-TEST-001'))
+        when(() => mockPilotService.getPilot('TEST-PILOT-001'))
             .thenAnswer((_) async => testPilot);
         when(() => mockAuthService.signOut()).thenAnswer((_) async {});
 
@@ -272,27 +272,27 @@ void main() {
     });
 
     group('email to license mapping', () {
-      test('maps test@hyperlog.aero to ALPHA-TEST-001', () async {
+      test('maps test@hyperlog.aero to TEST-PILOT-001', () async {
         final testPilot = createTestPilot();
-        when(() => mockPilotService.getPilot('ALPHA-TEST-001'))
+        when(() => mockPilotService.getPilot('TEST-PILOT-001'))
             .thenAnswer((_) async => testPilot);
 
         await sessionState.logIn(email: 'test@hyperlog.aero');
 
-        verify(() => mockPilotService.getPilot('ALPHA-TEST-001')).called(1);
+        verify(() => mockPilotService.getPilot('TEST-PILOT-001')).called(1);
       });
 
-      test('maps demo@hyperlog.aero to ALPHA-DEMO-001', () async {
+      test('maps demo@hyperlog.aero to DEMO-PILOT-001', () async {
         final demoPilot = createTestPilot(
-          licenseNumber: 'ALPHA-DEMO-001',
+          licenseNumber: 'DEMO-PILOT-001',
           email: 'demo@hyperlog.aero',
         );
-        when(() => mockPilotService.getPilot('ALPHA-DEMO-001'))
+        when(() => mockPilotService.getPilot('DEMO-PILOT-001'))
             .thenAnswer((_) async => demoPilot);
 
         await sessionState.logIn(email: 'demo@hyperlog.aero');
 
-        verify(() => mockPilotService.getPilot('ALPHA-DEMO-001')).called(1);
+        verify(() => mockPilotService.getPilot('DEMO-PILOT-001')).called(1);
       });
 
       test('returns null for unmapped emails', () async {

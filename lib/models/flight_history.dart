@@ -71,6 +71,7 @@ class VersionDiff {
   final String? pilotLicense;
   final String? pilotName;
   final List<Verification> verifications;
+  final List<Endorsement> endorsements;
 
   VersionDiff({
     required this.txId,
@@ -81,6 +82,7 @@ class VersionDiff {
     this.pilotLicense,
     this.pilotName,
     this.verifications = const [],
+    this.endorsements = const [],
   });
 
   /// Check if this diff represents a trust level upgrade via external verification
@@ -92,7 +94,20 @@ class VersionDiff {
     return trustChange.oldValue == 'LOGGED' && trustChange.newValue == 'TRACKED';
   }
 
+  /// Check if this diff represents a trust level upgrade via endorsement
+  bool get isEndorsementUpgrade {
+    final trustChange = changes.firstWhere(
+      (c) => c.fieldName == 'trustLevel',
+      orElse: () => FieldChange(fieldName: '', displayName: ''),
+    );
+    return trustChange.newValue == 'ENDORSED';
+  }
+
   /// Get the latest verification (for display purposes)
   Verification? get latestVerification =>
       verifications.isNotEmpty ? verifications.last : null;
+
+  /// Get the latest endorsement (for display purposes)
+  Endorsement? get latestEndorsement =>
+      endorsements.isNotEmpty ? endorsements.last : null;
 }

@@ -63,6 +63,41 @@ class CrewMember {
       };
 }
 
+/// Endorsement from another pilot
+class Endorsement {
+  final String endorserLicense;
+  final String endorserName;
+  final String endorserRole;
+  final DateTime endorsedAt;
+  final String? remarks;
+
+  Endorsement({
+    required this.endorserLicense,
+    required this.endorserName,
+    required this.endorserRole,
+    required this.endorsedAt,
+    this.remarks,
+  });
+
+  factory Endorsement.fromJson(Map<String, dynamic> json) {
+    return Endorsement(
+      endorserLicense: json['endorserLicense'] ?? '',
+      endorserName: json['endorserName'] ?? '',
+      endorserRole: json['endorserRole'] ?? '',
+      endorsedAt: DateTime.parse(json['endorsedAt']),
+      remarks: json['remarks'],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'endorserLicense': endorserLicense,
+        'endorserName': endorserName,
+        'endorserRole': endorserRole,
+        'endorsedAt': endorsedAt.toUtc().toIso8601String(),
+        'remarks': remarks,
+      };
+}
+
 /// Flight time breakdown (values in minutes)
 class FlightTime {
   final int total;
@@ -149,6 +184,7 @@ class LogbookEntry {
   final String? remarks;
   final TrustLevel trustLevel;
   final List<Verification> verifications;
+  final List<Endorsement> endorsements;
   final List<CrewMember> crew;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -170,6 +206,7 @@ class LogbookEntry {
     this.remarks,
     this.trustLevel = TrustLevel.logged,
     this.verifications = const [],
+    this.endorsements = const [],
     this.crew = const [],
     required this.createdAt,
     required this.updatedAt,
@@ -194,6 +231,10 @@ class LogbookEntry {
       trustLevel: _parseTrustLevel(json['trustLevel']),
       verifications: (json['verifications'] as List<dynamic>?)
               ?.map((v) => Verification.fromJson(v as Map<String, dynamic>))
+              .toList() ??
+          [],
+      endorsements: (json['endorsements'] as List<dynamic>?)
+              ?.map((e) => Endorsement.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       crew: (json['crew'] as List<dynamic>?)

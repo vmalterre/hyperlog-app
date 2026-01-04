@@ -162,6 +162,7 @@ class FlightService {
         pilotLicense: pilotLicense,
         pilotName: pilotName,
         verifications: current.entry!.verifications,
+        endorsements: current.entry!.endorsements,
       ));
     }
 
