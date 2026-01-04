@@ -273,46 +273,49 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildMapView() {
-    // Calculate available height for map
+    // Calculate available height for the entire map view section
     final screenHeight = MediaQuery.of(context).size.height;
     final topPadding = MediaQuery.of(context).padding.top;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    // Header (~70) + toggle row (~50) + filter chips (~50) + spacing above (16) + spacing below (16)
-    const uiElementsHeight = 70 + 50 + 50 + 16 + 16;
+    // Header (~70) + toggle row (~50) + content padding (24)
+    const uiElementsHeight = 70 + 50 + 24;
     // Bottom nav bar + safe area
     final bottomNavHeight = kBottomNavigationBarHeight + bottomPadding;
-    final mapHeight = screenHeight - topPadding - bottomNavHeight - uiElementsHeight;
+    final availableHeight = screenHeight - topPadding - bottomNavHeight - uiElementsHeight;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Filter chips
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: MapTimeFilter.values.map((filter) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: TabButton(
-                  label: filter.displayName,
-                  isActive: _mapFilter == filter,
-                  onPressed: () => setState(() => _mapFilter = filter),
-                ),
-              );
-            }).toList(),
+    return SizedBox(
+      height: availableHeight,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Map - expands to fill available space above the chips
+          Expanded(
+            child: FlightMapView(
+              flights: _flights,
+              filter: _mapFilter,
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
 
-        // Map - takes remaining available space
-        SizedBox(
-          height: mapHeight.clamp(300.0, double.infinity),
-          child: FlightMapView(
-            flights: _flights,
-            filter: _mapFilter,
+          const SizedBox(height: 16),
+
+          // Filter chips at the bottom
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: MapTimeFilter.values.map((filter) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: MapFilterChip(
+                    label: filter.displayName,
+                    isActive: _mapFilter == filter,
+                    onPressed: () => setState(() => _mapFilter = filter),
+                  ),
+                );
+              }).toList(),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

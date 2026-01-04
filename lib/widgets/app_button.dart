@@ -167,7 +167,7 @@ class SecondaryButton extends StatelessWidget {
   }
 }
 
-/// Tab/pill-shaped toggle button
+/// Tab/pill-shaped toggle button (for screen navigation)
 class TabButton extends StatelessWidget {
   final String label;
   final bool isActive;
@@ -201,6 +201,55 @@ class TabButton extends StatelessWidget {
         child: Text(
           label,
           style: AppTypography.navItem.copyWith(
+            color: isActive ? AppColors.white : AppColors.whiteDarker,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Filter chip button (for filtering data, distinct from navigation tabs)
+class MapFilterChip extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final VoidCallback? onPressed;
+
+  const MapFilterChip({
+    super.key,
+    required this.label,
+    this.isActive = false,
+    this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      child: TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          backgroundColor: isActive
+              ? AppColors.nightRiderLight.withValues(alpha: 0.5)
+              : Colors.transparent,
+          foregroundColor: isActive ? AppColors.white : AppColors.whiteDarker,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(
+              color: isActive
+                  ? AppColors.whiteDarker.withValues(alpha: 0.3)
+                  : AppColors.nightRiderLight.withValues(alpha: 0.5),
+              width: 1,
+            ),
+          ),
+        ),
+        child: Text(
+          label,
+          style: AppTypography.navItem.copyWith(
+            fontSize: 12,
             color: isActive ? AppColors.white : AppColors.whiteDarker,
           ),
         ),

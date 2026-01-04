@@ -87,65 +87,88 @@ class _FlightMapViewState extends State<FlightMapView> {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
-      child: FlutterMap(
-        mapController: _mapController,
-        options: MapOptions(
-          initialCenter: bounds?.center ?? const LatLng(48.0, 10.0),
-          initialZoom: 4.0,
-          backgroundColor: AppColors.nightRiderDark,
-          interactionOptions: const InteractionOptions(
-            flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-          ),
-          onMapReady: () {
-            if (bounds != null) {
-              _mapController.fitCamera(
-                CameraFit.bounds(
-                  bounds: bounds,
-                  padding: const EdgeInsets.all(50),
-                ),
-              );
-            }
-          },
-        ),
+      child: Stack(
         children: [
-          // Dark tile layer
-          TileLayer(
-            urlTemplate:
-                'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-            subdomains: const ['a', 'b', 'c', 'd'],
-            userAgentPackageName: 'com.hyperlog.app',
-            retinaMode: true,
+          // Map layer
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: bounds?.center ?? const LatLng(48.0, 10.0),
+              initialZoom: 4.0,
+              backgroundColor: AppColors.nightRiderDark,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+              ),
+              onMapReady: () {
+                if (bounds != null) {
+                  _mapController.fitCamera(
+                    CameraFit.bounds(
+                      bounds: bounds,
+                      padding: const EdgeInsets.all(50),
+                    ),
+                  );
+                }
+              },
+            ),
+            children: [
+              // Dark tile layer
+              TileLayer(
+                urlTemplate:
+                    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                subdomains: const ['a', 'b', 'c', 'd'],
+                userAgentPackageName: 'com.hyperlog.app',
+                retinaMode: true,
+              ),
+
+              // Route arcs
+              PolylineLayer(
+                polylines: routes.map((route) {
+                  final arcPoints = GreatCircleArc.calculateArcPoints(
+                    route.departureCoords!,
+                    route.destinationCoords!,
+                    numPoints: 50,
+                  );
+                  return Polyline(
+                    points: arcPoints,
+                    color: AppColors.denim.withValues(alpha: 0.7),
+                    strokeWidth: 2.0,
+                  );
+                }).toList(),
+              ),
+
+              // Airport markers
+              MarkerLayer(
+                markers: markers.map((airport) {
+                  return Marker(
+                    point: airport.coords!,
+                    width: 60,
+                    height: 28,
+                    child: _AirportMarker(
+                      code: airport.icaoCode,
+                      visitCount: airport.visitCount,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
           ),
 
-          // Route arcs
-          PolylineLayer(
-            polylines: routes.map((route) {
-              final arcPoints = GreatCircleArc.calculateArcPoints(
-                route.departureCoords!,
-                route.destinationCoords!,
-                numPoints: 50,
-              );
-              return Polyline(
-                points: arcPoints,
-                color: AppColors.denim.withValues(alpha: 0.7),
-                strokeWidth: 2.0,
-              );
-            }).toList(),
-          ),
-
-          // Airport markers
-          MarkerLayer(
-            markers: markers.map((airport) {
-              return Marker(
-                point: airport.coords!,
-                width: 60,
-                height: 28,
-                child: _AirportMarker(
-                  code: airport.icaoCode,
-                  visitCount: airport.visitCount,
+          // Denim gradient overlay for warmth
+          IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 1.2,
+                  colors: [
+                    AppColors.denim.withValues(alpha: 0.08),
+                    AppColors.denim.withValues(alpha: 0.03),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.5, 1.0],
                 ),
-              );
-            }).toList(),
+              ),
+            ),
           ),
         ],
       ),
