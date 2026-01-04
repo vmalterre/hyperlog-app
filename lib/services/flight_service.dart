@@ -161,6 +161,7 @@ class FlightService {
         changes: changes,
         pilotLicense: pilotLicense,
         pilotName: pilotName,
+        verifications: current.entry!.verifications,
       ));
     }
 
@@ -197,6 +198,7 @@ class FlightService {
     check('landings', 'Landings', old.landings.total.toString(), updated.landings.total.toString());
     check('role', 'Role', old.role, updated.role);
     check('remarks', 'Remarks', old.remarks, updated.remarks);
+    check('trustLevel', 'Trust Level', old.trustLevel.name.toUpperCase(), updated.trustLevel.name.toUpperCase());
 
     return changes;
   }

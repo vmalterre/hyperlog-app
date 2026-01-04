@@ -1,6 +1,37 @@
 import '../widgets/trust_badge.dart';
 import 'logbook_entry_short.dart';
 
+/// External verification of a flight (from Trust Engine, instructors, etc.)
+class Verification {
+  final String source;
+  final DateTime verifiedAt;
+  final String verifiedBy;
+  final String matchData;
+
+  Verification({
+    required this.source,
+    required this.verifiedAt,
+    required this.verifiedBy,
+    this.matchData = '',
+  });
+
+  factory Verification.fromJson(Map<String, dynamic> json) {
+    return Verification(
+      source: json['source'] ?? '',
+      verifiedAt: DateTime.parse(json['verifiedAt']),
+      verifiedBy: json['verifiedBy'] ?? '',
+      matchData: json['matchData'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'source': source,
+        'verifiedAt': verifiedAt.toUtc().toIso8601String(),
+        'verifiedBy': verifiedBy,
+        'matchData': matchData,
+      };
+}
+
 /// Flight time breakdown (values in minutes)
 class FlightTime {
   final int total;
@@ -86,6 +117,7 @@ class LogbookEntry {
   final String role;
   final String? remarks;
   final TrustLevel trustLevel;
+  final List<Verification> verifications;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -105,6 +137,7 @@ class LogbookEntry {
     required this.role,
     this.remarks,
     this.trustLevel = TrustLevel.logged,
+    this.verifications = const [],
     required this.createdAt,
     required this.updatedAt,
   });
@@ -126,6 +159,10 @@ class LogbookEntry {
       role: json['role'],
       remarks: json['remarks'],
       trustLevel: _parseTrustLevel(json['trustLevel']),
+      verifications: (json['verifications'] as List<dynamic>?)
+              ?.map((v) => Verification.fromJson(v as Map<String, dynamic>))
+              .toList() ??
+          [],
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
     );

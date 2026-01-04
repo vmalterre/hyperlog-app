@@ -70,6 +70,7 @@ class VersionDiff {
   final bool isDeletion;
   final String? pilotLicense;
   final String? pilotName;
+  final List<Verification> verifications;
 
   VersionDiff({
     required this.txId,
@@ -79,5 +80,19 @@ class VersionDiff {
     this.isDeletion = false,
     this.pilotLicense,
     this.pilotName,
+    this.verifications = const [],
   });
+
+  /// Check if this diff represents a trust level upgrade via external verification
+  bool get isVerificationUpgrade {
+    final trustChange = changes.firstWhere(
+      (c) => c.fieldName == 'trustLevel',
+      orElse: () => FieldChange(fieldName: '', displayName: ''),
+    );
+    return trustChange.oldValue == 'LOGGED' && trustChange.newValue == 'TRACKED';
+  }
+
+  /// Get the latest verification (for display purposes)
+  Verification? get latestVerification =>
+      verifications.isNotEmpty ? verifications.last : null;
 }

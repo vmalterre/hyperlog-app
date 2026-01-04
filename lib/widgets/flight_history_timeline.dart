@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/flight_history.dart';
+import '../models/logbook_entry.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'glass_card.dart';
@@ -130,22 +131,38 @@ class FlightHistoryTimeline extends StatelessWidget {
   Color _getDotColor(VersionDiff diff) {
     if (diff.isCreation) return AppColors.endorsedGreen;
     if (diff.isDeletion) return const Color(0xFFEF4444);
+    if (diff.isVerificationUpgrade) return AppColors.trackedAmber;
     return AppColors.denim;
   }
 
   IconData _getEventIcon(VersionDiff diff) {
     if (diff.isCreation) return Icons.add_circle_outline;
     if (diff.isDeletion) return Icons.remove_circle_outline;
+    if (diff.isVerificationUpgrade) return Icons.satellite_alt;
     return Icons.edit_outlined;
   }
 
   String _getEventTitle(VersionDiff diff) {
     if (diff.isCreation) return 'Flight Created';
     if (diff.isDeletion) return 'Flight Deleted';
+    if (diff.isVerificationUpgrade) {
+      final verification = diff.latestVerification;
+      if (verification != null) {
+        return 'Tracked via ${verification.source}';
+      }
+      return 'Flight Tracked';
+    }
     return 'Flight Amended';
   }
 
   String _getPilotInfo(VersionDiff diff) {
+    if (diff.isVerificationUpgrade) {
+      final verification = diff.latestVerification;
+      if (verification != null) {
+        final dateFormat = DateFormat('d MMM yyyy');
+        return 'Verified by ${verification.verifiedBy} on ${dateFormat.format(verification.verifiedAt)}';
+      }
+    }
     final name = diff.pilotName ?? 'Pilot';
     final license = diff.pilotLicense ?? 'Unknown';
     return 'by $name - $license';
