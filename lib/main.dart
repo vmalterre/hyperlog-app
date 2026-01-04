@@ -1,3 +1,4 @@
+import 'package:hyperlog/config/app_config.dart';
 import 'package:hyperlog/session_state.dart';
 import 'package:hyperlog/theme/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -8,10 +9,20 @@ import 'package:flutter/services.dart';
 import 'package:hyperlog/screens/auth_screen.dart';
 import 'package:hyperlog/screens/home_screen.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize environment config from --dart-define
+  // Run with: flutter run --dart-define=ENV=prod for production
+  const env = String.fromEnvironment('ENV', defaultValue: 'dev');
+  AppConfig.initialize(environment: env);
+
+  if (kDebugMode) {
+    debugPrint('Environment: ${AppConfig.current.environment.name}');
+    debugPrint('API URL: ${AppConfig.apiBaseUrl}');
+  }
 
   // Set system UI overlay style for dark theme
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(

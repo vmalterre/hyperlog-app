@@ -1,4 +1,4 @@
-import '../config/api_config.dart';
+import '../config/app_config.dart';
 import '../models/logbook_entry.dart';
 import '../models/logbook_entry_short.dart';
 import '../models/flight_history.dart';
@@ -21,7 +21,7 @@ class FlightService {
       String licenseNumber) async {
     try {
       final response = await _api.get(
-        '${ApiConfig.pilots}/$licenseNumber${ApiConfig.flights}',
+        '${AppConfig.pilots}/$licenseNumber${AppConfig.flights}',
       );
 
       final List<dynamic> flightsJson = response['data'] ?? [];
@@ -46,7 +46,7 @@ class FlightService {
       String licenseNumber) async {
     try {
       final response = await _api.get(
-        '${ApiConfig.pilots}/$licenseNumber${ApiConfig.flights}',
+        '${AppConfig.pilots}/$licenseNumber${AppConfig.flights}',
       );
 
       final List<dynamic> flightsJson = response['data'] ?? [];
@@ -69,7 +69,7 @@ class FlightService {
   /// Get a single flight by ID (returns full format)
   Future<LogbookEntry> getFlight(String id) async {
     try {
-      final response = await _api.get('${ApiConfig.flights}/$id');
+      final response = await _api.get('${AppConfig.flights}/$id');
       return LogbookEntry.fromJson(response['data']);
     } on ApiException catch (e) {
       if (e.isServerError) {
@@ -87,7 +87,7 @@ class FlightService {
   /// Create a new flight entry
   Future<LogbookEntry> createFlight(LogbookEntry entry) async {
     try {
-      final response = await _api.post(ApiConfig.flights, entry.toJson());
+      final response = await _api.post(AppConfig.flights, entry.toJson());
       return LogbookEntry.fromJson(response['data']);
     } on ApiException catch (e) {
       if (e.isServerError) {
@@ -109,7 +109,7 @@ class FlightService {
   /// Update an existing flight entry
   Future<LogbookEntry> updateFlight(String id, LogbookEntry entry) async {
     try {
-      final response = await _api.put('${ApiConfig.flights}/$id', entry.toJson());
+      final response = await _api.put('${AppConfig.flights}/$id', entry.toJson());
       return LogbookEntry.fromJson(response['data']);
     } on ApiException catch (e) {
       if (e.isServerError) {
@@ -127,7 +127,7 @@ class FlightService {
   /// Get flight history from blockchain
   Future<FlightHistory> getFlightHistory(String id) async {
     try {
-      final response = await _api.get('${ApiConfig.flights}/$id/history');
+      final response = await _api.get('${AppConfig.flights}/$id/history');
       return FlightHistory.fromJson(response['data']);
     } on ApiException catch (e) {
       if (e.isServerError) {

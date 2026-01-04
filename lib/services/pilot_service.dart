@@ -1,4 +1,4 @@
-import '../config/api_config.dart';
+import '../config/app_config.dart';
 import '../models/pilot.dart';
 import 'api_exception.dart';
 import 'api_service.dart';
@@ -21,7 +21,7 @@ class PilotService {
     required String email,
   }) async {
     try {
-      final response = await _api.post(ApiConfig.pilots, {
+      final response = await _api.post(AppConfig.pilots, {
         'licenseNumber': licenseNumber,
         'name': name,
         'email': email,
@@ -45,7 +45,7 @@ class PilotService {
   /// Get pilot by license number
   Future<Pilot> getPilot(String licenseNumber) async {
     try {
-      final response = await _api.get('${ApiConfig.pilots}/$licenseNumber');
+      final response = await _api.get('${AppConfig.pilots}/$licenseNumber');
       return Pilot.fromJson(response['data']);
     } on ApiException catch (e) {
       if (e.isServerError) {

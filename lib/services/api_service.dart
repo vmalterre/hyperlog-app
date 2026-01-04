@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import '../config/api_config.dart';
+import '../config/app_config.dart';
 import 'api_exception.dart';
 
 /// Base service for making API calls to the backend
@@ -40,7 +40,7 @@ class ApiService {
     Map<String, dynamic>? body,
   }) async {
     try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}$endpoint');
       final headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -52,17 +52,17 @@ class ApiService {
         case 'GET':
           response = await _client
               .get(uri, headers: headers)
-              .timeout(Duration(seconds: ApiConfig.connectTimeout));
+              .timeout(Duration(seconds: AppConfig.connectTimeout));
           break;
         case 'POST':
           response = await _client
               .post(uri, headers: headers, body: jsonEncode(body))
-              .timeout(Duration(seconds: ApiConfig.connectTimeout));
+              .timeout(Duration(seconds: AppConfig.connectTimeout));
           break;
         case 'PUT':
           response = await _client
               .put(uri, headers: headers, body: jsonEncode(body))
-              .timeout(Duration(seconds: ApiConfig.connectTimeout));
+              .timeout(Duration(seconds: AppConfig.connectTimeout));
           break;
         default:
           throw ApiException(message: 'Unsupported HTTP method: $method');
