@@ -155,7 +155,15 @@ class AuthScreenState extends State<AuthScreen>
     }
   }
 
-  Future<void> _testUserLogin() async {
+  Future<void> _alphaTestLogin() async {
+    await _alphaLogin('test@hyperlog.aero', 'ALPHA-TEST-001');
+  }
+
+  Future<void> _alphaDemoLogin() async {
+    await _alphaLogin('demo@hyperlog.aero', 'ALPHA-DEMO-001');
+  }
+
+  Future<void> _alphaLogin(String email, String license) async {
     if (_isLoading) return;
 
     setState(() {
@@ -163,15 +171,21 @@ class AuthScreenState extends State<AuthScreen>
       _errorMessage = null;
     });
 
-    const testEmail = 'testpilot@hyperlog.aero';
+    const password = 'alphatest123';
     try {
-      var user = await _authService.signIn(
-        testEmail,
-        'azertyuiop',
-      );
+      dynamic user;
+
+      // Try sign in first
+      try {
+        user = await _authService.signIn(email, password);
+      } catch (_) {
+        // Sign in failed, try sign up
+        user = await _authService.signUp(email, password);
+      }
+
       if (user != null && mounted) {
         await Provider.of<SessionState>(context, listen: false)
-            .logIn(email: testEmail);
+            .logIn(email: email);
       }
     } catch (e) {
       if (mounted) {
@@ -402,7 +416,7 @@ class AuthScreenState extends State<AuthScreen>
 
                     const SizedBox(height: 40),
 
-                    // Development section
+                    // Alpha Test section
                     Row(
                       children: [
                         Expanded(
@@ -411,7 +425,7 @@ class AuthScreenState extends State<AuthScreen>
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
-                            'Development Only',
+                            'Alpha Testing',
                             style: AppTypography.caption,
                           ),
                         ),
@@ -422,13 +436,37 @@ class AuthScreenState extends State<AuthScreen>
                     ),
                     const SizedBox(height: 16),
 
-                    SecondaryButton(
-                      label: 'Test User Login',
-                      icon: Icons.developer_mode,
-                      fullWidth: true,
-                      borderColor: AppColors.trackedAmber,
-                      textColor: AppColors.trackedAmber,
-                      onPressed: _isLoading ? null : _testUserLogin,
+                    // Alpha test pilots row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SecondaryButton(
+                            label: 'Test Pilot',
+                            icon: Icons.person_outline,
+                            borderColor: AppColors.denim,
+                            textColor: AppColors.denim,
+                            onPressed: _isLoading ? null : _alphaTestLogin,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SecondaryButton(
+                            label: 'Demo Pilot',
+                            icon: Icons.flight,
+                            borderColor: AppColors.endorsedGreen,
+                            textColor: AppColors.endorsedGreen,
+                            onPressed: _isLoading ? null : _alphaDemoLogin,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Test: empty logbook  •  Demo: 200 flights',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.whiteDarker,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 40),
                   ],

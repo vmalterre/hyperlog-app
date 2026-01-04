@@ -106,10 +106,10 @@ class SessionState extends ChangeNotifier {
   ///
   /// In production, this would be replaced with a proper user-pilot lookup.
   String? _getLicenseForEmail(String email) {
-    // Known test mappings
+    // Alpha test mappings
     const emailToLicense = {
-      'testpilot@hyperlog.aero': 'UK-ATPL-123456',
-      // Add more mappings as needed during development
+      'test@hyperlog.aero': 'ALPHA-TEST-001',
+      'demo@hyperlog.aero': 'ALPHA-DEMO-001',
     };
     return emailToLicense[email.toLowerCase()];
   }
