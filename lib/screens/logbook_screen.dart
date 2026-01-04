@@ -28,6 +28,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
   final FlightService _flightService = FlightService();
   List<LogbookEntryShort> _logbookEntries = [];
   bool _isLoading = true;
+  bool _noPilotProfile = false;
   String? _errorMessage;
 
   @override
@@ -46,7 +47,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
     final license = _pilotLicense;
     if (license == null) {
       setState(() {
-        _errorMessage = 'No pilot profile found. Please complete registration.';
+        _noPilotProfile = true;
         _isLoading = false;
       });
       return;
@@ -54,6 +55,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
 
     setState(() {
       _isLoading = true;
+      _noPilotProfile = false;
       _errorMessage = null;
     });
 
@@ -240,6 +242,10 @@ class _LogbookScreenState extends State<LogbookScreen> {
       return SliverToBoxAdapter(child: _buildLoadingState());
     }
 
+    if (_noPilotProfile) {
+      return SliverToBoxAdapter(child: _buildWelcomeState());
+    }
+
     if (_errorMessage != null) {
       return SliverToBoxAdapter(child: _buildErrorState());
     }
@@ -357,6 +363,45 @@ class _LogbookScreenState extends State<LogbookScreen> {
             Text(
               'Tap the + button above to add your first flight',
               style: AppTypography.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.flight_takeoff,
+              size: 64,
+              color: AppColors.denimLight,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Welcome to HyperLog',
+              style: AppTypography.h4,
+            ),
+            const SizedBox(height: 24),
+            PrimaryButton(
+              label: 'Log your first flight',
+              icon: Icons.add,
+              onPressed: () async {
+                final result = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddFlightScreen(),
+                  ),
+                );
+                if (result == true) {
+                  _loadFlights();
+                }
+              },
             ),
           ],
         ),
