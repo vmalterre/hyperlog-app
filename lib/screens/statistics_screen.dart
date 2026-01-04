@@ -12,9 +12,10 @@ import 'package:hyperlog/widgets/trust_kpi_card.dart';
 import 'package:hyperlog/widgets/trust_evolution_chart.dart';
 import 'package:hyperlog/widgets/experience_kpi_card.dart';
 import 'package:hyperlog/widgets/app_button.dart';
+import 'package:hyperlog/widgets/flight_map_view.dart';
 
 /// View options for the statistics screen
-enum StatisticsView { trust, experience }
+enum StatisticsView { trust, experience, map }
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -30,6 +31,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   bool _noPilotProfile = false;
   String? _errorMessage;
   StatisticsView _selectedView = StatisticsView.trust;
+  MapTimeFilter _mapFilter = MapTimeFilter.allTime;
 
   @override
   void initState() {
@@ -193,6 +195,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         isActive: _selectedView == StatisticsView.experience,
                         onPressed: () => setState(() => _selectedView = StatisticsView.experience),
                       ),
+                      const SizedBox(width: 12),
+                      TabButton(
+                        label: 'Map',
+                        isActive: _selectedView == StatisticsView.map,
+                        onPressed: () => setState(() => _selectedView = StatisticsView.map),
+                      ),
                     ],
                   ),
                 ),
@@ -200,7 +208,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
               // Content
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
+                padding: EdgeInsets.fromLTRB(
+                  24, 0, 24,
+                  _selectedView == StatisticsView.map ? 16 : 100,
+                ),
                 sliver: SliverToBoxAdapter(
                   child: _buildContent(),
                 ),
@@ -229,9 +240,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       return _buildEmptyState();
     }
 
-    return _selectedView == StatisticsView.trust
-        ? _buildTrustView()
-        : _buildExperienceView();
+    switch (_selectedView) {
+      case StatisticsView.trust:
+        return _buildTrustView();
+      case StatisticsView.experience:
+        return _buildExperienceView();
+      case StatisticsView.map:
+        return _buildMapView();
+    }
   }
 
   Widget _buildTrustView() {
@@ -254,6 +270,50 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildExperienceView() {
     return ExperienceKpiGrid(totals: _experienceTotals);
+  }
+
+  Widget _buildMapView() {
+    // Calculate available height for map
+    final screenHeight = MediaQuery.of(context).size.height;
+    final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    // Header (~70) + toggle row (~50) + filter chips (~50) + spacing above (16) + spacing below (16)
+    const uiElementsHeight = 70 + 50 + 50 + 16 + 16;
+    // Bottom nav bar + safe area
+    final bottomNavHeight = kBottomNavigationBarHeight + bottomPadding;
+    final mapHeight = screenHeight - topPadding - bottomNavHeight - uiElementsHeight;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Filter chips
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: MapTimeFilter.values.map((filter) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: TabButton(
+                  label: filter.displayName,
+                  isActive: _mapFilter == filter,
+                  onPressed: () => setState(() => _mapFilter = filter),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Map - takes remaining available space
+        SizedBox(
+          height: mapHeight.clamp(300.0, double.infinity),
+          child: FlightMapView(
+            flights: _flights,
+            filter: _mapFilter,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildLoadingState() {
