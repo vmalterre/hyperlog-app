@@ -33,7 +33,15 @@ workflows:
 
       - name: Build APK
         script: |
-          flutter build apk --release --dart-define=ENV=prod
+          flutter build apk --release --dart-define=ENV=prod --build-number=$PROJECT_BUILD_NUMBER
+
+      - name: Generate release notes
+        script: |
+          VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d'+' -f1)
+          echo "v${VERSION} (Build $PROJECT_BUILD_NUMBER)" > release_notes.txt
+          echo "" >> release_notes.txt
+          echo "Changes:" >> release_notes.txt
+          git log -5 --pretty=format:"• %s" >> release_notes.txt
 
     artifacts:
       - build/**/outputs/**/*.apk
@@ -46,3 +54,4 @@ workflows:
           groups:
             - alpha-testers
           artifact_type: apk
+          release_notes_file: release_notes.txt
