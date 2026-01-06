@@ -27,10 +27,10 @@ class EnvironmentConfig {
     enableDebugLogging: true,
   );
 
-  /// Prod environment - production VPS
+  /// Prod environment - production VPS with TLS
   static const prod = EnvironmentConfig._(
     environment: Environment.prod,
-    apiBaseUrl: 'http://46.224.186.226/api',
+    apiBaseUrl: 'https://api.hyperlog.aero/api',
     appName: 'HyperLog',
     enableDebugLogging: false,
   );
