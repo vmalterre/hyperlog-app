@@ -33,7 +33,7 @@ workflows:
 
       - name: Build APK
         script: |
-          flutter build apk --release
+          flutter build apk --release --dart-define=ENV=prod
 
     artifacts:
       - build/**/outputs/**/*.apk
