@@ -1,4 +1,72 @@
 workflows:
+  ios-adhoc:
+    name: iOS Ad Hoc Distribution
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      vars:
+        BUNDLE_ID: "aero.hyperlog.logbookapp"
+
+    integrations:
+      app_store_connect: HyperLog  # For automatic code signing
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'disabled-*'
+          include: false
+      # Manual trigger only - no auto builds
+
+    ios_signing:
+      distribution_type: ad_hoc
+      bundle_identifier: $BUNDLE_ID
+
+    scripts:
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios && pod install
+
+      - name: Build IPA
+        script: |
+          flutter build ipa --release \
+            --dart-define=ENV=prod \
+            --build-number=$PROJECT_BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
+
+      - name: Generate release notes
+        script: |
+          VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d'+' -f1)
+          echo "v${VERSION} (Build $PROJECT_BUILD_NUMBER)" > release_notes.txt
+          echo "" >> release_notes.txt
+          echo "Changes:" >> release_notes.txt
+          git log -5 --pretty=format:"• %s" >> release_notes.txt
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+
+    publishing:
+      email:
+        recipients:
+          - malterre.vincent@gmail.com
+        notify:
+          success: true
+          failure: true
+
   android-firebase-distribution:
     name: Android Firebase Distribution
     max_build_duration: 30
