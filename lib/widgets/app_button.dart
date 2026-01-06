@@ -244,9 +244,9 @@ class MapFilterChip extends StatelessWidget {
         onPressed: onPressed,
         style: TextButton.styleFrom(
           backgroundColor: isActive
-              ? AppColors.nightRiderLight.withValues(alpha: 0.5)
+              ? AppColors.denim.withValues(alpha: 0.15)
               : Colors.transparent,
-          foregroundColor: isActive ? AppColors.white : AppColors.whiteDarker,
+          foregroundColor: isActive ? AppColors.denim : AppColors.denim.withValues(alpha: 0.7),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           minimumSize: Size.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -254,9 +254,9 @@ class MapFilterChip extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             side: BorderSide(
               color: isActive
-                  ? AppColors.whiteDarker.withValues(alpha: 0.3)
-                  : AppColors.nightRiderLight.withValues(alpha: 0.5),
-              width: 1,
+                  ? AppColors.denim
+                  : AppColors.denim.withValues(alpha: 0.5),
+              width: isActive ? 2 : 1,
             ),
           ),
         ),
@@ -264,7 +264,7 @@ class MapFilterChip extends StatelessWidget {
           label,
           style: AppTypography.navItem.copyWith(
             fontSize: 12,
-            color: isActive ? AppColors.white : AppColors.whiteDarker,
+            color: isActive ? AppColors.denim : AppColors.denim.withValues(alpha: 0.7),
           ),
         ),
       ),

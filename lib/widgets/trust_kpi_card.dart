@@ -8,11 +8,13 @@ import 'trust_badge.dart';
 class TrustKpiCard extends StatelessWidget {
   final TrustLevel trustLevel;
   final double percentage;
+  final double labelScale;
 
   const TrustKpiCard({
     super.key,
     required this.trustLevel,
     required this.percentage,
+    this.labelScale = 1.0,
   });
 
   @override
@@ -89,8 +91,11 @@ class TrustKpiCard extends StatelessWidget {
                       trustLevel.label,
                       style: AppTypography.label.copyWith(
                         color: AppColors.whiteDarker,
-                        fontSize: 10,
+                        fontSize: 10 * labelScale,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.visible,
+                      softWrap: false,
                     ),
                   ],
                 ),
@@ -123,25 +128,56 @@ class TrustKpiRow extends StatelessWidget {
     return (count / _totalCount) * 100;
   }
 
+  // Calculate label scale based on available card width
+  double _calculateLabelScale(double rowWidth) {
+    // Card width = (rowWidth - 2 gaps of 12px) / 3 cards
+    final cardWidth = (rowWidth - 24) / 3;
+    // Available text width = card width - horizontal padding (32px)
+    final availableWidth = cardWidth - 32;
+
+    // Measure actual width of "ENDORSED" (longest label) at base font size
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: 'ENDORSED',
+        style: AppTypography.label.copyWith(fontSize: 10),
+      ),
+      maxLines: 1,
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    final neededWidth = textPainter.width;
+    if (availableWidth >= neededWidth) return 1.0;
+    return (availableWidth / neededWidth).clamp(0.6, 1.0);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        TrustKpiCard(
-          trustLevel: TrustLevel.logged,
-          percentage: _percentage(loggedCount),
-        ),
-        const SizedBox(width: 12),
-        TrustKpiCard(
-          trustLevel: TrustLevel.tracked,
-          percentage: _percentage(trackedCount),
-        ),
-        const SizedBox(width: 12),
-        TrustKpiCard(
-          trustLevel: TrustLevel.endorsed,
-          percentage: _percentage(endorsedCount),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final labelScale = _calculateLabelScale(constraints.maxWidth);
+
+        return Row(
+          children: [
+            TrustKpiCard(
+              trustLevel: TrustLevel.logged,
+              percentage: _percentage(loggedCount),
+              labelScale: labelScale,
+            ),
+            const SizedBox(width: 12),
+            TrustKpiCard(
+              trustLevel: TrustLevel.tracked,
+              percentage: _percentage(trackedCount),
+              labelScale: labelScale,
+            ),
+            const SizedBox(width: 12),
+            TrustKpiCard(
+              trustLevel: TrustLevel.endorsed,
+              percentage: _percentage(endorsedCount),
+              labelScale: labelScale,
+            ),
+          ],
+        );
+      },
     );
   }
 }

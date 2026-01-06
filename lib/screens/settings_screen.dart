@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:hyperlog/session_state.dart';
 import 'package:hyperlog/theme/app_colors.dart';
@@ -6,8 +7,30 @@ import 'package:hyperlog/theme/app_typography.dart';
 import 'package:hyperlog/widgets/glass_card.dart';
 import 'package:hyperlog/widgets/app_button.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  String _appVersion = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = packageInfo.version;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -146,7 +169,7 @@ class SettingsScreen extends StatelessWidget {
                     icon: Icons.info_outline,
                     title: 'App Version',
                     trailing: Text(
-                      '0.2.0', // TODO: Use package_info_plus for dynamic version
+                      _appVersion,
                       style: AppTypography.caption,
                     ),
                     onTap: null,
