@@ -275,202 +275,194 @@ class AuthScreenState extends State<AuthScreen>
 
           // Main content
           SafeArea(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 60),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                children: [
+                  const Spacer(flex: 2),
 
-                    // Logo
-                    Image.asset(
-                      "assets/icon/hyperlog_logo.png",
-                      width: 120,
-                      height: 120,
+                  // Logo
+                  Image.asset(
+                    "assets/icon/hyperlog_logo.png",
+                    width: 80,
+                    height: 80,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // App name
+                  Text(
+                    'HYPERLOG',
+                    style: AppTypography.h3.copyWith(
+                      letterSpacing: 4,
                     ),
-                    const SizedBox(height: 16),
+                  ),
+                  const SizedBox(height: 4),
 
-                    // App name
-                    Text(
-                      'HYPERLOG',
-                      style: AppTypography.h3.copyWith(
-                        letterSpacing: 4,
-                      ),
+                  // Tagline
+                  Text(
+                    'TRUST IN EVERY ENTRY',
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.denimLight,
                     ),
-                    const SizedBox(height: 8),
+                  ),
 
-                    // Tagline
-                    Text(
-                      'TRUST IN EVERY ENTRY',
-                      style: AppTypography.label.copyWith(
-                        color: AppColors.denimLight,
-                      ),
-                    ),
-                    const SizedBox(height: 48),
+                  const Spacer(),
 
-                    // Login form in glass card
-                    GlassContainer(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'Welcome',
-                            style: AppTypography.h4,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Sign in to your pilot logbook',
-                            style: AppTypography.bodySmall,
-                          ),
-                          const SizedBox(height: 32),
+                  // Login form in glass card
+                  GlassContainer(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Welcome',
+                          style: AppTypography.h4,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Sign in to your pilot logbook',
+                          style: AppTypography.bodySmall,
+                        ),
+                        const SizedBox(height: 20),
 
-                          // Email field
-                          TextField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            style: AppTypography.body
-                                .copyWith(color: AppColors.white),
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icon(
-                                Icons.email_outlined,
-                                color: AppColors.whiteDarker,
-                              ),
+                        // Email field
+                        TextField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          style: AppTypography.body
+                              .copyWith(color: AppColors.white),
+                          decoration: const InputDecoration(
+                            labelText: 'Email',
+                            prefixIcon: Icon(
+                              Icons.email_outlined,
+                              color: AppColors.whiteDarker,
                             ),
                           ),
-                          const SizedBox(height: 20),
+                        ),
+                        const SizedBox(height: 16),
 
-                          // Password field
-                          TextField(
-                            controller: _passwordController,
-                            obscureText: true,
-                            style: AppTypography.body
-                                .copyWith(color: AppColors.white),
-                            decoration: const InputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: Icon(
-                                Icons.lock_outline,
-                                color: AppColors.whiteDarker,
-                              ),
+                        // Password field
+                        TextField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          style: AppTypography.body
+                              .copyWith(color: AppColors.white),
+                          decoration: const InputDecoration(
+                            labelText: 'Password',
+                            prefixIcon: Icon(
+                              Icons.lock_outline,
+                              color: AppColors.whiteDarker,
                             ),
                           ),
+                        ),
 
-                          // Error message
-                          if (_errorMessage != null) ...[
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEF4444).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color:
-                                      const Color(0xFFEF4444).withValues(alpha: 0.3),
+                        // Error message
+                        if (_errorMessage != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color:
+                                    const Color(0xFFEF4444).withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: Color(0xFFEF4444),
+                                  size: 18,
                                 ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.error_outline,
-                                    color: Color(0xFFEF4444),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      _errorMessage!,
-                                      style: AppTypography.bodySmall.copyWith(
-                                        color: const Color(0xFFEF4444),
-                                      ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: const Color(0xFFEF4444),
                                     ),
                                   ),
-                                ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+
+                        // Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SecondaryButton(
+                                label: 'Sign Up',
+                                onPressed: _isLoading ? null : _signUp,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: PrimaryButton(
+                                label: 'Sign In',
+                                onPressed: _isLoading ? null : _signIn,
+                                isLoading: _isLoading,
                               ),
                             ),
                           ],
-                          const SizedBox(height: 32),
-
-                          // Buttons
-                          Row(
-                            children: [
-                              Expanded(
-                                child: SecondaryButton(
-                                  label: 'Sign Up',
-                                  onPressed: _isLoading ? null : _signUp,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: PrimaryButton(
-                                  label: 'Sign In',
-                                  onPressed: _isLoading ? null : _signIn,
-                                  isLoading: _isLoading,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 40),
-
-                    // Alpha Test section
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Divider(color: AppColors.borderVisible),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'Alpha Testing',
-                            style: AppTypography.caption,
-                          ),
-                        ),
-                        Expanded(
-                          child: Divider(color: AppColors.borderVisible),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                  ),
 
-                    // Alpha test pilots row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SecondaryButton(
-                            label: 'Test Pilot',
-                            icon: Icons.person_outline,
-                            borderColor: AppColors.denim,
-                            textColor: AppColors.denim,
-                            onPressed: _isLoading ? null : _alphaTestLogin,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: SecondaryButton(
-                            label: 'Demo Pilot',
-                            icon: Icons.flight,
-                            borderColor: AppColors.endorsedGreen,
-                            textColor: AppColors.endorsedGreen,
-                            onPressed: _isLoading ? null : _alphaDemoLogin,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Test: empty logbook  •  Demo: 200 flights',
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.whiteDarker,
+                  const Spacer(),
+
+                  // Alpha Test section
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Divider(color: AppColors.borderVisible),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 40),
-                  ],
-                ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Alpha Testing',
+                          style: AppTypography.caption,
+                        ),
+                      ),
+                      Expanded(
+                        child: Divider(color: AppColors.borderVisible),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Alpha test pilots row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SecondaryButton(
+                          label: 'Test Pilot',
+                          icon: Icons.person_outline,
+                          borderColor: AppColors.denim,
+                          textColor: AppColors.denim,
+                          onPressed: _isLoading ? null : _alphaTestLogin,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SecondaryButton(
+                          label: 'Demo Pilot',
+                          icon: Icons.flight,
+                          borderColor: AppColors.endorsedGreen,
+                          textColor: AppColors.endorsedGreen,
+                          onPressed: _isLoading ? null : _alphaDemoLogin,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                ],
               ),
             ),
           ),

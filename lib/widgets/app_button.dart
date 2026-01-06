@@ -143,7 +143,10 @@ class SecondaryButton extends StatelessWidget {
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           foregroundColor: textColor ?? AppColors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          padding: EdgeInsets.symmetric(
+            horizontal: icon != null ? 16 : 32,
+            vertical: 16,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
@@ -154,12 +157,19 @@ class SecondaryButton extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 20),
-              const SizedBox(width: 8),
+              Icon(icon, size: 18),
+              const SizedBox(width: 6),
             ],
-            Text(label, style: AppTypography.button.copyWith(color: textColor)),
+            Flexible(
+              child: Text(
+                label,
+                style: AppTypography.button.copyWith(color: textColor),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),
@@ -172,40 +182,44 @@ class TabButton extends StatelessWidget {
   final String label;
   final bool isActive;
   final VoidCallback? onPressed;
+  final bool expand;
 
   const TabButton({
     super.key,
     required this.label,
     this.isActive = false,
     this.onPressed,
+    this.expand = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      child: TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-          backgroundColor: isActive ? AppColors.denim : Colors.transparent,
-          foregroundColor: isActive ? AppColors.white : AppColors.whiteDarker,
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(100),
-            side: BorderSide(
-              color: isActive ? AppColors.denim : AppColors.borderVisible,
-              width: 1,
-            ),
-          ),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.navItem.copyWith(
-            color: isActive ? AppColors.white : AppColors.whiteDarker,
+    final button = TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        backgroundColor: isActive ? AppColors.denim : Colors.transparent,
+        foregroundColor: isActive ? AppColors.white : AppColors.whiteDarker,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(100),
+          side: BorderSide(
+            color: isActive ? AppColors.denim : AppColors.borderVisible,
+            width: 1,
           ),
         ),
       ),
+      child: Text(
+        label,
+        style: AppTypography.navItem.copyWith(
+          color: isActive ? AppColors.white : AppColors.whiteDarker,
+        ),
+      ),
     );
+
+    if (expand) {
+      return SizedBox(width: double.infinity, child: button);
+    }
+    return button;
   }
 }
 

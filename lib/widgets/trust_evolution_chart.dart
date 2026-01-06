@@ -50,13 +50,7 @@ class _TrustEvolutionChartState extends State<TrustEvolutionChart> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Trust Evolution', style: AppTypography.h4),
-              _buildLegend(),
-            ],
-          ),
+          Text('Trust Evolution', style: AppTypography.h4),
           const SizedBox(height: 24),
           // Chart
           SizedBox(
@@ -100,42 +94,6 @@ class _TrustEvolutionChartState extends State<TrustEvolutionChart> {
           const SizedBox(height: 40),
         ],
       ),
-    );
-  }
-
-  Widget _buildLegend() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _legendItem(AppColors.loggedBlue, 'Logged'),
-        const SizedBox(width: 10),
-        _legendItem(AppColors.trackedAmber, 'Tracked'),
-        const SizedBox(width: 10),
-        _legendItem(AppColors.endorsedGreen, 'Endorsed'),
-      ],
-    );
-  }
-
-  Widget _legendItem(Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: AppTypography.caption.copyWith(
-            fontSize: 11,
-          ),
-        ),
-      ],
     );
   }
 

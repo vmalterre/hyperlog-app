@@ -146,7 +146,7 @@ class SettingsScreen extends StatelessWidget {
                     icon: Icons.info_outline,
                     title: 'App Version',
                     trailing: Text(
-                      '0.0.0+3',
+                      '0.1.0', // TODO: Use package_info_plus for dynamic version
                       style: AppTypography.caption,
                     ),
                     onTap: null,

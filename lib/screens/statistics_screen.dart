@@ -184,22 +184,31 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
                   child: Row(
                     children: [
-                      TabButton(
-                        label: 'Trust',
-                        isActive: _selectedView == StatisticsView.trust,
-                        onPressed: () => setState(() => _selectedView = StatisticsView.trust),
+                      Expanded(
+                        child: TabButton(
+                          label: 'Trust',
+                          isActive: _selectedView == StatisticsView.trust,
+                          onPressed: () => setState(() => _selectedView = StatisticsView.trust),
+                          expand: true,
+                        ),
                       ),
-                      const SizedBox(width: 12),
-                      TabButton(
-                        label: 'Experience',
-                        isActive: _selectedView == StatisticsView.experience,
-                        onPressed: () => setState(() => _selectedView = StatisticsView.experience),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TabButton(
+                          label: 'XP',
+                          isActive: _selectedView == StatisticsView.experience,
+                          onPressed: () => setState(() => _selectedView = StatisticsView.experience),
+                          expand: true,
+                        ),
                       ),
-                      const SizedBox(width: 12),
-                      TabButton(
-                        label: 'Map',
-                        isActive: _selectedView == StatisticsView.map,
-                        onPressed: () => setState(() => _selectedView = StatisticsView.map),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TabButton(
+                          label: 'Map',
+                          isActive: _selectedView == StatisticsView.map,
+                          onPressed: () => setState(() => _selectedView = StatisticsView.map),
+                          expand: true,
+                        ),
                       ),
                     ],
                   ),
