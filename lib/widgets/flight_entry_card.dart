@@ -14,6 +14,7 @@ class FlightEntryCard extends StatefulWidget {
   final String aircraftType;
   final String aircraftReg;
   final TrustLevel trustLevel;
+  final bool showTrustBadge;
   final VoidCallback? onTap;
 
   const FlightEntryCard({
@@ -25,6 +26,7 @@ class FlightEntryCard extends StatefulWidget {
     required this.aircraftType,
     required this.aircraftReg,
     this.trustLevel = TrustLevel.logged,
+    this.showTrustBadge = true,
     this.onTap,
   });
 
@@ -75,7 +77,7 @@ class _FlightEntryCardState extends State<FlightEntryCard> {
                   _formatDate(widget.date),
                   style: AppTypography.timestamp,
                 ),
-                TrustBadge(level: widget.trustLevel),
+                if (widget.showTrustBadge) TrustBadge(level: widget.trustLevel),
               ],
             ),
             const SizedBox(height: 16),
@@ -151,6 +153,7 @@ class FlightEntryCompact extends StatelessWidget {
   final String arrivalCode;
   final String blockTime;
   final TrustLevel trustLevel;
+  final bool showTrustBadge;
   final VoidCallback? onTap;
 
   const FlightEntryCompact({
@@ -159,6 +162,7 @@ class FlightEntryCompact extends StatelessWidget {
     required this.arrivalCode,
     required this.blockTime,
     this.trustLevel = TrustLevel.logged,
+    this.showTrustBadge = true,
     this.onTap,
   });
 
@@ -207,8 +211,10 @@ class FlightEntryCompact extends StatelessWidget {
                 color: AppColors.whiteDarker,
               ),
             ),
-            const SizedBox(width: 12),
-            TrustBadge(level: trustLevel, compact: true, showIcon: false),
+            if (showTrustBadge) ...[
+              const SizedBox(width: 12),
+              TrustBadge(level: trustLevel, compact: true, showIcon: false),
+            ],
           ],
         ),
       ),

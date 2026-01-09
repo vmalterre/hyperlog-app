@@ -41,6 +41,10 @@ class _LogbookScreenState extends State<LogbookScreen> {
     return Provider.of<SessionState>(context, listen: false).pilotLicense;
   }
 
+  bool get _isOfficialTier {
+    return Provider.of<SessionState>(context, listen: false).currentPilot?.isOfficialTier ?? false;
+  }
+
   Future<void> _loadFlights() async {
     if (!mounted) return;
 
@@ -267,6 +271,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
             aircraftType: entry.acftType,
             aircraftReg: entry.acftReg,
             trustLevel: entry.trustLevel,
+            showTrustBadge: _isOfficialTier,
             onTap: () async {
               await Navigator.push(
                 context,

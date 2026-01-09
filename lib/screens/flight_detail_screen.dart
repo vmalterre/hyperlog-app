@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/logbook_entry.dart';
 import '../models/flight_history.dart';
 import '../services/flight_service.dart';
 import '../services/pilot_service.dart';
+import '../session_state.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../widgets/app_button.dart';
@@ -36,11 +38,26 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
   String? _error;
   int _selectedTabIndex = 0; // 0 = Details, 1 = History
 
+  bool get _isOfficialTier {
+    return Provider.of<SessionState>(context, listen: false).currentPilot?.isOfficialTier ?? false;
+  }
+
+  bool _hasLoadedData = false;
+
   @override
   void initState() {
     super.initState();
     _entry = widget.initialEntry;
-    _loadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Load data after dependencies are available (for Provider access)
+    if (!_hasLoadedData) {
+      _hasLoadedData = true;
+      _loadData();
+    }
   }
 
   Future<void> _loadData() async {
@@ -50,26 +67,38 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
     });
 
     try {
-      final results = await Future.wait([
-        _flightService.getFlight(widget.flightId),
-        _flightService.getFlightHistory(widget.flightId),
-      ]);
+      // Get pilot license for tier routing
+      final pilotLicense = Provider.of<SessionState>(context, listen: false).pilotLicense;
 
-      final entry = results[0] as LogbookEntry;
-      final history = results[1] as FlightHistory;
+      // Always fetch flight details
+      final entry = await _flightService.getFlight(widget.flightId, pilotLicense: pilotLicense);
 
-      // Fetch pilot name for history display
+      // Only fetch history for official tier (standard tier doesn't have access)
+      FlightHistory? history;
+      if (_isOfficialTier) {
+        try {
+          history = await _flightService.getFlightHistory(widget.flightId);
+        } catch (_) {
+          // History fetch failed, continue without it
+        }
+      }
+
+      // Fetch pilot name for history display (official tier only)
       String? pilotName;
-      try {
-        final pilot = await _pilotService.getPilot(entry.pilotLicense);
-        pilotName = pilot.name;
-      } catch (_) {
-        // Pilot lookup failed, will use fallback in timeline
+      if (history != null) {
+        try {
+          final pilot = await _pilotService.getPilot(entry.pilotLicense);
+          pilotName = pilot.name;
+        } catch (_) {
+          // Pilot lookup failed, will use fallback in timeline
+        }
       }
 
       setState(() {
         _entry = entry;
-        _diffs = _flightService.computeHistoryDiffs(history, pilotName: pilotName);
+        _diffs = history != null
+            ? _flightService.computeHistoryDiffs(history, pilotName: pilotName)
+            : null;
         _isLoading = false;
       });
     } catch (e) {
@@ -142,7 +171,8 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
       children: [
         _buildTabToggle(),
         Expanded(
-          child: _selectedTabIndex == 0
+          // Standard tier only sees details (no history tab)
+          child: (_selectedTabIndex == 0 || !_isOfficialTier)
               ? _buildDetailsTab()
               : _buildHistoryTab(),
         ),
@@ -151,6 +181,11 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
   }
 
   Widget _buildTabToggle() {
+    // Standard tier doesn't have access to history
+    if (!_isOfficialTier) {
+      return const SizedBox.shrink();
+    }
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -247,21 +282,22 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
             ),
           ),
 
-          const SizedBox(height: 16),
-
-          // Trust level
-          GlassContainer(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Verification Level',
-                  style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
-                ),
-                TrustBadge(level: _entry!.trustLevel),
-              ],
+          // Trust level (official tier only)
+          if (_isOfficialTier) ...[
+            const SizedBox(height: 16),
+            GlassContainer(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Verification Level',
+                    style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
+                  ),
+                  TrustBadge(level: _entry!.trustLevel),
+                ],
+              ),
             ),
-          ),
+          ],
 
           const SizedBox(height: 24),
 

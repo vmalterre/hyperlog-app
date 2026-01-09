@@ -30,8 +30,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   bool _isLoading = true;
   bool _noPilotProfile = false;
   String? _errorMessage;
-  StatisticsView _selectedView = StatisticsView.trust;
+  StatisticsView? _selectedView;
   MapTimeFilter _mapFilter = MapTimeFilter.allTime;
+
+  bool get _isOfficialTier {
+    return Provider.of<SessionState>(context, listen: false).currentPilot?.isOfficialTier ?? false;
+  }
+
+  StatisticsView get _currentView {
+    // Initialize default view based on tier if not set
+    _selectedView ??= _isOfficialTier ? StatisticsView.trust : StatisticsView.experience;
+    return _selectedView!;
+  }
 
   @override
   void initState() {
@@ -184,19 +194,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
                   child: Row(
                     children: [
-                      Expanded(
-                        child: TabButton(
-                          label: 'Trust',
-                          isActive: _selectedView == StatisticsView.trust,
-                          onPressed: () => setState(() => _selectedView = StatisticsView.trust),
-                          expand: true,
+                      // Trust tab (official tier only)
+                      if (_isOfficialTier) ...[
+                        Expanded(
+                          child: TabButton(
+                            label: 'Trust',
+                            isActive: _currentView == StatisticsView.trust,
+                            onPressed: () => setState(() => _selectedView = StatisticsView.trust),
+                            expand: true,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
+                        const SizedBox(width: 8),
+                      ],
                       Expanded(
                         child: TabButton(
                           label: 'XP',
-                          isActive: _selectedView == StatisticsView.experience,
+                          isActive: _currentView == StatisticsView.experience,
                           onPressed: () => setState(() => _selectedView = StatisticsView.experience),
                           expand: true,
                         ),
@@ -205,7 +218,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       Expanded(
                         child: TabButton(
                           label: 'Map',
-                          isActive: _selectedView == StatisticsView.map,
+                          isActive: _currentView == StatisticsView.map,
                           onPressed: () => setState(() => _selectedView = StatisticsView.map),
                           expand: true,
                         ),
@@ -219,7 +232,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(
                   24, 0, 24,
-                  _selectedView == StatisticsView.map ? 16 : 100,
+                  _currentView == StatisticsView.map ? 16 : 100,
                 ),
                 sliver: SliverToBoxAdapter(
                   child: _buildContent(),
@@ -249,7 +262,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       return _buildEmptyState();
     }
 
-    switch (_selectedView) {
+    switch (_currentView) {
       case StatisticsView.trust:
         return _buildTrustView();
       case StatisticsView.experience:

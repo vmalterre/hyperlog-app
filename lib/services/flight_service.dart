@@ -67,9 +67,11 @@ class FlightService {
   }
 
   /// Get a single flight by ID (returns full format)
-  Future<LogbookEntry> getFlight(String id) async {
+  /// Pass [pilotLicense] to ensure correct tier routing on backend
+  Future<LogbookEntry> getFlight(String id, {String? pilotLicense}) async {
     try {
-      final response = await _api.get('${AppConfig.flights}/$id');
+      final queryParams = pilotLicense != null ? '?pilotLicense=$pilotLicense' : '';
+      final response = await _api.get('${AppConfig.flights}/$id$queryParams');
       return LogbookEntry.fromJson(response['data']);
     } on ApiException catch (e) {
       if (e.isServerError) {
