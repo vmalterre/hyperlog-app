@@ -155,8 +155,12 @@ class AuthScreenState extends State<AuthScreen>
     }
   }
 
-  Future<void> _alphaTestLogin() async {
-    await _alphaLogin('test@hyperlog.aero', 'TEST-PILOT-001');
+  Future<void> _alphaStandardLogin() async {
+    await _alphaLogin('standard@hyperlog.aero', 'STANDARD-PILOT-001');
+  }
+
+  Future<void> _alphaOfficialLogin() async {
+    await _alphaLogin('official@hyperlog.aero', 'OFFICIAL-PILOT-001');
   }
 
   Future<void> _alphaDemoLogin() async {
@@ -437,22 +441,32 @@ class AuthScreenState extends State<AuthScreen>
                   ),
                   const SizedBox(height: 12),
 
-                  // Alpha test pilots row
+                  // Alpha test pilots row - 3 buttons
                   Row(
                     children: [
                       Expanded(
                         child: SecondaryButton(
-                          label: 'Test Pilot',
+                          label: 'Standard',
                           icon: Icons.person_outline,
-                          borderColor: AppColors.denim,
-                          textColor: AppColors.denim,
-                          onPressed: _isLoading ? null : _alphaTestLogin,
+                          borderColor: AppColors.whiteDarker,
+                          textColor: AppColors.whiteDarker,
+                          onPressed: _isLoading ? null : _alphaStandardLogin,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: SecondaryButton(
-                          label: 'Demo Pilot',
+                          label: 'Official',
+                          icon: Icons.verified_outlined,
+                          borderColor: AppColors.denim,
+                          textColor: AppColors.denim,
+                          onPressed: _isLoading ? null : _alphaOfficialLogin,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: SecondaryButton(
+                          label: 'Demo',
                           icon: Icons.flight,
                           borderColor: AppColors.endorsedGreen,
                           textColor: AppColors.endorsedGreen,

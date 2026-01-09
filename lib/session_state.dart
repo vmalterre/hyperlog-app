@@ -108,7 +108,8 @@ class SessionState extends ChangeNotifier {
   String? _getLicenseForEmail(String email) {
     // Alpha test mappings
     const emailToLicense = {
-      'test@hyperlog.aero': 'TEST-PILOT-001',
+      'standard@hyperlog.aero': 'STANDARD-PILOT-001',
+      'official@hyperlog.aero': 'OFFICIAL-PILOT-001',
       'demo@hyperlog.aero': 'DEMO-PILOT-001',
     };
     return emailToLicense[email.toLowerCase()];
