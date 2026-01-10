@@ -37,10 +37,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final session = Provider.of<SessionState>(context);
     final pilot = session.currentPilot;
     final pilotLoadError = session.pilotLoadError;
-    final pilotName = pilot?.name ?? 'Pilot Account';
-    final pilotLicense = pilotLoadError != null
-        ? 'Error: $pilotLoadError'
-        : (pilot?.licenseNumber ?? 'Not registered');
+    final displayName = pilot?.displayName ?? 'Pilot Account';
+    final email = pilot?.email ?? '';
+    final photoUrl = pilot?.photoUrl;
+    final isOfficial = pilot?.isOfficialTier ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.nightRider,
@@ -65,7 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.all(24),
                 child: Row(
                   children: [
-                    // Avatar placeholder
+                    // Avatar - photo or placeholder
                     Container(
                       width: 64,
                       height: 64,
@@ -76,26 +76,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: AppColors.denim.withValues(alpha: 0.3),
                         ),
                       ),
-                      child: const Icon(
-                        Icons.person,
-                        size: 32,
-                        color: AppColors.denim,
-                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: photoUrl != null
+                          ? Image.network(
+                              photoUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.person,
+                                size: 32,
+                                color: AppColors.denim,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.person,
+                              size: 32,
+                              color: AppColors.denim,
+                            ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            pilotName,
-                            style: AppTypography.h4,
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  displayName,
+                                  style: AppTypography.h4,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Subscription tier badge
+                              _SubscriptionBadge(isOfficial: isOfficial),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            pilotLicense,
+                            email,
                             style: AppTypography.bodySmall,
+                            overflow: TextOverflow.ellipsis,
                           ),
+                          if (pilotLoadError != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Error: $pilotLoadError',
+                              style: AppTypography.caption.copyWith(
+                                color: AppColors.errorRed,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -331,6 +363,39 @@ class _SettingsItem extends StatelessWidget {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Subscription tier badge (Standard/Official)
+class _SubscriptionBadge extends StatelessWidget {
+  final bool isOfficial;
+
+  const _SubscriptionBadge({required this.isOfficial});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isOfficial
+            ? AppColors.endorsedGreen.withValues(alpha: 0.2)
+            : AppColors.denim.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isOfficial
+              ? AppColors.endorsedGreen.withValues(alpha: 0.4)
+              : AppColors.denim.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Text(
+        isOfficial ? 'Official' : 'Standard',
+        style: AppTypography.caption.copyWith(
+          color: isOfficial ? AppColors.endorsedGreen : AppColors.denimLight,
+          fontWeight: FontWeight.w600,
+          fontSize: 11,
         ),
       ),
     );
