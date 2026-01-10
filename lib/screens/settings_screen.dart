@@ -36,8 +36,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final session = Provider.of<SessionState>(context);
     final pilot = session.currentPilot;
+    final pilotLoadError = session.pilotLoadError;
     final pilotName = pilot?.name ?? 'Pilot Account';
-    final pilotLicense = pilot?.licenseNumber ?? 'Not registered';
+    final pilotLicense = pilotLoadError != null
+        ? 'Error: $pilotLoadError'
+        : (pilot?.licenseNumber ?? 'Not registered');
 
     return Scaffold(
       backgroundColor: AppColors.nightRider,

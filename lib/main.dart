@@ -9,20 +9,25 @@ import 'package:flutter/services.dart';
 import 'package:hyperlog/screens/auth_screen.dart';
 import 'package:hyperlog/screens/home_screen.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize environment config from --dart-define
   // Run with: flutter run --dart-define=ENV=prod for production
-  const env = String.fromEnvironment('ENV', defaultValue: 'dev');
+  // Accepts both ENV and ENVIRONMENT for flexibility
+  const envShort = String.fromEnvironment('ENV', defaultValue: '');
+  const envLong = String.fromEnvironment('ENVIRONMENT', defaultValue: '');
+  final env = envShort.isNotEmpty ? envShort : (envLong.isNotEmpty ? envLong : 'dev');
   AppConfig.initialize(environment: env);
 
-  if (kDebugMode) {
-    debugPrint('Environment: ${AppConfig.current.environment.name}');
-    debugPrint('API URL: ${AppConfig.apiBaseUrl}');
-  }
+  // Always log environment at startup to catch misconfiguration
+  debugPrint('====================================');
+  debugPrint('HyperLog ${AppConfig.current.appName}');
+  debugPrint('Environment: ${AppConfig.current.environment.name.toUpperCase()}');
+  debugPrint('API: ${AppConfig.apiBaseUrl}');
+  debugPrint('====================================');
 
   // Set system UI overlay style for dark theme
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(

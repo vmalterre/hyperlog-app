@@ -15,6 +15,7 @@ class SessionState extends ChangeNotifier {
   bool _isLoggedIn = false;
   Pilot? _currentPilot;
   String? _error;
+  String? _pilotLoadError;
 
   SessionState({
     AuthService? authService,
@@ -36,6 +37,9 @@ class SessionState extends ChangeNotifier {
 
   /// Any error that occurred during session operations
   String? get error => _error;
+
+  /// Any error that occurred while loading pilot data
+  String? get pilotLoadError => _pilotLoadError;
 
   /// Initialize the session state by checking Firebase Auth
   ///
@@ -89,15 +93,20 @@ class SessionState extends ChangeNotifier {
   Future<void> _loadPilotData(String? email) async {
     if (email == null) return;
 
+    _pilotLoadError = null;
+
     try {
       // For now, we use a dev mapping for known test users
       // In production, this would query a user-pilot mapping or use email lookup
       final license = _getLicenseForEmail(email);
       if (license != null) {
         _currentPilot = await _pilotService.getPilot(license);
+      } else {
+        _pilotLoadError = 'No pilot license mapped for $email';
       }
     } catch (e) {
-      // Pilot not found - this is OK, user might need to complete registration
+      // Capture the error for debugging
+      _pilotLoadError = e.toString();
       _currentPilot = null;
     }
   }

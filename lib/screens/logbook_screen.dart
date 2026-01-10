@@ -45,13 +45,19 @@ class _LogbookScreenState extends State<LogbookScreen> {
     return Provider.of<SessionState>(context, listen: false).currentPilot?.isOfficialTier ?? false;
   }
 
+  String? get _pilotLoadError {
+    return Provider.of<SessionState>(context, listen: false).pilotLoadError;
+  }
+
   Future<void> _loadFlights() async {
     if (!mounted) return;
 
     final license = _pilotLicense;
     if (license == null) {
+      final pilotError = _pilotLoadError;
       setState(() {
         _noPilotProfile = true;
+        _errorMessage = pilotError;
         _isLoading = false;
       });
       return;
@@ -247,6 +253,10 @@ class _LogbookScreenState extends State<LogbookScreen> {
     }
 
     if (_noPilotProfile) {
+      // Show error if we have one, otherwise show empty state
+      if (_errorMessage != null) {
+        return SliverToBoxAdapter(child: _buildPilotErrorState());
+      }
       return SliverToBoxAdapter(child: _buildEmptyState());
     }
 
@@ -340,6 +350,54 @@ class _LogbookScreenState extends State<LogbookScreen> {
               label: 'Try Again',
               icon: Icons.refresh,
               onPressed: _loadFlights,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPilotErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.cloud_off,
+              size: 64,
+              color: AppColors.whiteDarker,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Could not load pilot profile',
+              style: AppTypography.h4,
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.nightRiderLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _errorMessage ?? 'Unknown error',
+                style: AppTypography.caption.copyWith(
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SecondaryButton(
+              label: 'Retry',
+              icon: Icons.refresh,
+              onPressed: () {
+                final session = Provider.of<SessionState>(context, listen: false);
+                session.refreshPilot().then((_) => _loadFlights());
+              },
             ),
           ],
         ),

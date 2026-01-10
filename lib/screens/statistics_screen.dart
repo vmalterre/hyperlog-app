@@ -53,13 +53,19 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     return Provider.of<SessionState>(context, listen: false).pilotLicense;
   }
 
+  String? get _pilotLoadError {
+    return Provider.of<SessionState>(context, listen: false).pilotLoadError;
+  }
+
   Future<void> _loadFlights() async {
     if (!mounted) return;
 
     final license = _pilotLicense;
     if (license == null) {
+      final pilotError = _pilotLoadError;
       setState(() {
         _noPilotProfile = true;
+        _errorMessage = pilotError;
         _isLoading = false;
       });
       return;
@@ -251,6 +257,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     }
 
     if (_noPilotProfile) {
+      // Show error if we have one, otherwise show empty state
+      if (_errorMessage != null) {
+        return _buildErrorState();
+      }
       return _buildEmptyState();
     }
 
