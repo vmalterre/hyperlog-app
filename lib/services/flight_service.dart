@@ -105,6 +105,19 @@ class FlightService {
             );
       }
       rethrow;
+    } catch (e) {
+      // Handle parsing or other unexpected errors
+      _errorService.reporter.reportError(
+            e,
+            StackTrace.current,
+            message: 'Unexpected error creating flight',
+            metadata: {
+              'pilotLicense': entry.pilotLicense,
+              'dep': entry.dep,
+              'dest': entry.dest,
+            },
+          );
+      throw ApiException(message: 'Failed to save flight. Please try again.');
     }
   }
 

@@ -255,6 +255,14 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           _isLoading = false;
         });
       }
+    } catch (e) {
+      // Catch any unexpected errors (parsing, network, etc.)
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'An unexpected error occurred. Please try again.';
+          _isLoading = false;
+        });
+      }
     }
   }
 
