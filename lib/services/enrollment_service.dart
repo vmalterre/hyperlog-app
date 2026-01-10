@@ -47,7 +47,6 @@ class EnrollmentService {
     // 1. Generate key pair on device
     final keyPair = await _keyManager.generateKeyPair();
     final privateKeyPem = keyPair['privateKey']!;
-    final publicKeyPem = keyPair['publicKey']!;
 
     // 2. Create CSR
     final csr = await _keyManager.createCSR(enrollmentId, privateKeyPem);
@@ -55,18 +54,14 @@ class EnrollmentService {
     // 3. Send CSR to API
     final response = await _apiService.post(
       '/identity/enroll',
-      body: {
+      {
         'userId': userId,
         'csr': csr,
         'deviceId': deviceId,
       },
     );
 
-    if (response.statusCode != 200) {
-      throw EnrollmentException('Enrollment failed: ${response.body}');
-    }
-
-    final data = response.json;
+    final data = response['data'] as Map<String, dynamic>;
 
     // 4. Store private key and certificate securely
     await _keyManager.storePrivateKey(enrollmentId, privateKeyPem);
@@ -107,18 +102,14 @@ class EnrollmentService {
     // 3. Send rotation request to API
     final response = await _apiService.post(
       '/identity/rotate-key',
-      body: {
+      {
         'userId': userId,
         'csr': csr,
         'deviceId': deviceId,
       },
     );
 
-    if (response.statusCode != 200) {
-      throw EnrollmentException('Key rotation failed: ${response.body}');
-    }
-
-    final data = response.json;
+    final data = response['data'] as Map<String, dynamic>;
 
     // 4. Store new private key and certificate
     await _keyManager.storePrivateKey(enrollmentId, privateKeyPem);
@@ -140,17 +131,13 @@ class EnrollmentService {
 
   /// Report lost device and revoke the certificate
   Future<void> reportLostDevice(String userId) async {
-    final response = await _apiService.post(
+    await _apiService.post(
       '/identity/revoke',
-      body: {
+      {
         'userId': userId,
         'reason': 'lost_device',
       },
     );
-
-    if (response.statusCode != 200) {
-      throw EnrollmentException('Revocation failed: ${response.body}');
-    }
 
     // Delete local keys
     final enrollmentId = 'pilot-$userId';
@@ -161,10 +148,8 @@ class EnrollmentService {
   Future<BlockchainIdentity?> getBlockchainIdentity(String userId) async {
     try {
       final response = await _apiService.get('/identity/$userId');
-      if (response.statusCode == 200) {
-        return BlockchainIdentity.fromJson(response.json);
-      }
-      return null;
+      final data = response['data'] as Map<String, dynamic>;
+      return BlockchainIdentity.fromJson(data);
     } catch (e) {
       return null;
     }

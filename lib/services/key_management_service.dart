@@ -1,7 +1,3 @@
-import 'dart:convert';
-import 'dart:typed_data';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
 /// Key Management Service
 ///
 /// Handles cryptographic key operations for blockchain identity:
@@ -12,27 +8,24 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 ///
 /// CRITICAL: Private keys are generated ON DEVICE and NEVER transmitted.
 /// Only the CSR (containing public key) is sent to the server.
+///
+/// NOTE: This is a placeholder implementation. Production use requires:
+/// - flutter_secure_storage: ^9.0.0 (for secure key storage)
+/// - pointycastle: ^3.7.3 (for ECDSA key generation and signing)
+/// - asn1lib: ^1.4.0 (for CSR creation)
 class KeyManagementService {
   static const String _keyPrefix = 'hyperlog_key_';
   static const String _certPrefix = 'hyperlog_cert_';
 
-  final FlutterSecureStorage _secureStorage;
+  // In-memory storage for development (NOT SECURE - for testing only)
+  final Map<String, String> _devStorage = {};
 
-  KeyManagementService({FlutterSecureStorage? storage})
-      : _secureStorage = storage ??
-            const FlutterSecureStorage(
-              aOptions: AndroidOptions(
-                encryptedSharedPreferences: true,
-              ),
-              iOptions: IOSOptions(
-                accessibility: KeychainAccessibility.first_unlock_this_device,
-              ),
-            );
+  KeyManagementService();
 
   /// Check if a key exists for the given enrollment ID
   Future<bool> hasKey(String enrollmentId) async {
-    final key = await _secureStorage.read(key: '$_keyPrefix$enrollmentId');
-    return key != null;
+    // TODO: Replace with flutter_secure_storage
+    return _devStorage.containsKey('$_keyPrefix$enrollmentId');
   }
 
   /// Generate a new ECDSA P-256 key pair
@@ -74,37 +67,34 @@ class KeyManagementService {
   /// Store a private key securely on the device
   /// Uses iOS Keychain / Android Keystore with biometric protection
   Future<void> storePrivateKey(String enrollmentId, String privateKeyPem) async {
-    await _secureStorage.write(
-      key: '$_keyPrefix$enrollmentId',
-      value: privateKeyPem,
-      aOptions: const AndroidOptions(
-        encryptedSharedPreferences: true,
-      ),
-      iOptions: const IOSOptions(
-        accessibility: KeychainAccessibility.first_unlock_this_device,
-      ),
-    );
+    // TODO: Replace with flutter_secure_storage
+    // await _secureStorage.write(
+    //   key: '$_keyPrefix$enrollmentId',
+    //   value: privateKeyPem,
+    //   aOptions: const AndroidOptions(encryptedSharedPreferences: true),
+    //   iOptions: const IOSOptions(
+    //     accessibility: KeychainAccessibility.first_unlock_this_device,
+    //   ),
+    // );
+    _devStorage['$_keyPrefix$enrollmentId'] = privateKeyPem;
   }
 
   /// Store a certificate for the given enrollment ID
   Future<void> storeCertificate(String enrollmentId, String certificatePem) async {
-    await _secureStorage.write(
-      key: '$_certPrefix$enrollmentId',
-      value: certificatePem,
-    );
+    // TODO: Replace with flutter_secure_storage
+    _devStorage['$_certPrefix$enrollmentId'] = certificatePem;
   }
 
   /// Retrieve a stored certificate
   Future<String?> getCertificate(String enrollmentId) async {
-    return await _secureStorage.read(key: '$_certPrefix$enrollmentId');
+    // TODO: Replace with flutter_secure_storage
+    return _devStorage['$_certPrefix$enrollmentId'];
   }
 
   /// Sign a transaction payload with the stored private key
   /// Returns the signature in base64 format
   Future<String> signTransaction(String enrollmentId, String payload) async {
-    final privateKeyPem = await _secureStorage.read(
-      key: '$_keyPrefix$enrollmentId',
-    );
+    final privateKeyPem = _devStorage['$_keyPrefix$enrollmentId'];
 
     if (privateKeyPem == null) {
       throw KeyNotFoundException('Private key not found for $enrollmentId');
@@ -130,14 +120,16 @@ class KeyManagementService {
   /// Delete the private key for an enrollment ID
   /// Use when reporting lost device or during account deletion
   Future<void> deleteKey(String enrollmentId) async {
-    await _secureStorage.delete(key: '$_keyPrefix$enrollmentId');
-    await _secureStorage.delete(key: '$_certPrefix$enrollmentId');
+    // TODO: Replace with flutter_secure_storage
+    _devStorage.remove('$_keyPrefix$enrollmentId');
+    _devStorage.remove('$_certPrefix$enrollmentId');
   }
 
   /// Delete all stored keys
   /// Use during logout or account reset
   Future<void> deleteAllKeys() async {
-    await _secureStorage.deleteAll();
+    // TODO: Replace with flutter_secure_storage
+    _devStorage.clear();
   }
 
   /// Check if biometric authentication is available on this device

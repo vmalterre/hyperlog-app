@@ -24,6 +24,9 @@ class AppColors {
   static const Color trackedAmber = Color(0xFFF59E0B);
   static const Color endorsedGreen = Color(0xFF10B981);
 
+  // Status Colors
+  static const Color errorRed = Color(0xFFEF4444);
+
   // Common opacity variants for glass-morphism
   static Color glass50 = nightRider.withValues(alpha: 0.5);
   static Color glassDark50 = nightRiderDark.withValues(alpha: 0.5);
