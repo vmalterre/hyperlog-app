@@ -33,47 +33,55 @@ class Verification {
 }
 
 /// Crew member on a flight
+/// GDPR-compliant: pilotUUID is stored on blockchain, name/license resolved from PostgreSQL
 class CrewMember {
-  final String pilotLicense;
-  final String pilotName;
+  final String pilotUUID;
+  final String? pilotLicense; // Resolved from PostgreSQL for display
+  final String? pilotName;    // Resolved from PostgreSQL for display
   final String role;
   final DateTime joinedAt;
 
   CrewMember({
-    required this.pilotLicense,
-    required this.pilotName,
+    required this.pilotUUID,
+    this.pilotLicense,
+    this.pilotName,
     required this.role,
     required this.joinedAt,
   });
 
   factory CrewMember.fromJson(Map<String, dynamic> json) {
     return CrewMember(
-      pilotLicense: json['pilotLicense'] ?? '',
-      pilotName: json['pilotName'] ?? '',
+      pilotUUID: json['pilotUUID'] ?? '',
+      pilotLicense: json['pilotLicense'],
+      pilotName: json['pilotName'],
       role: json['role'] ?? '',
       joinedAt: DateTime.parse(json['joinedAt']),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'pilotLicense': pilotLicense,
-        'pilotName': pilotName,
+        'pilotUUID': pilotUUID,
+        if (pilotLicense != null) 'pilotLicense': pilotLicense,
+        if (pilotName != null) 'pilotName': pilotName,
         'role': role,
         'joinedAt': joinedAt.toUtc().toIso8601String(),
       };
 }
 
 /// Endorsement from another pilot
+/// GDPR-compliant: endorserUUID is stored on blockchain, name/license resolved from PostgreSQL
 class Endorsement {
-  final String endorserLicense;
-  final String endorserName;
+  final String endorserUUID;
+  final String? endorserLicense; // Resolved from PostgreSQL for display
+  final String? endorserName;    // Resolved from PostgreSQL for display
   final String endorserRole;
   final DateTime endorsedAt;
   final String? remarks;
 
   Endorsement({
-    required this.endorserLicense,
-    required this.endorserName,
+    required this.endorserUUID,
+    this.endorserLicense,
+    this.endorserName,
     required this.endorserRole,
     required this.endorsedAt,
     this.remarks,
@@ -81,8 +89,9 @@ class Endorsement {
 
   factory Endorsement.fromJson(Map<String, dynamic> json) {
     return Endorsement(
-      endorserLicense: json['endorserLicense'] ?? '',
-      endorserName: json['endorserName'] ?? '',
+      endorserUUID: json['endorserUUID'] ?? '',
+      endorserLicense: json['endorserLicense'],
+      endorserName: json['endorserName'],
       endorserRole: json['endorserRole'] ?? '',
       endorsedAt: DateTime.parse(json['endorsedAt']),
       remarks: json['remarks'],
@@ -90,11 +99,12 @@ class Endorsement {
   }
 
   Map<String, dynamic> toJson() => {
-        'endorserLicense': endorserLicense,
-        'endorserName': endorserName,
+        'endorserUUID': endorserUUID,
+        if (endorserLicense != null) 'endorserLicense': endorserLicense,
+        if (endorserName != null) 'endorserName': endorserName,
         'endorserRole': endorserRole,
         'endorsedAt': endorsedAt.toUtc().toIso8601String(),
-        'remarks': remarks,
+        if (remarks != null) 'remarks': remarks,
       };
 }
 
@@ -167,9 +177,11 @@ class Landings {
 }
 
 /// Full logbook entry matching backend API
+/// GDPR-compliant: pilotUUID is stored on blockchain, pilotLicense resolved from PostgreSQL
 class LogbookEntry {
   final String id;
-  final String pilotLicense;
+  final String pilotUUID;         // UUID from blockchain (GDPR-compliant)
+  final String? pilotLicense;     // Resolved from PostgreSQL for display
   final DateTime flightDate;
   final String? flightNumber;
   final String dep;
@@ -191,7 +203,8 @@ class LogbookEntry {
 
   LogbookEntry({
     required this.id,
-    required this.pilotLicense,
+    required this.pilotUUID,
+    this.pilotLicense,
     required this.flightDate,
     this.flightNumber,
     required this.dep,
@@ -215,6 +228,7 @@ class LogbookEntry {
   factory LogbookEntry.fromJson(Map<String, dynamic> json) {
     return LogbookEntry(
       id: json['id'],
+      pilotUUID: json['pilotUUID'] ?? '',
       pilotLicense: json['pilotLicense'],
       flightDate: DateTime.parse(json['flightDate']),
       flightNumber: json['flightNumber'],
@@ -274,7 +288,8 @@ class LogbookEntry {
   }
 
   Map<String, dynamic> toJson() => {
-        'pilotLicense': pilotLicense,
+        // API uses pilotLicense to look up UUID from PostgreSQL
+        if (pilotLicense != null) 'pilotLicense': pilotLicense,
         'flightDate': flightDate.toUtc().toIso8601String(),
         'flightNumber': flightNumber ?? '',
         'dep': dep,

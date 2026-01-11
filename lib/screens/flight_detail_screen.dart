@@ -85,9 +85,9 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
 
       // Fetch pilot name for history display (official tier only)
       String? pilotName;
-      if (history != null) {
+      if (history != null && entry.pilotLicense != null) {
         try {
-          final pilot = await _pilotService.getPilot(entry.pilotLicense);
+          final pilot = await _pilotService.getPilot(entry.pilotLicense!);
           pilotName = pilot.name;
         } catch (_) {
           // Pilot lookup failed, will use fallback in timeline

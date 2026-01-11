@@ -81,6 +81,7 @@ class _FlightEditScreenState extends State<FlightEditScreen> {
 
     return LogbookEntry(
       id: widget.entry.id,
+      pilotUUID: widget.entry.pilotUUID,
       pilotLicense: widget.entry.pilotLicense,
       flightDate: _flightDate,
       flightNumber: _flightNumberController.text.isEmpty ? null : _flightNumberController.text,
