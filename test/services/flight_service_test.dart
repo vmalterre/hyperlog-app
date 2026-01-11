@@ -214,6 +214,7 @@ void main() {
       test('creates flight and returns LogbookEntry', () async {
         final inputEntry = LogbookEntry(
           id: '',
+          pilotUUID: 'test-uuid-12345',
           pilotLicense: 'UK-ATPL-12345',
           flightDate: DateTime.utc(2024, 6, 15),
           dep: 'EGLL',
@@ -243,6 +244,7 @@ void main() {
       test('calls correct API endpoint with entry JSON', () async {
         final inputEntry = LogbookEntry(
           id: '',
+          pilotUUID: 'test-uuid-001',
           pilotLicense: 'UK-12345',
           flightDate: DateTime.utc(2024, 1, 1),
           dep: 'LHR',
@@ -279,6 +281,7 @@ void main() {
       test('reports server errors to ErrorService with flight metadata', () async {
         final inputEntry = LogbookEntry(
           id: '',
+          pilotUUID: 'test-uuid-99999',
           pilotLicense: 'UK-ATPL-99999',
           flightDate: DateTime.now(),
           dep: 'EGCC',

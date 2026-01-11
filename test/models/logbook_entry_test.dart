@@ -339,6 +339,7 @@ void main() {
       test('converts to LogbookEntryShort with correct fields', () {
         final entry = LogbookEntry(
           id: 'flight-456',
+          pilotUUID: 'test-uuid-456',
           pilotLicense: 'UK-12345',
           flightDate: DateTime(2024, 7, 20),
           dep: 'EGCC',
@@ -370,6 +371,7 @@ void main() {
       test('formats blockTime correctly from flightTime', () {
         final entry = LogbookEntry(
           id: 'test',
+          pilotUUID: 'test-uuid-001',
           pilotLicense: 'UK-12345',
           flightDate: DateTime.now(),
           dep: 'LHR',
@@ -394,6 +396,7 @@ void main() {
       test('serializes to correct format for API', () {
         final entry = LogbookEntry(
           id: 'flight-789',
+          pilotUUID: 'test-uuid-789',
           pilotLicense: 'UK-ATPL-54321',
           flightDate: DateTime.utc(2024, 8, 1),
           flightNumber: 'VS1',
@@ -432,6 +435,7 @@ void main() {
       test('handles null optional fields', () {
         final entry = LogbookEntry(
           id: 'test',
+          pilotUUID: 'test-uuid-001',
           pilotLicense: 'UK-12345',
           flightDate: DateTime.utc(2024, 1, 1),
           dep: 'EGLL',
@@ -456,6 +460,7 @@ void main() {
       test('does not include id in JSON output', () {
         final entry = LogbookEntry(
           id: 'should-not-appear',
+          pilotUUID: 'test-uuid-001',
           pilotLicense: 'UK-12345',
           flightDate: DateTime.utc(2024, 1, 1),
           dep: 'EGLL',
@@ -478,6 +483,7 @@ void main() {
       test('does not include trustLevel in JSON output', () {
         final entry = LogbookEntry(
           id: 'test',
+          pilotUUID: 'test-uuid-001',
           pilotLicense: 'UK-12345',
           flightDate: DateTime.utc(2024, 1, 1),
           dep: 'EGLL',
@@ -503,6 +509,7 @@ void main() {
       test('trustLevel defaults to logged', () {
         final entry = LogbookEntry(
           id: 'test',
+          pilotUUID: 'test-uuid-001',
           pilotLicense: 'UK-12345',
           flightDate: DateTime.now(),
           dep: 'LHR',
