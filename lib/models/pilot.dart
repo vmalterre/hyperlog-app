@@ -33,10 +33,12 @@ class Pilot {
   });
 
   factory Pilot.fromJson(Map<String, dynamic> json) {
+    final firstName = json['firstName'] as String?;
+    final lastName = json['lastName'] as String?;
     return Pilot(
       licenseNumber: json['licenseNumber'],
-      name: json['name'],
-      firstName: json['firstName'],
+      name: json['name'] ?? [firstName, lastName].whereType<String>().join(' '),
+      firstName: firstName,
       lastName: json['lastName'],
       email: json['email'],
       photoUrl: json['photoUrl'],

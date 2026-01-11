@@ -263,7 +263,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                 if (_entry!.crew.isNotEmpty) ...[
                   ..._entry!.crew.map((member) => _buildDetailRow(
                     member.primaryRole,
-                    '${member.pilotName ?? 'Unknown'} (${member.pilotLicense ?? member.pilotUUID.substring(0, 8)})',
+                    member.pilotName ?? 'Unknown',
                   )),
                   _buildDivider(),
                 ],
