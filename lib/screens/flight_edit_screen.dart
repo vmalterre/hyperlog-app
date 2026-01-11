@@ -46,15 +46,17 @@ class _FlightEditScreenState extends State<FlightEditScreen> {
   }
 
   void _initControllers() {
+    final creatorCrew = widget.entry.creatorCrew;
+
     _flightNumberController = TextEditingController(text: widget.entry.flightNumber ?? '');
     _depController = TextEditingController(text: widget.entry.dep);
     _destController = TextEditingController(text: widget.entry.dest);
     _aircraftTypeController = TextEditingController(text: widget.entry.aircraftType);
     _aircraftRegController = TextEditingController(text: widget.entry.aircraftReg);
-    _roleController = TextEditingController(text: widget.entry.role);
-    _remarksController = TextEditingController(text: widget.entry.remarks ?? '');
+    _roleController = TextEditingController(text: creatorCrew?.primaryRole ?? '');
+    _remarksController = TextEditingController(text: creatorCrew?.remarks ?? '');
     _flightTimeController = TextEditingController(text: widget.entry.flightTime.total.toString());
-    _landingsController = TextEditingController(text: widget.entry.landings.total.toString());
+    _landingsController = TextEditingController(text: widget.entry.totalLandings.total.toString());
 
     _flightDate = widget.entry.flightDate;
     _blockOff = widget.entry.blockOff;
@@ -77,12 +79,45 @@ class _FlightEditScreenState extends State<FlightEditScreen> {
 
   LogbookEntry _buildUpdatedEntry() {
     final flightTimeMinutes = int.tryParse(_flightTimeController.text) ?? widget.entry.flightTime.total;
-    final landingsTotal = int.tryParse(_landingsController.text) ?? widget.entry.landings.total;
+    final landingsTotal = int.tryParse(_landingsController.text) ?? widget.entry.totalLandings.total;
+
+    // Build updated crew member for the creator
+    final roleText = _roleController.text.toUpperCase();
+    final updatedCrewMember = CrewMember(
+      pilotUUID: widget.entry.creatorUUID,
+      pilotLicense: widget.entry.creatorLicense,
+      roles: [
+        RoleSegment(
+          role: roleText.isNotEmpty ? roleText : 'PIC',
+          start: _blockOff,
+          end: _blockOn,
+        ),
+      ],
+      landings: Landings(
+        day: landingsTotal,
+        night: widget.entry.creatorCrew?.landings.night ?? 0,
+      ),
+      remarks: _remarksController.text,
+      joinedAt: widget.entry.creatorCrew?.joinedAt ?? DateTime.now(),
+    );
+
+    // Keep other crew members, update the creator's entry
+    final updatedCrew = widget.entry.crew.map((member) {
+      if (member.pilotUUID == widget.entry.creatorUUID) {
+        return updatedCrewMember;
+      }
+      return member;
+    }).toList();
+
+    // If creator wasn't in crew (shouldn't happen), add them
+    if (!updatedCrew.any((m) => m.pilotUUID == widget.entry.creatorUUID)) {
+      updatedCrew.insert(0, updatedCrewMember);
+    }
 
     return LogbookEntry(
       id: widget.entry.id,
-      pilotUUID: widget.entry.pilotUUID,
-      pilotLicense: widget.entry.pilotLicense,
+      creatorUUID: widget.entry.creatorUUID,
+      creatorLicense: widget.entry.creatorLicense,
       flightDate: _flightDate,
       flightNumber: _flightNumberController.text.isEmpty ? null : _flightNumberController.text,
       dep: _depController.text.toUpperCase(),
@@ -95,17 +130,10 @@ class _FlightEditScreenState extends State<FlightEditScreen> {
         total: flightTimeMinutes,
         night: widget.entry.flightTime.night,
         ifr: widget.entry.flightTime.ifr,
-        pic: widget.entry.flightTime.pic,
-        sic: widget.entry.flightTime.sic,
-        dual: widget.entry.flightTime.dual,
       ),
-      landings: Landings(
-        day: landingsTotal,
-        night: widget.entry.landings.night,
-      ),
-      role: _roleController.text.toUpperCase(),
-      remarks: _remarksController.text.isEmpty ? null : _remarksController.text,
-      trustLevel: widget.entry.trustLevel,
+      crew: updatedCrew,
+      verifications: widget.entry.verifications,
+      endorsements: widget.entry.endorsements,
       createdAt: widget.entry.createdAt,
       updatedAt: DateTime.now(),
     );

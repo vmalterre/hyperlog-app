@@ -32,20 +32,77 @@ class Verification {
       };
 }
 
+/// Role segment with timestamps for tracking split duties
+/// Valid roles: PIC, SIC, DUAL, SOLO, SPIC, PICUS, FI, FE, SP, RP, OBS
+class RoleSegment {
+  final String role;
+  final DateTime start;
+  final DateTime end;
+
+  RoleSegment({
+    required this.role,
+    required this.start,
+    required this.end,
+  });
+
+  factory RoleSegment.fromJson(Map<String, dynamic> json) {
+    return RoleSegment(
+      role: json['role'] ?? '',
+      start: DateTime.parse(json['start']),
+      end: DateTime.parse(json['end']),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'role': role,
+        'start': start.toUtc().toIso8601String(),
+        'end': end.toUtc().toIso8601String(),
+      };
+
+  /// Duration of this role segment in minutes
+  int get durationMinutes => end.difference(start).inMinutes;
+}
+
+/// Landings breakdown
+class Landings {
+  final int day;
+  final int night;
+
+  Landings({this.day = 0, this.night = 0});
+
+  factory Landings.fromJson(Map<String, dynamic> json) {
+    return Landings(
+      day: json['day'] ?? 0,
+      night: json['night'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'day': day,
+        'night': night,
+      };
+
+  int get total => day + night;
+}
+
 /// Crew member on a flight
 /// GDPR-compliant: pilotUUID is stored on blockchain, name/license resolved from PostgreSQL
 class CrewMember {
   final String pilotUUID;
   final String? pilotLicense; // Resolved from PostgreSQL for display
   final String? pilotName;    // Resolved from PostgreSQL for display
-  final String role;
+  final List<RoleSegment> roles;
+  final Landings landings;
+  final String remarks;
   final DateTime joinedAt;
 
   CrewMember({
     required this.pilotUUID,
     this.pilotLicense,
     this.pilotName,
-    required this.role,
+    required this.roles,
+    required this.landings,
+    this.remarks = '',
     required this.joinedAt,
   });
 
@@ -54,7 +111,14 @@ class CrewMember {
       pilotUUID: json['pilotUUID'] ?? '',
       pilotLicense: json['pilotLicense'],
       pilotName: json['pilotName'],
-      role: json['role'] ?? '',
+      roles: (json['roles'] as List<dynamic>?)
+              ?.map((r) => RoleSegment.fromJson(r as Map<String, dynamic>))
+              .toList() ??
+          [],
+      landings: json['landings'] != null
+          ? Landings.fromJson(json['landings'])
+          : Landings(),
+      remarks: json['remarks'] ?? '',
       joinedAt: DateTime.parse(json['joinedAt']),
     );
   }
@@ -63,9 +127,25 @@ class CrewMember {
         'pilotUUID': pilotUUID,
         if (pilotLicense != null) 'pilotLicense': pilotLicense,
         if (pilotName != null) 'pilotName': pilotName,
-        'role': role,
+        'roles': roles.map((r) => r.toJson()).toList(),
+        'landings': landings.toJson(),
+        'remarks': remarks,
         'joinedAt': joinedAt.toUtc().toIso8601String(),
       };
+
+  /// Get the primary role (longest duration or first if equal)
+  String get primaryRole {
+    if (roles.isEmpty) return '';
+    return roles.reduce((a, b) =>
+        a.durationMinutes >= b.durationMinutes ? a : b).role;
+  }
+
+  /// Calculate total time in a specific role across all segments
+  int roleTimeMinutes(String role) {
+    return roles
+        .where((r) => r.role == role)
+        .fold(0, (sum, r) => sum + r.durationMinutes);
+  }
 }
 
 /// Endorsement from another pilot
@@ -109,21 +189,16 @@ class Endorsement {
 }
 
 /// Flight time breakdown (values in minutes)
+/// Note: PIC/SIC/Dual time is derived from crew roles, not stored here
 class FlightTime {
   final int total;
   final int night;
   final int ifr;
-  final int pic;
-  final int sic;
-  final int dual;
 
   FlightTime({
     required this.total,
     this.night = 0,
     this.ifr = 0,
-    this.pic = 0,
-    this.sic = 0,
-    this.dual = 0,
   });
 
   factory FlightTime.fromJson(Map<String, dynamic> json) {
@@ -131,9 +206,6 @@ class FlightTime {
       total: json['total'] ?? 0,
       night: json['night'] ?? 0,
       ifr: json['ifr'] ?? 0,
-      pic: json['pic'] ?? 0,
-      sic: json['sic'] ?? 0,
-      dual: json['dual'] ?? 0,
     );
   }
 
@@ -141,9 +213,6 @@ class FlightTime {
         'total': total,
         'night': night,
         'ifr': ifr,
-        'pic': pic,
-        'sic': sic,
-        'dual': dual,
       };
 
   /// Format total minutes as HH:MM
@@ -154,34 +223,13 @@ class FlightTime {
   }
 }
 
-/// Landings breakdown
-class Landings {
-  final int day;
-  final int night;
-
-  Landings({this.day = 0, this.night = 0});
-
-  factory Landings.fromJson(Map<String, dynamic> json) {
-    return Landings(
-      day: json['day'] ?? 0,
-      night: json['night'] ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-        'day': day,
-        'night': night,
-      };
-
-  int get total => day + night;
-}
-
 /// Full logbook entry matching backend API
-/// GDPR-compliant: pilotUUID is stored on blockchain, pilotLicense resolved from PostgreSQL
+/// GDPR-compliant: creatorUUID is stored on blockchain, creatorLicense resolved from PostgreSQL
+/// Note: TrustLevel is computed by the app, not stored on blockchain
 class LogbookEntry {
   final String id;
-  final String pilotUUID;         // UUID from blockchain (GDPR-compliant)
-  final String? pilotLicense;     // Resolved from PostgreSQL for display
+  final String creatorUUID;         // UUID from blockchain (GDPR-compliant)
+  final String? creatorLicense;     // Resolved from PostgreSQL for display
   final DateTime flightDate;
   final String? flightNumber;
   final String dep;
@@ -191,20 +239,16 @@ class LogbookEntry {
   final String aircraftType;
   final String aircraftReg;
   final FlightTime flightTime;
-  final Landings landings;
-  final String role;
-  final String? remarks;
-  final TrustLevel trustLevel;
+  final List<CrewMember> crew;
   final List<Verification> verifications;
   final List<Endorsement> endorsements;
-  final List<CrewMember> crew;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   LogbookEntry({
     required this.id,
-    required this.pilotUUID,
-    this.pilotLicense,
+    required this.creatorUUID,
+    this.creatorLicense,
     required this.flightDate,
     this.flightNumber,
     required this.dep,
@@ -214,13 +258,9 @@ class LogbookEntry {
     required this.aircraftType,
     required this.aircraftReg,
     required this.flightTime,
-    required this.landings,
-    required this.role,
-    this.remarks,
-    this.trustLevel = TrustLevel.logged,
+    this.crew = const [],
     this.verifications = const [],
     this.endorsements = const [],
-    this.crew = const [],
     required this.createdAt,
     required this.updatedAt,
   });
@@ -228,8 +268,8 @@ class LogbookEntry {
   factory LogbookEntry.fromJson(Map<String, dynamic> json) {
     return LogbookEntry(
       id: json['id'],
-      pilotUUID: json['pilotUUID'] ?? '',
-      pilotLicense: json['pilotLicense'],
+      creatorUUID: json['creatorUUID'] ?? '',
+      creatorLicense: json['creatorLicense'],
       flightDate: DateTime.parse(json['flightDate']),
       flightNumber: json['flightNumber'],
       dep: json['dep'],
@@ -239,10 +279,10 @@ class LogbookEntry {
       aircraftType: json['aircraftType'],
       aircraftReg: json['aircraftReg'],
       flightTime: FlightTime.fromJson(json['flightTime']),
-      landings: Landings.fromJson(json['landings']),
-      role: json['role'],
-      remarks: json['remarks'],
-      trustLevel: _parseTrustLevel(json['trustLevel']),
+      crew: (json['crew'] as List<dynamic>?)
+              ?.map((c) => CrewMember.fromJson(c as Map<String, dynamic>))
+              .toList() ??
+          [],
       verifications: (json['verifications'] as List<dynamic>?)
               ?.map((v) => Verification.fromJson(v as Map<String, dynamic>))
               .toList() ??
@@ -251,26 +291,46 @@ class LogbookEntry {
               ?.map((e) => Endorsement.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      crew: (json['crew'] as List<dynamic>?)
-              ?.map((c) => CrewMember.fromJson(c as Map<String, dynamic>))
-              .toList() ??
-          [],
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
     );
   }
 
-  /// Convert backend trust level string to enum
-  static TrustLevel _parseTrustLevel(String? level) {
-    switch (level?.toUpperCase()) {
-      case 'TRACKED':
-        return TrustLevel.tracked;
-      case 'ENDORSED':
-        return TrustLevel.endorsed;
-      case 'LOGGED':
-      default:
-        return TrustLevel.logged;
+  /// Compute trust level from entry data (not stored on blockchain)
+  /// - ENDORSED: 2+ pilots in the crew array
+  /// - TRACKED: Third-party verification exists (FR24, ADS-B, organization)
+  /// - LOGGED: Single pilot (creator only), no external verification
+  TrustLevel get trustLevel {
+    // ENDORSED: 2+ pilots in the crew array
+    if (crew.length >= 2) {
+      return TrustLevel.endorsed;
     }
+    // TRACKED: Third-party organization verified the entry
+    if (verifications.isNotEmpty) {
+      return TrustLevel.tracked;
+    }
+    // LOGGED: Single pilot (creator only), no external verification
+    return TrustLevel.logged;
+  }
+
+  /// Get the creator's crew entry (first crew member with matching UUID)
+  CrewMember? get creatorCrew {
+    try {
+      return crew.firstWhere((c) => c.pilotUUID == creatorUUID);
+    } catch (_) {
+      return crew.isNotEmpty ? crew.first : null;
+    }
+  }
+
+  /// Get total landings from all crew members (typically only PF logs landings)
+  Landings get totalLandings {
+    int day = 0;
+    int night = 0;
+    for (final c in crew) {
+      day += c.landings.day;
+      night += c.landings.night;
+    }
+    return Landings(day: day, night: night);
   }
 
   /// Convert to short format for list display
@@ -287,20 +347,29 @@ class LogbookEntry {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        // API uses pilotLicense to look up UUID from PostgreSQL
-        if (pilotLicense != null) 'pilotLicense': pilotLicense,
-        'flightDate': flightDate.toUtc().toIso8601String(),
-        'flightNumber': flightNumber ?? '',
-        'dep': dep,
-        'dest': dest,
-        'blockOff': blockOff.toUtc().toIso8601String(),
-        'blockOn': blockOn.toUtc().toIso8601String(),
-        'aircraftType': aircraftType,
-        'aircraftReg': aircraftReg,
-        'flightTime': flightTime.toJson(),
-        'landings': landings.toJson(),
-        'role': role,
-        'remarks': remarks ?? '',
-      };
+  /// Convert to JSON for API (CreateFlightRequest format)
+  Map<String, dynamic> toJson() {
+    final creator = creatorCrew;
+    return {
+      // API uses pilotLicense to look up UUID from PostgreSQL
+      if (creatorLicense != null) 'pilotLicense': creatorLicense,
+      'flightDate': _formatDateOnly(flightDate),
+      'flightNumber': flightNumber ?? '',
+      'dep': dep,
+      'dest': dest,
+      'blockOff': blockOff.toUtc().toIso8601String(),
+      'blockOn': blockOn.toUtc().toIso8601String(),
+      'aircraftType': aircraftType,
+      'aircraftReg': aircraftReg,
+      'flightTime': flightTime.toJson(),
+      'roles': creator?.roles.map((r) => r.toJson()).toList() ?? [],
+      'landings': creator?.landings.toJson() ?? Landings().toJson(),
+      'remarks': creator?.remarks ?? '',
+    };
+  }
+
+  /// Format date as YYYY-MM-DD (date only, no time)
+  static String _formatDateOnly(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
 }

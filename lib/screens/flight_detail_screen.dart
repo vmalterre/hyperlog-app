@@ -85,9 +85,9 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
 
       // Fetch pilot name for history display (official tier only)
       String? pilotName;
-      if (history != null && entry.pilotLicense != null) {
+      if (history != null && entry.creatorLicense != null) {
         try {
-          final pilot = await _pilotService.getPilot(entry.pilotLicense!);
+          final pilot = await _pilotService.getPilot(entry.creatorLicense!);
           pilotName = pilot.name;
         } catch (_) {
           // Pilot lookup failed, will use fallback in timeline
@@ -262,8 +262,8 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                 // Crew section (inline)
                 if (_entry!.crew.isNotEmpty) ...[
                   ..._entry!.crew.map((member) => _buildDetailRow(
-                    member.role,
-                    '${member.pilotName} (${member.pilotLicense})',
+                    member.primaryRole,
+                    '${member.pilotName ?? 'Unknown'} (${member.pilotLicense ?? member.pilotUUID.substring(0, 8)})',
                   )),
                   _buildDivider(),
                 ],
@@ -272,11 +272,11 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                 _buildDetailRow('Flight Time', _entry!.flightTime.formatted),
                 _buildDivider(),
                 _buildDetailRow('Aircraft', '${_entry!.aircraftType} (${_entry!.aircraftReg})'),
-                _buildDetailRow('Role', _entry!.role),
-                _buildDetailRow('Landings', _entry!.landings.total.toString()),
-                if (_entry!.remarks != null && _entry!.remarks!.isNotEmpty) ...[
+                _buildDetailRow('Role', _entry!.creatorCrew?.primaryRole ?? '-'),
+                _buildDetailRow('Landings', _entry!.totalLandings.total.toString()),
+                if (_entry!.creatorCrew != null && _entry!.creatorCrew!.remarks.isNotEmpty) ...[
                   _buildDivider(),
-                  _buildDetailRow('Remarks', _entry!.remarks!),
+                  _buildDetailRow('Remarks', _entry!.creatorCrew!.remarks),
                 ],
               ],
             ),

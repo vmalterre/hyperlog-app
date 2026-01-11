@@ -59,14 +59,21 @@ class ExperienceTotals {
       final ft = flight.flightTime;
 
       totalMinutes += ft.total;
-      picMinutes += ft.pic;
-      sicMinutes += ft.sic;
-      dualMinutes += ft.dual;
       nightMinutes += ft.night;
       ifrMinutes += ft.ifr;
 
-      dayLandings += flight.landings.day;
-      nightLandings += flight.landings.night;
+      // Compute PIC/SIC/Dual time from crew roles
+      final creatorCrew = flight.creatorCrew;
+      if (creatorCrew != null) {
+        picMinutes += creatorCrew.roleTimeMinutes('PIC');
+        sicMinutes += creatorCrew.roleTimeMinutes('SIC');
+        dualMinutes += creatorCrew.roleTimeMinutes('DUAL');
+      }
+
+      // Get landings from totalLandings (computed from all crew)
+      final landings = flight.totalLandings;
+      dayLandings += landings.day;
+      nightLandings += landings.night;
 
       // Categorize by aircraft type
       final category = AircraftCategorizer.categorize(flight.aircraftType);

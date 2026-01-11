@@ -98,7 +98,7 @@ class FlightService {
               StackTrace.current,
               message: 'Failed to create flight',
               metadata: {
-                'pilotLicense': entry.pilotLicense,
+                'creatorLicense': entry.creatorLicense,
                 'dep': entry.dep,
                 'dest': entry.dest,
               },
@@ -112,7 +112,7 @@ class FlightService {
             StackTrace.current,
             message: 'Unexpected error creating flight',
             metadata: {
-              'pilotLicense': entry.pilotLicense,
+              'creatorLicense': entry.creatorLicense,
               'dep': entry.dep,
               'dest': entry.dest,
             },
@@ -163,7 +163,7 @@ class FlightService {
 
     for (int i = 0; i < history.history.length; i++) {
       final current = history.history[i];
-      final pilotLicense = current.entry?.pilotLicense;
+      final pilotLicense = current.entry?.creatorLicense;
 
       if (i == 0) {
         // First entry is creation
@@ -236,9 +236,9 @@ class FlightService {
     check('aircraftType', 'Aircraft Type', old.aircraftType, updated.aircraftType);
     check('aircraftReg', 'Registration', old.aircraftReg, updated.aircraftReg);
     check('flightTime', 'Flight Time', old.flightTime.formatted, updated.flightTime.formatted);
-    check('landings', 'Landings', old.landings.total.toString(), updated.landings.total.toString());
-    check('role', 'Role', old.role, updated.role);
-    check('remarks', 'Remarks', old.remarks, updated.remarks);
+    check('landings', 'Landings', old.totalLandings.total.toString(), updated.totalLandings.total.toString());
+    check('role', 'Role', old.creatorCrew?.primaryRole ?? '', updated.creatorCrew?.primaryRole ?? '');
+    check('remarks', 'Remarks', old.creatorCrew?.remarks ?? '', updated.creatorCrew?.remarks ?? '');
     check('trustLevel', 'Trust Level', old.trustLevel.name.toUpperCase(), updated.trustLevel.name.toUpperCase());
 
     return changes;

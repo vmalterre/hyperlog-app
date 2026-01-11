@@ -10,9 +10,6 @@ void main() {
         expect(ft.total, 120);
         expect(ft.night, 0);
         expect(ft.ifr, 0);
-        expect(ft.pic, 0);
-        expect(ft.sic, 0);
-        expect(ft.dual, 0);
       });
 
       test('creates with all optional fields', () {
@@ -20,16 +17,10 @@ void main() {
           total: 180,
           night: 30,
           ifr: 60,
-          pic: 90,
-          sic: 45,
-          dual: 45,
         );
         expect(ft.total, 180);
         expect(ft.night, 30);
         expect(ft.ifr, 60);
-        expect(ft.pic, 90);
-        expect(ft.sic, 45);
-        expect(ft.dual, 45);
       });
     });
 
@@ -39,9 +30,6 @@ void main() {
           'total': 240,
           'night': 60,
           'ifr': 120,
-          'pic': 180,
-          'sic': 30,
-          'dual': 30,
         };
 
         final ft = FlightTime.fromJson(json);
@@ -49,9 +37,6 @@ void main() {
         expect(ft.total, 240);
         expect(ft.night, 60);
         expect(ft.ifr, 120);
-        expect(ft.pic, 180);
-        expect(ft.sic, 30);
-        expect(ft.dual, 30);
       });
 
       test('defaults missing fields to 0', () {
@@ -62,9 +47,6 @@ void main() {
         expect(ft.total, 90);
         expect(ft.night, 0);
         expect(ft.ifr, 0);
-        expect(ft.pic, 0);
-        expect(ft.sic, 0);
-        expect(ft.dual, 0);
       });
 
       test('handles null values as 0', () {
@@ -86,9 +68,6 @@ void main() {
           total: 120,
           night: 30,
           ifr: 45,
-          pic: 60,
-          sic: 30,
-          dual: 30,
         );
 
         final json = ft.toJson();
@@ -96,9 +75,6 @@ void main() {
         expect(json['total'], 120);
         expect(json['night'], 30);
         expect(json['ifr'], 45);
-        expect(json['pic'], 60);
-        expect(json['sic'], 30);
-        expect(json['dual'], 30);
       });
     });
 
@@ -215,18 +191,226 @@ void main() {
     });
   });
 
+  group('RoleSegment', () {
+    group('fromJson', () {
+      test('parses all fields correctly', () {
+        final json = {
+          'role': 'PIC',
+          'start': '2024-06-15T08:30:00.000Z',
+          'end': '2024-06-15T16:00:00.000Z',
+        };
+
+        final segment = RoleSegment.fromJson(json);
+
+        expect(segment.role, 'PIC');
+        expect(segment.start, DateTime.utc(2024, 6, 15, 8, 30));
+        expect(segment.end, DateTime.utc(2024, 6, 15, 16, 0));
+      });
+    });
+
+    group('toJson', () {
+      test('serializes all fields', () {
+        final segment = RoleSegment(
+          role: 'SIC',
+          start: DateTime.utc(2024, 6, 15, 8, 30),
+          end: DateTime.utc(2024, 6, 15, 12, 0),
+        );
+
+        final json = segment.toJson();
+
+        expect(json['role'], 'SIC');
+        expect(json['start'], '2024-06-15T08:30:00.000Z');
+        expect(json['end'], '2024-06-15T12:00:00.000Z');
+      });
+    });
+
+    group('durationMinutes', () {
+      test('calculates duration correctly', () {
+        final segment = RoleSegment(
+          role: 'PIC',
+          start: DateTime.utc(2024, 6, 15, 8, 0),
+          end: DateTime.utc(2024, 6, 15, 10, 30),
+        );
+
+        expect(segment.durationMinutes, 150); // 2.5 hours
+      });
+
+      test('returns 0 for same start and end', () {
+        final now = DateTime.utc(2024, 6, 15, 8, 0);
+        final segment = RoleSegment(
+          role: 'PIC',
+          start: now,
+          end: now,
+        );
+
+        expect(segment.durationMinutes, 0);
+      });
+    });
+  });
+
+  group('CrewMember', () {
+    group('fromJson', () {
+      test('parses all fields correctly', () {
+        final json = {
+          'pilotUUID': 'uuid-123',
+          'pilotLicense': 'UK-ATPL-12345',
+          'pilotName': 'John Doe',
+          'roles': [
+            {
+              'role': 'PIC',
+              'start': '2024-06-15T08:30:00.000Z',
+              'end': '2024-06-15T16:00:00.000Z',
+            }
+          ],
+          'landings': {'day': 1, 'night': 0},
+          'remarks': 'Good flight',
+          'joinedAt': '2024-06-15T08:30:00.000Z',
+        };
+
+        final crew = CrewMember.fromJson(json);
+
+        expect(crew.pilotUUID, 'uuid-123');
+        expect(crew.pilotLicense, 'UK-ATPL-12345');
+        expect(crew.pilotName, 'John Doe');
+        expect(crew.roles.length, 1);
+        expect(crew.roles[0].role, 'PIC');
+        expect(crew.landings.day, 1);
+        expect(crew.remarks, 'Good flight');
+      });
+
+      test('defaults empty roles and landings', () {
+        final json = {
+          'pilotUUID': 'uuid-456',
+          'joinedAt': '2024-06-15T08:30:00.000Z',
+        };
+
+        final crew = CrewMember.fromJson(json);
+
+        expect(crew.roles, isEmpty);
+        expect(crew.landings.day, 0);
+        expect(crew.landings.night, 0);
+        expect(crew.remarks, '');
+      });
+    });
+
+    group('primaryRole', () {
+      test('returns empty string when no roles', () {
+        final crew = CrewMember(
+          pilotUUID: 'uuid-123',
+          roles: [],
+          landings: Landings(),
+          joinedAt: DateTime.now(),
+        );
+
+        expect(crew.primaryRole, '');
+      });
+
+      test('returns single role when only one', () {
+        final crew = CrewMember(
+          pilotUUID: 'uuid-123',
+          roles: [
+            RoleSegment(
+              role: 'PIC',
+              start: DateTime.utc(2024, 6, 15, 8, 0),
+              end: DateTime.utc(2024, 6, 15, 16, 0),
+            ),
+          ],
+          landings: Landings(day: 1),
+          joinedAt: DateTime.now(),
+        );
+
+        expect(crew.primaryRole, 'PIC');
+      });
+
+      test('returns longest duration role', () {
+        final crew = CrewMember(
+          pilotUUID: 'uuid-123',
+          roles: [
+            RoleSegment(
+              role: 'PIC',
+              start: DateTime.utc(2024, 6, 15, 8, 0),
+              end: DateTime.utc(2024, 6, 15, 10, 0), // 2 hours
+            ),
+            RoleSegment(
+              role: 'SIC',
+              start: DateTime.utc(2024, 6, 15, 10, 0),
+              end: DateTime.utc(2024, 6, 15, 16, 0), // 6 hours
+            ),
+          ],
+          landings: Landings(),
+          joinedAt: DateTime.now(),
+        );
+
+        expect(crew.primaryRole, 'SIC');
+      });
+    });
+
+    group('roleTimeMinutes', () {
+      test('calculates total time for a role', () {
+        final crew = CrewMember(
+          pilotUUID: 'uuid-123',
+          roles: [
+            RoleSegment(
+              role: 'PIC',
+              start: DateTime.utc(2024, 6, 15, 8, 0),
+              end: DateTime.utc(2024, 6, 15, 10, 0), // 2 hours = 120 min
+            ),
+            RoleSegment(
+              role: 'SIC',
+              start: DateTime.utc(2024, 6, 15, 10, 0),
+              end: DateTime.utc(2024, 6, 15, 12, 0), // 2 hours = 120 min
+            ),
+            RoleSegment(
+              role: 'PIC',
+              start: DateTime.utc(2024, 6, 15, 12, 0),
+              end: DateTime.utc(2024, 6, 15, 14, 0), // 2 hours = 120 min
+            ),
+          ],
+          landings: Landings(),
+          joinedAt: DateTime.now(),
+        );
+
+        expect(crew.roleTimeMinutes('PIC'), 240); // 4 hours total
+        expect(crew.roleTimeMinutes('SIC'), 120); // 2 hours
+        expect(crew.roleTimeMinutes('DUAL'), 0); // None
+      });
+    });
+  });
+
   group('LogbookEntry', () {
     // Helper to create valid JSON
     Map<String, dynamic> createValidJson({
-      String? trustLevel = 'LOGGED',
-      String? flightNumber,
-      String? remarks,
+      int crewCount = 1,
+      int verificationCount = 0,
     }) {
+      final crew = List.generate(crewCount, (i) => {
+        'pilotUUID': 'uuid-$i',
+        'pilotLicense': 'UK-ATPL-$i',
+        'roles': [
+          {
+            'role': i == 0 ? 'PIC' : 'SIC',
+            'start': '2024-06-15T08:30:00.000Z',
+            'end': '2024-06-15T16:00:00.000Z',
+          }
+        ],
+        'landings': {'day': i == 0 ? 1 : 0, 'night': 0},
+        'remarks': '',
+        'joinedAt': '2024-06-15T08:30:00.000Z',
+      });
+
+      final verifications = List.generate(verificationCount, (i) => {
+        'source': 'FlightRadar24',
+        'verifiedAt': '2024-06-15T17:00:00.000Z',
+        'verifiedBy': 'HyperLog Trust Engine',
+        'matchData': 'FR24-$i',
+      });
+
       return {
         'id': 'flight-123',
-        'pilotLicense': 'UK-ATPL-12345',
-        'flightDate': '2024-06-15T00:00:00.000Z',
-        'flightNumber': flightNumber,
+        'creatorUUID': 'uuid-0',
+        'creatorLicense': 'UK-ATPL-0',
+        'flightDate': '2024-06-15',
+        'flightNumber': 'BA117',
         'dep': 'EGLL',
         'dest': 'KJFK',
         'blockOff': '2024-06-15T08:30:00.000Z',
@@ -234,10 +418,9 @@ void main() {
         'aircraftType': 'B777',
         'aircraftReg': 'G-VIIA',
         'flightTime': {'total': 450, 'night': 120, 'ifr': 450},
-        'landings': {'day': 1, 'night': 0},
-        'role': 'PIC',
-        'remarks': remarks,
-        'trustLevel': trustLevel,
+        'crew': crew,
+        'verifications': verifications,
+        'endorsements': [],
         'createdAt': '2024-06-15T17:00:00.000Z',
         'updatedAt': '2024-06-15T17:00:00.000Z',
       };
@@ -249,15 +432,16 @@ void main() {
         final entry = LogbookEntry.fromJson(json);
 
         expect(entry.id, 'flight-123');
-        expect(entry.pilotLicense, 'UK-ATPL-12345');
+        expect(entry.creatorUUID, 'uuid-0');
+        expect(entry.creatorLicense, 'UK-ATPL-0');
         expect(entry.flightDate, DateTime.utc(2024, 6, 15));
+        expect(entry.flightNumber, 'BA117');
         expect(entry.dep, 'EGLL');
         expect(entry.dest, 'KJFK');
         expect(entry.blockOff, DateTime.utc(2024, 6, 15, 8, 30));
         expect(entry.blockOn, DateTime.utc(2024, 6, 15, 16, 0));
         expect(entry.aircraftType, 'B777');
         expect(entry.aircraftReg, 'G-VIIA');
-        expect(entry.role, 'PIC');
       });
 
       test('parses nested FlightTime correctly', () {
@@ -269,263 +453,174 @@ void main() {
         expect(entry.flightTime.ifr, 450);
       });
 
-      test('parses nested Landings correctly', () {
+      test('parses crew array correctly', () {
+        final json = createValidJson(crewCount: 2);
+        final entry = LogbookEntry.fromJson(json);
+
+        expect(entry.crew.length, 2);
+        expect(entry.crew[0].pilotUUID, 'uuid-0');
+        expect(entry.crew[0].roles[0].role, 'PIC');
+        expect(entry.crew[1].pilotUUID, 'uuid-1');
+        expect(entry.crew[1].roles[0].role, 'SIC');
+      });
+
+      test('defaults empty arrays when missing', () {
         final json = createValidJson();
+        json.remove('crew');
+        json.remove('verifications');
+        json.remove('endorsements');
+
         final entry = LogbookEntry.fromJson(json);
 
-        expect(entry.landings.day, 1);
-        expect(entry.landings.night, 0);
-        expect(entry.landings.total, 1);
-      });
-
-      test('parses optional flightNumber', () {
-        final json = createValidJson(flightNumber: 'BA117');
-        final entry = LogbookEntry.fromJson(json);
-        expect(entry.flightNumber, 'BA117');
-      });
-
-      test('parses optional remarks', () {
-        final json = createValidJson(remarks: 'Smooth flight');
-        final entry = LogbookEntry.fromJson(json);
-        expect(entry.remarks, 'Smooth flight');
+        expect(entry.crew, isEmpty);
+        expect(entry.verifications, isEmpty);
+        expect(entry.endorsements, isEmpty);
       });
     });
 
-    group('trust level parsing', () {
-      test('parses LOGGED correctly', () {
-        final json = createValidJson(trustLevel: 'LOGGED');
+    group('trustLevel (computed)', () {
+      test('returns LOGGED for single crew no verifications', () {
+        final json = createValidJson(crewCount: 1, verificationCount: 0);
         final entry = LogbookEntry.fromJson(json);
         expect(entry.trustLevel, TrustLevel.logged);
       });
 
-      test('parses TRACKED correctly', () {
-        final json = createValidJson(trustLevel: 'TRACKED');
+      test('returns TRACKED when verifications exist', () {
+        final json = createValidJson(crewCount: 1, verificationCount: 1);
         final entry = LogbookEntry.fromJson(json);
         expect(entry.trustLevel, TrustLevel.tracked);
       });
 
-      test('parses ENDORSED correctly', () {
-        final json = createValidJson(trustLevel: 'ENDORSED');
+      test('returns ENDORSED when 2+ crew members', () {
+        final json = createValidJson(crewCount: 2, verificationCount: 0);
         final entry = LogbookEntry.fromJson(json);
         expect(entry.trustLevel, TrustLevel.endorsed);
       });
 
-      test('handles lowercase trust level', () {
-        final json = createValidJson(trustLevel: 'tracked');
-        final entry = LogbookEntry.fromJson(json);
-        expect(entry.trustLevel, TrustLevel.tracked);
-      });
-
-      test('handles mixed case trust level', () {
-        final json = createValidJson(trustLevel: 'Endorsed');
+      test('ENDORSED takes priority over TRACKED', () {
+        final json = createValidJson(crewCount: 2, verificationCount: 1);
         final entry = LogbookEntry.fromJson(json);
         expect(entry.trustLevel, TrustLevel.endorsed);
       });
 
-      test('defaults to logged for null trust level', () {
-        final json = createValidJson(trustLevel: null);
+      test('returns LOGGED for empty crew', () {
+        final json = createValidJson(crewCount: 0, verificationCount: 0);
         final entry = LogbookEntry.fromJson(json);
         expect(entry.trustLevel, TrustLevel.logged);
       });
+    });
 
-      test('defaults to logged for unknown trust level', () {
-        final json = createValidJson(trustLevel: 'UNKNOWN');
+    group('creatorCrew', () {
+      test('returns crew member matching creatorUUID', () {
+        final json = createValidJson(crewCount: 2);
         final entry = LogbookEntry.fromJson(json);
-        expect(entry.trustLevel, TrustLevel.logged);
+
+        expect(entry.creatorCrew?.pilotUUID, 'uuid-0');
+        expect(entry.creatorCrew?.roles[0].role, 'PIC');
+      });
+
+      test('returns null for empty crew', () {
+        final json = createValidJson(crewCount: 0);
+        final entry = LogbookEntry.fromJson(json);
+
+        expect(entry.creatorCrew, isNull);
+      });
+    });
+
+    group('totalLandings', () {
+      test('sums landings from all crew members', () {
+        final json = createValidJson(crewCount: 2);
+        // First crew has day: 1, second has day: 0
+        final entry = LogbookEntry.fromJson(json);
+
+        expect(entry.totalLandings.day, 1);
+        expect(entry.totalLandings.night, 0);
+      });
+
+      test('returns zero for empty crew', () {
+        final json = createValidJson(crewCount: 0);
+        final entry = LogbookEntry.fromJson(json);
+
+        expect(entry.totalLandings.day, 0);
+        expect(entry.totalLandings.night, 0);
       });
     });
 
     group('toShort', () {
       test('converts to LogbookEntryShort with correct fields', () {
-        final entry = LogbookEntry(
-          id: 'flight-456',
-          pilotUUID: 'test-uuid-456',
-          pilotLicense: 'UK-12345',
-          flightDate: DateTime(2024, 7, 20),
-          dep: 'EGCC',
-          dest: 'LEMD',
-          blockOff: DateTime(2024, 7, 20, 6, 0),
-          blockOn: DateTime(2024, 7, 20, 8, 30),
-          aircraftType: 'A320',
-          aircraftReg: 'G-EUPH',
-          flightTime: FlightTime(total: 150),
-          landings: Landings(day: 1),
-          role: 'FO',
-          trustLevel: TrustLevel.tracked,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
+        final json = createValidJson(crewCount: 1);
+        final entry = LogbookEntry.fromJson(json);
 
         final short = entry.toShort();
 
-        expect(short.id, 'flight-456');
-        expect(short.date, DateTime(2024, 7, 20));
-        expect(short.depIata, 'EGCC');
-        expect(short.desIata, 'LEMD');
-        expect(short.acftReg, 'G-EUPH');
-        expect(short.acftType, 'A320');
-        expect(short.blockTime, '02:30');
-        expect(short.trustLevel, TrustLevel.tracked);
+        expect(short.id, 'flight-123');
+        expect(short.date, DateTime.utc(2024, 6, 15));
+        expect(short.depIata, 'EGLL');
+        expect(short.desIata, 'KJFK');
+        expect(short.acftReg, 'G-VIIA');
+        expect(short.acftType, 'B777');
+        expect(short.blockTime, '07:30'); // 450 min
+        expect(short.trustLevel, TrustLevel.logged);
       });
 
-      test('formats blockTime correctly from flightTime', () {
-        final entry = LogbookEntry(
-          id: 'test',
-          pilotUUID: 'test-uuid-001',
-          pilotLicense: 'UK-12345',
-          flightDate: DateTime.now(),
-          dep: 'LHR',
-          dest: 'JFK',
-          blockOff: DateTime.now(),
-          blockOn: DateTime.now(),
-          aircraftType: 'B747',
-          aircraftReg: 'G-CIVX',
-          flightTime: FlightTime(total: 480), // 8 hours
-          landings: Landings(day: 1),
-          role: 'PIC',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
+      test('includes computed trustLevel', () {
+        final json = createValidJson(crewCount: 2);
+        final entry = LogbookEntry.fromJson(json);
 
         final short = entry.toShort();
-        expect(short.blockTime, '08:00');
+        expect(short.trustLevel, TrustLevel.endorsed);
       });
     });
 
     group('toJson', () {
-      test('serializes to correct format for API', () {
-        final entry = LogbookEntry(
-          id: 'flight-789',
-          pilotUUID: 'test-uuid-789',
-          pilotLicense: 'UK-ATPL-54321',
-          flightDate: DateTime.utc(2024, 8, 1),
-          flightNumber: 'VS1',
-          dep: 'EGLL',
-          dest: 'KJFK',
-          blockOff: DateTime.utc(2024, 8, 1, 10, 0),
-          blockOn: DateTime.utc(2024, 8, 1, 18, 30),
-          aircraftType: 'A350',
-          aircraftReg: 'G-VLUX',
-          flightTime: FlightTime(total: 510, night: 0, ifr: 510),
-          landings: Landings(day: 1, night: 0),
-          role: 'PIC',
-          remarks: 'Test flight',
-          trustLevel: TrustLevel.endorsed,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
+      test('serializes to CreateFlightRequest format', () {
+        final json = createValidJson(crewCount: 1);
+        final entry = LogbookEntry.fromJson(json);
 
-        final json = entry.toJson();
+        final output = entry.toJson();
 
-        expect(json['pilotLicense'], 'UK-ATPL-54321');
-        expect(json['flightDate'], '2024-08-01T00:00:00.000Z');
-        expect(json['flightNumber'], 'VS1');
-        expect(json['dep'], 'EGLL');
-        expect(json['dest'], 'KJFK');
-        expect(json['blockOff'], '2024-08-01T10:00:00.000Z');
-        expect(json['blockOn'], '2024-08-01T18:30:00.000Z');
-        expect(json['aircraftType'], 'A350');
-        expect(json['aircraftReg'], 'G-VLUX');
-        expect(json['flightTime']['total'], 510);
-        expect(json['landings']['day'], 1);
-        expect(json['role'], 'PIC');
-        expect(json['remarks'], 'Test flight');
-      });
-
-      test('handles null optional fields', () {
-        final entry = LogbookEntry(
-          id: 'test',
-          pilotUUID: 'test-uuid-001',
-          pilotLicense: 'UK-12345',
-          flightDate: DateTime.utc(2024, 1, 1),
-          dep: 'EGLL',
-          dest: 'LFPG',
-          blockOff: DateTime.utc(2024, 1, 1, 8, 0),
-          blockOn: DateTime.utc(2024, 1, 1, 9, 0),
-          aircraftType: 'A319',
-          aircraftReg: 'G-EZAA',
-          flightTime: FlightTime(total: 60),
-          landings: Landings(day: 1),
-          role: 'PIC',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
-
-        final json = entry.toJson();
-
-        expect(json['flightNumber'], '');
-        expect(json['remarks'], '');
+        expect(output['pilotLicense'], 'UK-ATPL-0');
+        expect(output['flightDate'], '2024-06-15');
+        expect(output['flightNumber'], 'BA117');
+        expect(output['dep'], 'EGLL');
+        expect(output['dest'], 'KJFK');
+        expect(output['aircraftType'], 'B777');
+        expect(output['aircraftReg'], 'G-VIIA');
+        expect(output['flightTime']['total'], 450);
+        expect(output['roles'], isA<List>());
+        expect(output['landings']['day'], 1);
       });
 
       test('does not include id in JSON output', () {
-        final entry = LogbookEntry(
-          id: 'should-not-appear',
-          pilotUUID: 'test-uuid-001',
-          pilotLicense: 'UK-12345',
-          flightDate: DateTime.utc(2024, 1, 1),
-          dep: 'EGLL',
-          dest: 'LFPG',
-          blockOff: DateTime.utc(2024, 1, 1, 8, 0),
-          blockOn: DateTime.utc(2024, 1, 1, 9, 0),
-          aircraftType: 'A319',
-          aircraftReg: 'G-EZAA',
-          flightTime: FlightTime(total: 60),
-          landings: Landings(day: 1),
-          role: 'PIC',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
+        final json = createValidJson(crewCount: 1);
+        final entry = LogbookEntry.fromJson(json);
 
-        final json = entry.toJson();
-        expect(json.containsKey('id'), false);
+        final output = entry.toJson();
+        expect(output.containsKey('id'), false);
       });
 
       test('does not include trustLevel in JSON output', () {
-        final entry = LogbookEntry(
-          id: 'test',
-          pilotUUID: 'test-uuid-001',
-          pilotLicense: 'UK-12345',
-          flightDate: DateTime.utc(2024, 1, 1),
-          dep: 'EGLL',
-          dest: 'LFPG',
-          blockOff: DateTime.utc(2024, 1, 1, 8, 0),
-          blockOn: DateTime.utc(2024, 1, 1, 9, 0),
-          aircraftType: 'A319',
-          aircraftReg: 'G-EZAA',
-          flightTime: FlightTime(total: 60),
-          landings: Landings(day: 1),
-          role: 'PIC',
-          trustLevel: TrustLevel.endorsed,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
+        final json = createValidJson(crewCount: 2);
+        final entry = LogbookEntry.fromJson(json);
 
-        final json = entry.toJson();
-        expect(json.containsKey('trustLevel'), false);
+        final output = entry.toJson();
+        expect(output.containsKey('trustLevel'), false);
       });
-    });
 
-    group('constructor defaults', () {
-      test('trustLevel defaults to logged', () {
-        final entry = LogbookEntry(
-          id: 'test',
-          pilotUUID: 'test-uuid-001',
-          pilotLicense: 'UK-12345',
-          flightDate: DateTime.now(),
-          dep: 'LHR',
-          dest: 'CDG',
-          blockOff: DateTime.now(),
-          blockOn: DateTime.now(),
-          aircraftType: 'A320',
-          aircraftReg: 'G-TEST',
-          flightTime: FlightTime(total: 60),
-          landings: Landings(),
-          role: 'PIC',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
+      test('does not include creatorUUID in JSON output', () {
+        final json = createValidJson(crewCount: 1);
+        final entry = LogbookEntry.fromJson(json);
 
-        expect(entry.trustLevel, TrustLevel.logged);
+        final output = entry.toJson();
+        expect(output.containsKey('creatorUUID'), false);
+      });
+
+      test('formats flightDate as date only', () {
+        final json = createValidJson(crewCount: 1);
+        final entry = LogbookEntry.fromJson(json);
+
+        final output = entry.toJson();
+        expect(output['flightDate'], '2024-06-15');
       });
     });
   });

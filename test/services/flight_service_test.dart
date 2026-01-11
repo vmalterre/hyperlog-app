@@ -28,15 +28,39 @@ void main() {
     );
   });
 
-  // Helper to create valid flight JSON
+  // Helper to create valid flight JSON matching new structure
   Map<String, dynamic> createFlightJson({
     String id = 'flight-1',
-    String trustLevel = 'LOGGED',
+    int crewCount = 1,
+    int verificationCount = 0,
   }) {
+    final crew = List.generate(crewCount, (i) => {
+      'pilotUUID': 'uuid-$i',
+      'pilotLicense': i == 0 ? 'UK-ATPL-12345' : 'UK-ATPL-$i',
+      'roles': [
+        {
+          'role': i == 0 ? 'PIC' : 'SIC',
+          'start': '2024-06-15T08:30:00.000Z',
+          'end': '2024-06-15T16:00:00.000Z',
+        }
+      ],
+      'landings': {'day': i == 0 ? 1 : 0, 'night': 0},
+      'remarks': '',
+      'joinedAt': '2024-06-15T08:30:00.000Z',
+    });
+
+    final verifications = List.generate(verificationCount, (i) => {
+      'source': 'FlightRadar24',
+      'verifiedAt': '2024-06-15T17:00:00.000Z',
+      'verifiedBy': 'HyperLog Trust Engine',
+      'matchData': 'FR24-$i',
+    });
+
     return {
       'id': id,
-      'pilotLicense': 'UK-ATPL-12345',
-      'flightDate': '2024-06-15T00:00:00.000Z',
+      'creatorUUID': 'uuid-0',
+      'creatorLicense': 'UK-ATPL-12345',
+      'flightDate': '2024-06-15',
       'dep': 'EGLL',
       'dest': 'KJFK',
       'blockOff': '2024-06-15T08:30:00.000Z',
@@ -44,12 +68,53 @@ void main() {
       'aircraftType': 'B777',
       'aircraftReg': 'G-VIIA',
       'flightTime': {'total': 450, 'night': 120, 'ifr': 450},
-      'landings': {'day': 1, 'night': 0},
-      'role': 'PIC',
-      'trustLevel': trustLevel,
+      'crew': crew,
+      'verifications': verifications,
+      'endorsements': [],
       'createdAt': '2024-06-15T17:00:00.000Z',
       'updatedAt': '2024-06-15T17:00:00.000Z',
     };
+  }
+
+  // Helper to create a LogbookEntry for testing
+  LogbookEntry createTestEntry({
+    String id = '',
+    String creatorUUID = 'test-uuid-12345',
+    String creatorLicense = 'UK-ATPL-12345',
+    String dep = 'EGLL',
+    String dest = 'KJFK',
+    String role = 'PIC',
+  }) {
+    final now = DateTime.now();
+    final blockOff = DateTime.utc(2024, 6, 15, 8, 30);
+    final blockOn = DateTime.utc(2024, 6, 15, 16, 0);
+
+    return LogbookEntry(
+      id: id,
+      creatorUUID: creatorUUID,
+      creatorLicense: creatorLicense,
+      flightDate: DateTime.utc(2024, 6, 15),
+      dep: dep,
+      dest: dest,
+      blockOff: blockOff,
+      blockOn: blockOn,
+      aircraftType: 'B777',
+      aircraftReg: 'G-VIIA',
+      flightTime: FlightTime(total: 450),
+      crew: [
+        CrewMember(
+          pilotUUID: creatorUUID,
+          pilotLicense: creatorLicense,
+          roles: [
+            RoleSegment(role: role, start: blockOff, end: blockOn),
+          ],
+          landings: Landings(day: 1),
+          joinedAt: now,
+        ),
+      ],
+      createdAt: now,
+      updatedAt: now,
+    );
   }
 
   group('FlightService', () {
@@ -58,8 +123,8 @@ void main() {
         when(() => mockApiService.get(any())).thenAnswer((_) async => {
               'success': true,
               'data': [
-                createFlightJson(id: 'flight-1'),
-                createFlightJson(id: 'flight-2', trustLevel: 'TRACKED'),
+                createFlightJson(id: 'flight-1', crewCount: 1),
+                createFlightJson(id: 'flight-2', verificationCount: 1),
               ],
             });
 
@@ -167,7 +232,7 @@ void main() {
         final flight = await flightService.getFlight('flight-123');
 
         expect(flight.id, 'flight-123');
-        expect(flight.pilotLicense, 'UK-ATPL-12345');
+        expect(flight.creatorLicense, 'UK-ATPL-12345');
         expect(flight.dep, 'EGLL');
         expect(flight.dest, 'KJFK');
         expect(flight.aircraftReg, 'G-VIIA');
@@ -212,23 +277,7 @@ void main() {
 
     group('createFlight', () {
       test('creates flight and returns LogbookEntry', () async {
-        final inputEntry = LogbookEntry(
-          id: '',
-          pilotUUID: 'test-uuid-12345',
-          pilotLicense: 'UK-ATPL-12345',
-          flightDate: DateTime.utc(2024, 6, 15),
-          dep: 'EGLL',
-          dest: 'KJFK',
-          blockOff: DateTime.utc(2024, 6, 15, 8, 30),
-          blockOn: DateTime.utc(2024, 6, 15, 16, 0),
-          aircraftType: 'B777',
-          aircraftReg: 'G-VIIA',
-          flightTime: FlightTime(total: 450),
-          landings: Landings(day: 1),
-          role: 'PIC',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
+        final inputEntry = createTestEntry();
 
         when(() => mockApiService.post(any(), any())).thenAnswer((_) async => {
               'success': true,
@@ -238,26 +287,14 @@ void main() {
         final result = await flightService.createFlight(inputEntry);
 
         expect(result.id, 'new-flight-id');
-        expect(result.pilotLicense, 'UK-ATPL-12345');
+        expect(result.creatorLicense, 'UK-ATPL-12345');
       });
 
       test('calls correct API endpoint with entry JSON', () async {
-        final inputEntry = LogbookEntry(
-          id: '',
-          pilotUUID: 'test-uuid-001',
-          pilotLicense: 'UK-12345',
-          flightDate: DateTime.utc(2024, 1, 1),
+        final inputEntry = createTestEntry(
+          creatorLicense: 'UK-12345',
           dep: 'LHR',
           dest: 'CDG',
-          blockOff: DateTime.utc(2024, 1, 1, 8, 0),
-          blockOn: DateTime.utc(2024, 1, 1, 9, 30),
-          aircraftType: 'A320',
-          aircraftReg: 'G-TEST',
-          flightTime: FlightTime(total: 90),
-          landings: Landings(day: 1),
-          role: 'FO',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
         );
 
         when(() => mockApiService.post(any(), any())).thenAnswer((_) async => {
@@ -275,26 +312,13 @@ void main() {
         expect(sentData['pilotLicense'], 'UK-12345');
         expect(sentData['dep'], 'LHR');
         expect(sentData['dest'], 'CDG');
-        expect(sentData['aircraftReg'], 'G-TEST');
       });
 
       test('reports server errors to ErrorService with flight metadata', () async {
-        final inputEntry = LogbookEntry(
-          id: '',
-          pilotUUID: 'test-uuid-99999',
-          pilotLicense: 'UK-ATPL-99999',
-          flightDate: DateTime.now(),
+        final inputEntry = createTestEntry(
+          creatorLicense: 'UK-ATPL-99999',
           dep: 'EGCC',
           dest: 'LEMD',
-          blockOff: DateTime.now(),
-          blockOn: DateTime.now(),
-          aircraftType: 'A320',
-          aircraftReg: 'G-EZAB',
-          flightTime: FlightTime(total: 120),
-          landings: Landings(day: 1),
-          role: 'PIC',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
         );
 
         final exception = ApiException(message: 'Server error', statusCode: 500);
@@ -317,7 +341,7 @@ void main() {
               any(),
               message: 'Failed to create flight',
               metadata: {
-                'pilotLicense': 'UK-ATPL-99999',
+                'creatorLicense': 'UK-ATPL-99999',
                 'dep': 'EGCC',
                 'dest': 'LEMD',
               },
