@@ -1,5 +1,6 @@
 import '../config/app_config.dart';
 import '../models/pilot.dart';
+import '../models/saved_pilot.dart';
 import 'api_exception.dart';
 import 'api_service.dart';
 import 'error_service.dart';
@@ -68,6 +69,133 @@ class PilotService {
     } on ApiException catch (e) {
       if (e.isNotFound) {
         return false;
+      }
+      rethrow;
+    }
+  }
+
+  // ==========================================
+  // Saved Pilots Operations
+  // ==========================================
+
+  /// Get all saved pilots for a pilot (merged: saved_pilots + distinct crew names)
+  Future<List<SavedPilot>> getSavedPilots(String licenseNumber) async {
+    try {
+      final response = await _api.get(
+        '${AppConfig.pilots}/$licenseNumber/saved-pilots',
+      );
+      final data = response['data'] as List;
+      return data.map((json) => SavedPilot.fromJson(json)).toList();
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to get saved pilots',
+          metadata: {'licenseNumber': licenseNumber},
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Create a saved pilot (manual add)
+  Future<SavedPilot> createSavedPilot(
+    String licenseNumber,
+    String name,
+  ) async {
+    try {
+      final response = await _api.post(
+        '${AppConfig.pilots}/$licenseNumber/saved-pilots',
+        {'name': name},
+      );
+      return SavedPilot.fromJson(response['data']);
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to create saved pilot',
+          metadata: {'licenseNumber': licenseNumber, 'name': name},
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Update pilot name across all flights
+  Future<int> updateSavedPilotName(
+    String licenseNumber,
+    String oldName,
+    String newName,
+  ) async {
+    try {
+      final encodedName = Uri.encodeComponent(oldName);
+      final response = await _api.put(
+        '${AppConfig.pilots}/$licenseNumber/saved-pilots/$encodedName',
+        {'name': newName},
+      );
+      return response['data']['updatedCount'] as int;
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to update saved pilot',
+          metadata: {
+            'licenseNumber': licenseNumber,
+            'oldName': oldName,
+            'newName': newName,
+          },
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Delete pilot from saved_pilots and all crew entries
+  Future<int> deleteSavedPilot(
+    String licenseNumber,
+    String name,
+  ) async {
+    try {
+      final encodedName = Uri.encodeComponent(name);
+      final response = await _api.delete(
+        '${AppConfig.pilots}/$licenseNumber/saved-pilots/$encodedName',
+      );
+      return response['data']['deletedCount'] as int;
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to delete saved pilot',
+          metadata: {'licenseNumber': licenseNumber, 'name': name},
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Get count of flights that would be affected by deleting a pilot
+  Future<int> getFlightCountForPilot(
+    String licenseNumber,
+    String name,
+  ) async {
+    try {
+      final encodedName = Uri.encodeComponent(name);
+      final response = await _api.get(
+        '${AppConfig.pilots}/$licenseNumber/saved-pilots/$encodedName/flight-count',
+      );
+      return response['data']['flightCount'] as int;
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to get flight count for pilot',
+          metadata: {'licenseNumber': licenseNumber, 'name': name},
+        );
       }
       rethrow;
     }

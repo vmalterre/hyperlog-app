@@ -259,14 +259,6 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
               children: [
                 _buildDetailRow('Flight Number', _entry!.flightNumber ?? '-'),
                 _buildDivider(),
-                // Crew section (inline)
-                if (_entry!.crew.isNotEmpty) ...[
-                  ..._entry!.crew.map((member) => _buildDetailRow(
-                    member.primaryRole,
-                    member.pilotName ?? 'Unknown',
-                  )),
-                  _buildDivider(),
-                ],
                 _buildDetailRow('Block Off', timeFormat.format(_entry!.blockOff)),
                 _buildDetailRow('Block On', timeFormat.format(_entry!.blockOn)),
                 _buildDetailRow('Flight Time', _entry!.flightTime.formatted),
@@ -281,6 +273,70 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
               ],
             ),
           ),
+
+          // Crew section - show other crew members (not the creator)
+          if (_entry!.crew.where((c) => c.pilotUUID != _entry!.creatorUUID).isNotEmpty) ...[
+            const SizedBox(height: 16),
+            GlassContainer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.people_outline, color: AppColors.denim, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Crew',
+                        style: AppTypography.label.copyWith(color: AppColors.denim),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ..._entry!.crew
+                      .where((c) => c.pilotUUID != _entry!.creatorUUID)
+                      .map((member) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: AppColors.denim.withValues(alpha: 0.2),
+                                  radius: 16,
+                                  child: Text(
+                                    (member.pilotName ?? '?')[0].toUpperCase(),
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: AppColors.denim,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        member.pilotName ?? 'Unknown',
+                                        style: AppTypography.body.copyWith(
+                                          color: AppColors.white,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      Text(
+                                        member.primaryRole,
+                                        style: AppTypography.caption.copyWith(
+                                          color: AppColors.whiteDarker,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
+                ],
+              ),
+            ),
+          ],
 
           // Trust level (official tier only)
           if (_isOfficialTier) ...[

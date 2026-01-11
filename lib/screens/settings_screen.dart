@@ -7,6 +7,7 @@ import 'package:hyperlog/theme/app_colors.dart';
 import 'package:hyperlog/theme/app_typography.dart';
 import 'package:hyperlog/widgets/glass_card.dart';
 import 'package:hyperlog/widgets/app_button.dart';
+import 'saved_pilots_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -87,6 +88,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: Icons.lock_outline,
                     title: 'Privacy & Security',
                     onTap: () {},
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Logbook settings
+              _SettingsSection(
+                title: 'LOGBOOK',
+                items: [
+                  _SettingsItem(
+                    icon: Icons.people_outline,
+                    title: 'My Pilots',
+                    subtitle: 'Manage saved crew members',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SavedPilotsScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

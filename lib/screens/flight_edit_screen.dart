@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/logbook_entry.dart';
+import '../models/saved_pilot.dart';
 import '../services/flight_service.dart';
+import '../services/pilot_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../widgets/app_button.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/form/crew_entry_card.dart';
 
 class FlightEditScreen extends StatefulWidget {
   final LogbookEntry entry;
@@ -22,6 +25,11 @@ class FlightEditScreen extends StatefulWidget {
 class _FlightEditScreenState extends State<FlightEditScreen> {
   final _formKey = GlobalKey<FormState>();
   final FlightService _flightService = FlightService();
+  final PilotService _pilotService = PilotService();
+
+  // Crew members
+  final List<CrewEntry> _crewEntries = [];
+  List<SavedPilot> _savedPilots = [];
 
   late TextEditingController _flightNumberController;
   late TextEditingController _depController;
@@ -43,6 +51,7 @@ class _FlightEditScreenState extends State<FlightEditScreen> {
   void initState() {
     super.initState();
     _initControllers();
+    _loadSavedPilots();
   }
 
   void _initControllers() {
@@ -61,6 +70,34 @@ class _FlightEditScreenState extends State<FlightEditScreen> {
     _flightDate = widget.entry.flightDate;
     _blockOff = widget.entry.blockOff;
     _blockOn = widget.entry.blockOn;
+
+    // Initialize crew entries from existing crew (excluding creator)
+    for (final member in widget.entry.crew) {
+      if (member.pilotUUID != widget.entry.creatorUUID &&
+          member.pilotName != null &&
+          member.pilotName!.isNotEmpty) {
+        _crewEntries.add(CrewEntry(
+          name: member.pilotName!,
+          role: member.primaryRole.isNotEmpty ? member.primaryRole : 'SIC',
+        ));
+      }
+    }
+  }
+
+  Future<void> _loadSavedPilots() async {
+    final license = widget.entry.creatorLicense;
+    if (license == null) return;
+
+    try {
+      final pilots = await _pilotService.getSavedPilots(license);
+      if (mounted) {
+        setState(() {
+          _savedPilots = pilots;
+        });
+      }
+    } catch (e) {
+      // Silently fail
+    }
   }
 
   @override
@@ -101,18 +138,26 @@ class _FlightEditScreenState extends State<FlightEditScreen> {
       joinedAt: widget.entry.creatorCrew?.joinedAt ?? DateTime.now(),
     );
 
-    // Keep other crew members, update the creator's entry
-    final updatedCrew = widget.entry.crew.map((member) {
-      if (member.pilotUUID == widget.entry.creatorUUID) {
-        return updatedCrewMember;
-      }
-      return member;
-    }).toList();
+    // Build additional crew members from the crew entries
+    final additionalCrew = _crewEntries
+        .where((e) => e.isValid)
+        .map((e) => CrewMember(
+              pilotUUID: 'standard-crew',
+              pilotName: e.name.trim(),
+              roles: [
+                RoleSegment(
+                  role: e.role.toUpperCase(),
+                  start: _blockOff,
+                  end: _blockOn,
+                ),
+              ],
+              landings: Landings(),
+              joinedAt: DateTime.now(),
+            ))
+        .toList();
 
-    // If creator wasn't in crew (shouldn't happen), add them
-    if (!updatedCrew.any((m) => m.pilotUUID == widget.entry.creatorUUID)) {
-      updatedCrew.insert(0, updatedCrewMember);
-    }
+    // Crew = creator + additional crew
+    final updatedCrew = [updatedCrewMember, ...additionalCrew];
 
     return LogbookEntry(
       id: widget.entry.id,
@@ -359,6 +404,54 @@ class _FlightEditScreenState extends State<FlightEditScreen> {
                   const SizedBox(height: 12),
                   _buildTextField('Remarks', _remarksController, maxLines: 3),
                 ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Crew section
+            SizedBox(
+              width: double.infinity,
+              child: GlassContainer(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Crew', style: AppTypography.body.copyWith(color: AppColors.white, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Other crew members on this flight',
+                      style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
+                    ),
+                    const SizedBox(height: 16),
+                    // Crew entry cards
+                    ..._crewEntries.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final crewEntry = entry.value;
+                      return CrewEntryCard(
+                        entry: crewEntry,
+                        suggestions: _savedPilots,
+                        onRemove: () {
+                          setState(() {
+                            _crewEntries.removeAt(index);
+                          });
+                        },
+                      );
+                    }),
+                    // Add crew button
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _crewEntries.add(CrewEntry());
+                        });
+                      },
+                      icon: Icon(Icons.add, color: AppColors.denim, size: 20),
+                      label: Text(
+                        'Add Crew Member',
+                        style: AppTypography.body.copyWith(color: AppColors.denim),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 

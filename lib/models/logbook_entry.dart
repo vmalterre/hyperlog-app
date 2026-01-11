@@ -366,6 +366,18 @@ class LogbookEntry {
   /// Convert to JSON for API (CreateFlightRequest format)
   Map<String, dynamic> toJson() {
     final creator = creatorCrew;
+
+    // Build standard crew list (other crew members, not the creator)
+    // Format: { name: string, role: string }
+    final standardCrew = crew
+        .where((c) => c.pilotUUID != creatorUUID)
+        .map((c) => {
+              'name': c.pilotName ?? '',
+              'role': c.primaryRole,
+            })
+        .where((c) => (c['name'] as String).isNotEmpty)
+        .toList();
+
     return {
       // API uses pilotLicense to look up UUID from PostgreSQL
       if (creatorLicense != null) 'pilotLicense': creatorLicense,
@@ -381,6 +393,7 @@ class LogbookEntry {
       'roles': creator?.roles.map((r) => r.toJson()).toList() ?? [],
       'landings': creator?.landings.toJson() ?? Landings().toJson(),
       'remarks': creator?.remarks ?? '',
+      if (standardCrew.isNotEmpty) 'crew': standardCrew,
     };
   }
 

@@ -33,6 +33,11 @@ class ApiService {
     return _request('PUT', endpoint, body: body);
   }
 
+  /// DELETE request
+  Future<Map<String, dynamic>> delete(String endpoint) async {
+    return _request('DELETE', endpoint);
+  }
+
   /// Internal request handler
   Future<Map<String, dynamic>> _request(
     String method,
@@ -62,6 +67,11 @@ class ApiService {
         case 'PUT':
           response = await _client
               .put(uri, headers: headers, body: jsonEncode(body))
+              .timeout(Duration(seconds: AppConfig.connectTimeout));
+          break;
+        case 'DELETE':
+          response = await _client
+              .delete(uri, headers: headers)
               .timeout(Duration(seconds: AppConfig.connectTimeout));
           break;
         default:
