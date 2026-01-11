@@ -16,10 +16,18 @@ class SavedPilotsScreen extends StatefulWidget {
 
 class _SavedPilotsScreenState extends State<SavedPilotsScreen> {
   final PilotService _pilotService = PilotService();
+  final TextEditingController _searchController = TextEditingController();
 
   List<SavedPilot> _pilots = [];
+  String _searchQuery = '';
   bool _isLoading = true;
   String? _errorMessage;
+
+  List<SavedPilot> get _filteredPilots {
+    if (_searchQuery.isEmpty) return _pilots;
+    final query = _searchQuery.toLowerCase();
+    return _pilots.where((p) => p.name.toLowerCase().contains(query)).toList();
+  }
 
   String? get _pilotLicense {
     return Provider.of<SessionState>(context, listen: false).pilotLicense;
@@ -28,7 +36,18 @@ class _SavedPilotsScreenState extends State<SavedPilotsScreen> {
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
     _loadPilots();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadPilots() async {
@@ -287,11 +306,22 @@ class _SavedPilotsScreenState extends State<SavedPilotsScreen> {
         elevation: 0,
         title: Text('My Pilots', style: AppTypography.h3),
         centerTitle: true,
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addPilot,
-        backgroundColor: AppColors.denim,
-        child: const Icon(Icons.add, color: AppColors.white),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: GlassContainer(
+              borderRadius: 22,
+              padding: EdgeInsets.zero,
+              borderColor: AppColors.denim.withValues(alpha: 0.3),
+              child: IconButton(
+                onPressed: _addPilot,
+                icon: const Icon(Icons.add, color: AppColors.denimLight),
+                iconSize: 24,
+                constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+              ),
+            ),
+          ),
+        ],
       ),
       body: _buildBody(),
     );
@@ -358,22 +388,72 @@ class _SavedPilotsScreenState extends State<SavedPilotsScreen> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadPilots,
-      color: AppColors.denim,
-      backgroundColor: AppColors.nightRiderDark,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _pilots.length,
-        itemBuilder: (context, index) {
-          final pilot = _pilots[index];
-          return _PilotCard(
-            pilot: pilot,
-            onEdit: () => _editPilot(pilot),
-            onDelete: () => _deletePilot(pilot),
-          );
-        },
-      ),
+    final pilots = _filteredPilots;
+
+    return Column(
+      children: [
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: TextField(
+            controller: _searchController,
+            style: AppTypography.body.copyWith(color: AppColors.white),
+            decoration: InputDecoration(
+              hintText: 'Search pilots...',
+              hintStyle: AppTypography.body.copyWith(color: AppColors.whiteDarker),
+              prefixIcon: Icon(Icons.search, color: AppColors.whiteDarker, size: 20),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(Icons.clear, color: AppColors.whiteDarker, size: 20),
+                      onPressed: () => _searchController.clear(),
+                    )
+                  : null,
+              filled: true,
+              fillColor: AppColors.nightRiderDark,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.borderSubtle),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.borderSubtle),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.denim),
+              ),
+            ),
+          ),
+        ),
+        // Pilot list
+        Expanded(
+          child: pilots.isEmpty && _searchQuery.isNotEmpty
+              ? Center(
+                  child: Text(
+                    'No pilots found',
+                    style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadPilots,
+                  color: AppColors.denim,
+                  backgroundColor: AppColors.nightRiderDark,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    itemCount: pilots.length,
+                    itemBuilder: (context, index) {
+                      final pilot = pilots[index];
+                      return _PilotCard(
+                        pilot: pilot,
+                        onEdit: () => _editPilot(pilot),
+                        onDelete: () => _deletePilot(pilot),
+                      );
+                    },
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }

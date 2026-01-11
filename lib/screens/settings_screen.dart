@@ -8,6 +8,7 @@ import 'package:hyperlog/theme/app_typography.dart';
 import 'package:hyperlog/widgets/glass_card.dart';
 import 'package:hyperlog/widgets/app_button.dart';
 import 'saved_pilots_screen.dart';
+import 'my_roles_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -97,6 +98,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _SettingsSection(
                 title: 'LOGBOOK',
                 items: [
+                  _SettingsItem(
+                    icon: Icons.badge_outlined,
+                    title: 'My Roles',
+                    subtitle: 'Default role for new flights',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MyRolesScreen(),
+                        ),
+                      );
+                    },
+                  ),
                   _SettingsItem(
                     icon: Icons.people_outline,
                     title: 'My Pilots',

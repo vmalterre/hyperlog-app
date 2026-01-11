@@ -1,48 +1,29 @@
 import 'package:flutter/material.dart';
+import '../../constants/role_standards.dart';
+import '../../services/preferences_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 
-/// EASA standard pilot roles for logbook entries
+/// Legacy PilotRoles class for backward compatibility
+/// New code should use RoleStandards from constants/role_standards.dart
 class PilotRoles {
-  static const List<String> values = [
-    'PIC',    // Pilot In Command
-    'SIC',    // Second In Command / Co-Pilot
-    'DUAL',   // Dual (receiving instruction)
-    'SPIC',   // Student Pilot In Command
-    'PICUS',  // Pilot In Command Under Supervision
-    'FI',     // Flight Instructor
-    'FE',     // Flight Examiner
-    'SP',     // Single Pilot
-    'RP',     // Relief Pilot
-    'OBS',    // Observer
-    'PU',     // Pilot Under training (legacy)
-    'PUT',    // Pilot Under Training
-  ];
+  static List<String> get values {
+    final prefs = PreferencesService.instance;
+    return RoleStandards.getRoleCodes(prefs.getRoleStandard());
+  }
 
   static String getDescription(String role) {
-    return switch (role) {
-      'PIC' => 'Pilot In Command',
-      'SIC' => 'Second In Command',
-      'DUAL' => 'Dual (Instruction)',
-      'SPIC' => 'Student PIC',
-      'PICUS' => 'PIC Under Supervision',
-      'FI' => 'Flight Instructor',
-      'FE' => 'Flight Examiner',
-      'SP' => 'Single Pilot',
-      'RP' => 'Relief Pilot',
-      'OBS' => 'Observer',
-      'PU' => 'Pilot Under Training',
-      'PUT' => 'Pilot Under Training',
-      _ => role,
-    };
+    final prefs = PreferencesService.instance;
+    return RoleStandards.getDescription(prefs.getRoleStandard(), role);
   }
 
   /// Get list of roles including any custom role that might exist in data
   static List<String> getValuesWithCustom(String? customRole) {
-    if (customRole == null || customRole.isEmpty || values.contains(customRole)) {
-      return values;
+    final currentValues = values;
+    if (customRole == null || customRole.isEmpty || currentValues.contains(customRole)) {
+      return currentValues;
     }
-    return [...values, customRole];
+    return [...currentValues, customRole];
   }
 }
 
@@ -65,8 +46,11 @@ class RoleDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Include custom role if value is not in standard list
+    final roles = PilotRoles.getValuesWithCustom(value);
+
     return DropdownButtonFormField<String>(
-      initialValue: value,
+      initialValue: roles.contains(value) ? value : roles.first,
       onChanged: enabled ? onChanged : null,
       validator: validator,
       decoration: InputDecoration(
@@ -83,28 +67,14 @@ class RoleDropdown extends StatelessWidget {
         Icons.expand_more,
         color: AppColors.whiteDarker,
       ),
-      items: PilotRoles.values.map((role) {
+      items: roles.map((role) {
         return DropdownMenuItem<String>(
           value: role,
-          child: Row(
-            children: [
-              SizedBox(
-                width: 48,
-                child: Text(
-                  role,
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              Text(
-                PilotRoles.getDescription(role),
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.whiteDarker,
-                ),
-              ),
-            ],
+          child: Text(
+            role,
+            style: AppTypography.body.copyWith(
+              color: AppColors.white,
+            ),
           ),
         );
       }).toList(),

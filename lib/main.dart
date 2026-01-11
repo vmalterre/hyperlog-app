@@ -1,5 +1,6 @@
 import 'package:hyperlog/config/app_config.dart';
 import 'package:hyperlog/session_state.dart';
+import 'package:hyperlog/services/preferences_service.dart';
 import 'package:hyperlog/theme/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -40,6 +41,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Initialize preferences for local storage
+  await PreferencesService.instance.init();
 
   // Crashlytics is not supported on web
   if (!kIsWeb) {

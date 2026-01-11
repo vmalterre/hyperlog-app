@@ -6,6 +6,7 @@ import '../models/saved_pilot.dart';
 import '../services/api_exception.dart';
 import '../services/flight_service.dart';
 import '../services/pilot_service.dart';
+import '../services/preferences_service.dart';
 import '../session_state.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
@@ -18,7 +19,13 @@ import '../widgets/form/number_stepper.dart';
 import '../widgets/form/crew_entry_card.dart';
 
 class AddFlightScreen extends StatefulWidget {
-  const AddFlightScreen({super.key});
+  /// Entry to edit. If null, creates a new flight.
+  final LogbookEntry? entry;
+
+  const AddFlightScreen({super.key, this.entry});
+
+  /// Whether we're editing an existing entry
+  bool get isEditMode => entry != null;
 
   @override
   State<AddFlightScreen> createState() => _AddFlightScreenState();
@@ -29,27 +36,28 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   final FlightService _flightService = FlightService();
   final PilotService _pilotService = PilotService();
 
-  // Crew members
-  final List<CrewEntry> _crewEntries = [];
+  // Crew members - first entry is always the current pilot
+  late CrewEntry _pilotCrewEntry;
+  final List<CrewEntry> _additionalCrewEntries = [];
   List<SavedPilot> _savedPilots = [];
 
   // Text controllers
-  final _flightNumberController = TextEditingController();
-  final _depController = TextEditingController();
-  final _destController = TextEditingController();
-  final _aircraftTypeController = TextEditingController();
-  final _aircraftRegController = TextEditingController();
-  final _remarksController = TextEditingController();
+  late TextEditingController _flightNumberController;
+  late TextEditingController _depController;
+  late TextEditingController _destController;
+  late TextEditingController _aircraftTypeController;
+  late TextEditingController _aircraftRegController;
+  late TextEditingController _remarksController;
 
   // Date/Time state
-  DateTime _flightDate = DateTime.now();
-  TimeOfDay _blockOff = const TimeOfDay(hour: 8, minute: 0);
-  TimeOfDay _blockOn = const TimeOfDay(hour: 10, minute: 0);
+  late DateTime _flightDate;
+  late TimeOfDay _blockOff;
+  late TimeOfDay _blockOn;
 
   // Selection state
-  final String _role = 'PIC';
-  int _dayLandings = 1;
-  int _nightLandings = 0;
+  late String _role;
+  late int _dayLandings;
+  late int _nightLandings;
 
   // Loading state
   bool _isLoading = false;
@@ -62,9 +70,16 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     return Provider.of<SessionState>(context, listen: false).pilotLicense;
   }
 
+  String get _tier {
+    return Provider.of<SessionState>(context, listen: false)
+        .currentPilot?.subscriptionTier.name ?? 'standard';
+  }
+
   @override
   void initState() {
     super.initState();
+    _initializeFields();
+
     // Listen for changes on all text controllers
     _flightNumberController.addListener(_onFormChanged);
     _depController.addListener(_onFormChanged);
@@ -75,6 +90,72 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
     // Load saved pilots for autocomplete
     _loadSavedPilots();
+  }
+
+  void _initializeFields() {
+    final entry = widget.entry;
+
+    if (entry != null) {
+      // Edit mode - populate from existing entry
+      final creatorCrew = entry.creatorCrew;
+
+      _flightNumberController = TextEditingController(text: entry.flightNumber ?? '');
+      _depController = TextEditingController(text: entry.dep);
+      _destController = TextEditingController(text: entry.dest);
+      _aircraftTypeController = TextEditingController(text: entry.aircraftType);
+      _aircraftRegController = TextEditingController(text: entry.aircraftReg);
+      _remarksController = TextEditingController(text: creatorCrew?.remarks ?? '');
+
+      _flightDate = entry.flightDate;
+      _blockOff = TimeOfDay(hour: entry.blockOff.hour, minute: entry.blockOff.minute);
+      _blockOn = TimeOfDay(hour: entry.blockOn.hour, minute: entry.blockOn.minute);
+
+      _role = creatorCrew?.primaryRole ?? PreferencesService.instance.getDefaultRole();
+      _dayLandings = entry.totalLandings.day;
+      _nightLandings = entry.totalLandings.night;
+
+      // Initialize pilot crew entry
+      _pilotCrewEntry = CrewEntry(name: '', role: _role);
+
+      // Initialize additional crew from existing entry (excluding creator)
+      for (final crew in entry.crew) {
+        if (crew.pilotUUID != entry.creatorUUID && crew.pilotName != null) {
+          _additionalCrewEntries.add(CrewEntry(
+            name: crew.pilotName!,
+            role: crew.primaryRole,
+          ));
+        }
+      }
+    } else {
+      // Add mode - use defaults
+      _flightNumberController = TextEditingController();
+      _depController = TextEditingController();
+      _destController = TextEditingController();
+      _aircraftTypeController = TextEditingController();
+      _aircraftRegController = TextEditingController();
+      _remarksController = TextEditingController();
+
+      _flightDate = DateTime.now();
+      _blockOff = const TimeOfDay(hour: 8, minute: 0);
+      _blockOn = const TimeOfDay(hour: 10, minute: 0);
+
+      _role = PreferencesService.instance.getDefaultRole();
+      _dayLandings = 1;
+      _nightLandings = 0;
+
+      // Initialize pilot crew entry with default role (name set in didChangeDependencies)
+      _pilotCrewEntry = CrewEntry(name: '', role: _role);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Set pilot name from session (can't access context in initState)
+    final pilot = Provider.of<SessionState>(context, listen: false).currentPilot;
+    if (pilot != null && _pilotCrewEntry.name.isEmpty) {
+      _pilotCrewEntry.name = pilot.name;
+    }
   }
 
   Future<void> _loadSavedPilots() async {
@@ -90,6 +171,25 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       }
     } catch (e) {
       // Silently fail - autocomplete won't work but that's OK
+    }
+  }
+
+  Future<void> _saveNewCrewNames() async {
+    final license = _pilotLicense;
+    if (license == null) return;
+
+    final existingNames = _savedPilots.map((p) => p.name.toLowerCase()).toSet();
+
+    for (final crew in _additionalCrewEntries) {
+      final name = crew.name.trim();
+      if (name.isNotEmpty && !existingNames.contains(name.toLowerCase())) {
+        try {
+          await _pilotService.createSavedPilot(license, name);
+          existingNames.add(name.toLowerCase());
+        } catch (e) {
+          // Silently fail - pilot won't be saved but that's OK
+        }
+      }
     }
   }
 
@@ -250,7 +350,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         pilotLicense: license,
         roles: [
           RoleSegment(
-            role: _role.toUpperCase(),
+            role: _pilotCrewEntry.role.toUpperCase(),
             start: blockOffDateTime,
             end: blockOnDateTime,
           ),
@@ -261,7 +361,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       );
 
       // Build additional crew members from the crew entries
-      final additionalCrew = _crewEntries
+      final additionalCrew = _additionalCrewEntries
           .where((e) => e.isValid)
           .map((e) => CrewMember(
                 pilotUUID: 'standard-crew', // Marker for non-registered crew
@@ -279,8 +379,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           .toList();
 
       final entry = LogbookEntry(
-        id: '', // Generated by backend
-        creatorUUID: '', // Resolved by API from pilotLicense
+        id: widget.entry?.id ?? '', // Use existing ID in edit mode
+        creatorUUID: widget.entry?.creatorUUID ?? '', // Resolved by API from pilotLicense
         creatorLicense: license,
         flightDate: _flightDate,
         flightNumber: _flightNumberController.text.isEmpty
@@ -294,11 +394,22 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         aircraftReg: _aircraftRegController.text.toUpperCase(),
         flightTime: _calculatedFlightTime,
         crew: [creatorCrew, ...additionalCrew],
-        createdAt: DateTime.now(),
+        createdAt: widget.entry?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
-      await _flightService.createFlight(entry);
+      if (widget.isEditMode) {
+        await _flightService.updateFlight(widget.entry!.id, entry, tier: _tier);
+      } else {
+        await _flightService.createFlight(entry);
+      }
+
+      // Auto-save new crew names to "My Pilots" (don't block on errors)
+      try {
+        await _saveNewCrewNames();
+      } catch (_) {
+        // Ignore errors - crew names not being saved is non-critical
+      }
 
       if (mounted) {
         Navigator.pop(context, true); // Return true to refresh list
@@ -391,7 +502,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
               }
             },
           ),
-          title: Text('Add Flight', style: AppTypography.h3),
+          title: Text(widget.isEditMode ? 'Amend Flight' : 'Log Flight', style: AppTypography.h3),
           centerTitle: true,
         ),
         body: SafeArea(
@@ -431,11 +542,54 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                           const SizedBox(height: 16),
                           GlassTextField(
                             controller: _flightNumberController,
-                            label: 'Flight Number (optional)',
+                            label: 'Flight Number',
                             hint: 'e.g. BA 123',
                             prefixIcon: Icons.flight,
                             textCapitalization: TextCapitalization.characters,
                             maxLength: 10,
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GlassTextField(
+                                  controller: _depController,
+                                  label: 'From',
+                                  hint: 'LHR',
+                                  monospace: true,
+                                  textCapitalization: TextCapitalization.characters,
+                                  maxLength: 3,
+                                  validator: _validateIataCode,
+                                  inputFormatters: [
+                                    UpperCaseTextFormatter(),
+                                    LettersOnlyFormatter(),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Icon(
+                                  Icons.arrow_forward,
+                                  color: AppColors.denimLight,
+                                  size: 24,
+                                ),
+                              ),
+                              Expanded(
+                                child: GlassTextField(
+                                  controller: _destController,
+                                  label: 'To',
+                                  hint: 'JFK',
+                                  monospace: true,
+                                  textCapitalization: TextCapitalization.characters,
+                                  maxLength: 3,
+                                  validator: _validateIataCode,
+                                  inputFormatters: [
+                                    UpperCaseTextFormatter(),
+                                    LettersOnlyFormatter(),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -443,8 +597,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Route Section
-                    _SectionHeader(title: 'ROUTE'),
+                    // Aircraft Section
+                    _SectionHeader(title: 'AIRCRAFT'),
                     const SizedBox(height: 12),
                     GlassContainer(
                       padding: const EdgeInsets.all(20),
@@ -452,40 +606,27 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                         children: [
                           Expanded(
                             child: GlassTextField(
-                              controller: _depController,
-                              label: 'From',
-                              hint: 'LHR',
+                              controller: _aircraftTypeController,
+                              label: 'Type',
+                              hint: 'B777',
                               monospace: true,
                               textCapitalization: TextCapitalization.characters,
-                              maxLength: 3,
-                              validator: _validateIataCode,
-                              inputFormatters: [
-                                UpperCaseTextFormatter(),
-                                LettersOnlyFormatter(),
-                              ],
+                              maxLength: 10,
+                              validator: _validateAircraftType,
+                              inputFormatters: [UpperCaseTextFormatter()],
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Icon(
-                              Icons.arrow_forward,
-                              color: AppColors.denimLight,
-                              size: 24,
-                            ),
-                          ),
+                          const SizedBox(width: 16),
                           Expanded(
                             child: GlassTextField(
-                              controller: _destController,
-                              label: 'To',
-                              hint: 'JFK',
+                              controller: _aircraftRegController,
+                              label: 'Registration',
+                              hint: 'G-STBA',
                               monospace: true,
                               textCapitalization: TextCapitalization.characters,
-                              maxLength: 3,
-                              validator: _validateIataCode,
-                              inputFormatters: [
-                                UpperCaseTextFormatter(),
-                                LettersOnlyFormatter(),
-                              ],
+                              maxLength: 10,
+                              validator: _validateAircraftReg,
+                              inputFormatters: [AircraftRegFormatter()],
                             ),
                           ),
                         ],
@@ -575,44 +716,6 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Aircraft Section
-                    _SectionHeader(title: 'AIRCRAFT'),
-                    const SizedBox(height: 12),
-                    GlassContainer(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GlassTextField(
-                              controller: _aircraftTypeController,
-                              label: 'Type',
-                              hint: 'B777',
-                              monospace: true,
-                              textCapitalization: TextCapitalization.characters,
-                              maxLength: 10,
-                              validator: _validateAircraftType,
-                              inputFormatters: [UpperCaseTextFormatter()],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: GlassTextField(
-                              controller: _aircraftRegController,
-                              label: 'Registration',
-                              hint: 'G-STBA',
-                              monospace: true,
-                              textCapitalization: TextCapitalization.characters,
-                              maxLength: 10,
-                              validator: _validateAircraftReg,
-                              inputFormatters: [AircraftRegFormatter()],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
                     // Crew Section
                     _SectionHeader(title: 'CREW'),
                     const SizedBox(height: 12),
@@ -623,15 +726,32 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Add other crew members on this flight',
-                              style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.whiteDarker,
-                              ),
+                            // Current pilot (you) - always first, not removable
+                            CrewEntryCard(
+                              entry: _pilotCrewEntry,
+                              suggestions: _savedPilots,
+                              onRemove: () {}, // Can't remove yourself
+                              canRemove: false,
+                              onChanged: (entry) {
+                                setState(() {
+                                  _role = entry.role;
+                                  _hasChanges = true;
+                                });
+                              },
                             ),
-                            const SizedBox(height: 16),
-                            // Crew entry cards
-                            ..._crewEntries.asMap().entries.map((entry) {
+                            if (_additionalCrewEntries.isNotEmpty) ...[
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Text(
+                                  'Additional crew members',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.whiteDarker,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            // Additional crew entry cards
+                            ..._additionalCrewEntries.asMap().entries.map((entry) {
                               final index = entry.key;
                               final crewEntry = entry.value;
                               return CrewEntryCard(
@@ -639,7 +759,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                 suggestions: _savedPilots,
                                 onRemove: () {
                                   setState(() {
-                                    _crewEntries.removeAt(index);
+                                    _additionalCrewEntries.removeAt(index);
                                     _hasChanges = true;
                                   });
                                 },
@@ -649,7 +769,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                             TextButton.icon(
                               onPressed: () {
                                 setState(() {
-                                  _crewEntries.add(CrewEntry());
+                                  _additionalCrewEntries.add(CrewEntry());
                                   _hasChanges = true;
                                 });
                               },
@@ -728,7 +848,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
                     // Save Button
                     PrimaryButton(
-                      label: 'Save Flight',
+                      label: widget.isEditMode ? 'Save Changes' : 'Save Flight',
                       icon: Icons.check,
                       onPressed: _isLoading ? null : _saveEntry,
                       isLoading: _isLoading,

@@ -122,9 +122,10 @@ class FlightService {
   }
 
   /// Update an existing flight entry
-  Future<LogbookEntry> updateFlight(String id, LogbookEntry entry) async {
+  /// Pass [tier] to route to correct storage (standard=PostgreSQL, official=blockchain)
+  Future<LogbookEntry> updateFlight(String id, LogbookEntry entry, {String tier = 'standard'}) async {
     try {
-      final response = await _api.put('${AppConfig.flights}/$id', entry.toJson());
+      final response = await _api.put('${AppConfig.flights}/$id?tier=$tier', entry.toJson());
       return LogbookEntry.fromJson(response['data']);
     } on ApiException catch (e) {
       if (e.isServerError) {

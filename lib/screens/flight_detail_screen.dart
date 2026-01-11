@@ -12,7 +12,7 @@ import '../widgets/app_button.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/trust_badge.dart';
 import '../widgets/flight_history_timeline.dart';
-import 'flight_edit_screen.dart';
+import 'add_flight_screen.dart';
 
 class FlightDetailScreen extends StatefulWidget {
   final String flightId;
@@ -112,14 +112,14 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
   void _navigateToEdit() async {
     if (_entry == null) return;
 
-    final updated = await Navigator.push<LogbookEntry>(
+    final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => FlightEditScreen(entry: _entry!),
+        builder: (context) => AddFlightScreen(entry: _entry!),
       ),
     );
 
-    if (updated != null) {
+    if (result == true) {
       _loadData();
     }
   }

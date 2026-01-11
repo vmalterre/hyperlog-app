@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../constants/role_standards.dart';
 import '../../models/saved_pilot.dart';
+import '../../services/preferences_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import 'role_dropdown.dart';
@@ -9,7 +11,15 @@ class CrewEntry {
   String name;
   String role;
 
-  CrewEntry({this.name = '', this.role = 'SIC'});
+  CrewEntry({this.name = '', String? role})
+      : role = role ?? _getDefaultCrewRole();
+
+  /// Get the default role for crew (second role in the list, e.g., SIC or Co-Pilot)
+  static String _getDefaultCrewRole() {
+    final standard = PreferencesService.instance.getRoleStandard();
+    final roles = RoleStandards.getRoleCodes(standard);
+    return roles.length > 1 ? roles[1] : roles.first;
+  }
 
   bool get isValid => name.trim().isNotEmpty && role.isNotEmpty;
 }
