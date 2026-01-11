@@ -37,7 +37,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final session = Provider.of<SessionState>(context);
     final pilot = session.currentPilot;
-    final pilotLoadError = session.pilotLoadError;
     final displayName = pilot?.displayName ?? 'Pilot Account';
     final email = pilot?.email ?? '';
     final photoUrl = pilot?.photoUrl;
@@ -483,120 +482,6 @@ class _TierBadge extends StatelessWidget {
           letterSpacing: 0.8,
         ),
       ),
-    );
-  }
-}
-
-/// Detail item in identity card
-class _DetailItem extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final bool isMonospace;
-
-  const _DetailItem({
-    required this.label,
-    required this.value,
-    required this.icon,
-    this.isMonospace = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: AppColors.denim.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            icon,
-            size: 16,
-            color: AppColors.denimLight,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: AppTypography.label.copyWith(fontSize: 9),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: isMonospace
-                    ? GoogleFonts.jetBrainsMono(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.white,
-                      )
-                    : AppTypography.bodySmall.copyWith(
-                        color: AppColors.white,
-                        fontSize: 13,
-                      ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Verification status indicator for Official tier
-class _VerificationStatus extends StatelessWidget {
-  final bool isVerified;
-
-  const _VerificationStatus({required this.isVerified});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: isVerified
-                ? AppColors.endorsedGreen.withValues(alpha: 0.1)
-                : AppColors.trackedAmber.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            isVerified ? Icons.verified : Icons.pending_outlined,
-            size: 16,
-            color: isVerified ? AppColors.endorsedGreen : AppColors.trackedAmber,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'IDENTITY',
-                style: AppTypography.label.copyWith(fontSize: 9),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                isVerified ? 'Verified' : 'Pending',
-                style: AppTypography.bodySmall.copyWith(
-                  color: isVerified ? AppColors.endorsedGreen : AppColors.trackedAmber,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
