@@ -39,7 +39,7 @@ class Pilot {
     final lastName = json['lastName'] as String?;
     return Pilot(
       id: json['id'] ?? '', // UUID - primary identifier
-      licenseNumber: json['licenseNumber'],
+      licenseNumber: json['pilotLicense'] ?? '',
       name: json['name'] ?? [firstName, lastName].whereType<String>().join(' '),
       firstName: firstName,
       lastName: json['lastName'],

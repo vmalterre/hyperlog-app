@@ -54,11 +54,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
-              Text('Settings', style: AppTypography.h2(context)),
-              const SizedBox(height: 4),
-              Text(
-                'Manage your account',
-                style: AppTypography.bodySmall,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Settings', style: AppTypography.h2(context)),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Manage your account',
+                        style: AppTypography.bodySmall,
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: _TierBadge(isOfficial: isOfficial),
+                  ),
+                ],
               ),
               const SizedBox(height: 32),
 
@@ -67,7 +82,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 displayName: displayName,
                 email: email,
                 photoUrl: photoUrl,
-                isOfficial: isOfficial,
               ),
               const SizedBox(height: 24),
 
@@ -334,18 +348,16 @@ class _SettingsItem extends StatelessWidget {
   }
 }
 
-/// Pilot Identity Card - Clean design with premium badge
+/// Pilot Identity Card - Clean design
 class _PilotIdentityCard extends StatelessWidget {
   final String displayName;
   final String email;
   final String? photoUrl;
-  final bool isOfficial;
 
   const _PilotIdentityCard({
     required this.displayName,
     required this.email,
     this.photoUrl,
-    required this.isOfficial,
   });
 
   @override
@@ -354,31 +366,21 @@ class _PilotIdentityCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Avatar with premium ring for Official
+          // Avatar
           _buildAvatar(),
           const SizedBox(width: 16),
-          // Name, email, and badge
+          // Name and email
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Name row with badge
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        displayName,
-                        style: AppTypography.h4,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    _TierBadge(isOfficial: isOfficial),
-                  ],
+                Text(
+                  displayName,
+                  style: AppTypography.h4,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
-                // Email
                 Text(
                   email,
                   style: AppTypography.bodySmall,
@@ -405,19 +407,7 @@ class _PilotIdentityCard extends StatelessWidget {
       height: 56,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        // Premium gradient ring for Official tier
-        gradient: isOfficial
-            ? const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.denim,
-                  AppColors.denimLight,
-                  AppColors.denimLighter,
-                ],
-              )
-            : null,
-        color: isOfficial ? null : AppColors.denim.withValues(alpha: 0.3),
+        color: AppColors.denim.withValues(alpha: 0.3),
       ),
       padding: const EdgeInsets.all(2.5),
       child: Container(
@@ -457,7 +447,7 @@ class _TierBadge extends StatelessWidget {
     if (isOfficial) {
       // Premium Official badge with gradient and icon
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
@@ -467,7 +457,7 @@ class _TierBadge extends StatelessWidget {
               AppColors.denimLight,
             ],
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
               color: AppColors.denim.withValues(alpha: 0.4),
@@ -481,14 +471,14 @@ class _TierBadge extends StatelessWidget {
           children: [
             const Icon(
               Icons.workspace_premium,
-              size: 14,
+              size: 18,
               color: AppColors.white,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Text(
               'OFFICIAL',
               style: GoogleFonts.outfit(
-                fontSize: 11,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: AppColors.white,
                 letterSpacing: 1.2,
@@ -501,10 +491,10 @@ class _TierBadge extends StatelessWidget {
 
     // Standard badge - simpler style
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
         color: AppColors.nightRiderLight.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: AppColors.whiteDarker.withValues(alpha: 0.2),
         ),
@@ -512,7 +502,7 @@ class _TierBadge extends StatelessWidget {
       child: Text(
         'STANDARD',
         style: GoogleFonts.outfit(
-          fontSize: 10,
+          fontSize: 13,
           fontWeight: FontWeight.w600,
           color: AppColors.whiteDarker,
           letterSpacing: 0.8,
