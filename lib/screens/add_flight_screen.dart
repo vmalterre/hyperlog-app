@@ -47,7 +47,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   TimeOfDay _blockOn = const TimeOfDay(hour: 10, minute: 0);
 
   // Selection state
-  String _role = 'PIC';
+  final String _role = 'PIC';
   int _dayLandings = 1;
   int _nightLandings = 0;
 

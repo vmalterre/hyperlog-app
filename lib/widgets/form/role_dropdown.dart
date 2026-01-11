@@ -66,7 +66,7 @@ class RoleDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       onChanged: enabled ? onChanged : null,
       validator: validator,
       decoration: InputDecoration(
