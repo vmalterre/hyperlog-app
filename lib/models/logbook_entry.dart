@@ -1,6 +1,22 @@
 import '../widgets/trust_badge.dart';
 import 'logbook_entry_short.dart';
 
+/// Parse a date-only string (e.g., '2024-06-15') as UTC DateTime.
+/// This ensures consistent behavior across timezones for date-only fields.
+DateTime _parseDateAsUtc(String dateString) {
+  // If it's already an ISO8601 with time/timezone, parse directly
+  if (dateString.contains('T')) {
+    return DateTime.parse(dateString).toUtc();
+  }
+  // For date-only strings, parse and create UTC date at midnight
+  final parts = dateString.split('-');
+  return DateTime.utc(
+    int.parse(parts[0]),
+    int.parse(parts[1]),
+    int.parse(parts[2]),
+  );
+}
+
 /// External verification of a flight (from Trust Engine, instructors, etc.)
 class Verification {
   final String source;
@@ -270,7 +286,7 @@ class LogbookEntry {
       id: json['id'],
       creatorUUID: json['creatorUUID'] ?? '',
       creatorLicense: json['creatorLicense'],
-      flightDate: DateTime.parse(json['flightDate']),
+      flightDate: _parseDateAsUtc(json['flightDate']),
       flightNumber: json['flightNumber'],
       dep: json['dep'],
       dest: json['dest'],
