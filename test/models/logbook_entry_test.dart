@@ -573,13 +573,13 @@ void main() {
     });
 
     group('toJson', () {
-      test('serializes to CreateFlightRequest format', () {
+      test('serializes to CreateFlightRequest format with userId', () {
         final json = createValidJson(crewCount: 1);
         final entry = LogbookEntry.fromJson(json);
 
         final output = entry.toJson();
 
-        expect(output['pilotLicense'], 'UK-ATPL-0');
+        expect(output['userId'], 'uuid-0'); // Uses creatorUUID as userId
         expect(output['flightDate'], '2024-06-15');
         expect(output['flightNumber'], 'BA117');
         expect(output['dep'], 'EGLL');
@@ -607,12 +607,13 @@ void main() {
         expect(output.containsKey('trustLevel'), false);
       });
 
-      test('does not include creatorUUID in JSON output', () {
+      test('does not include pilotLicense in JSON output (uses userId instead)', () {
         final json = createValidJson(crewCount: 1);
         final entry = LogbookEntry.fromJson(json);
 
         final output = entry.toJson();
-        expect(output.containsKey('creatorUUID'), false);
+        expect(output.containsKey('pilotLicense'), false);
+        expect(output['userId'], isNotNull);
       });
 
       test('formats flightDate as date only', () {

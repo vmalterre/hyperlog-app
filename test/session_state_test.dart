@@ -12,11 +12,13 @@ void main() {
 
   // Helper to create valid pilot
   Pilot createTestPilot({
+    String id = 'uuid-standard-pilot',
     String licenseNumber = 'STANDARD-PILOT-001',
     String name = 'Standard Pilot',
     String email = 'standard@hyperlog.aero',
   }) {
     return Pilot(
+      id: id,
       licenseNumber: licenseNumber,
       name: name,
       email: email,
@@ -53,6 +55,10 @@ void main() {
         expect(sessionState.pilotLicense, isNull);
       });
 
+      test('userId is null before initialize() is called', () {
+        expect(sessionState.userId, isNull);
+      });
+
       test('error is null initially', () {
         expect(sessionState.error, isNull);
       });
@@ -80,7 +86,7 @@ void main() {
 
         await sessionState.initialize();
 
-        verifyNever(() => mockPilotService.getPilot(any()));
+        verifyNever(() => mockPilotService.getPilotByEmail(any()));
       });
 
       test('only initializes once (idempotent)', () async {
@@ -124,43 +130,38 @@ void main() {
         expect(sessionState.error, isNull);
       });
 
-      test('loads pilot data for known test email', () async {
+      test('loads pilot data by email', () async {
         final testPilot = createTestPilot();
-        when(() => mockPilotService.getPilot('STANDARD-PILOT-001'))
+        when(() => mockPilotService.getPilotByEmail('standard@hyperlog.aero'))
             .thenAnswer((_) async => testPilot);
 
         await sessionState.logIn(email: 'standard@hyperlog.aero');
 
         expect(sessionState.currentPilot, testPilot);
+        expect(sessionState.userId, 'uuid-standard-pilot');
         expect(sessionState.pilotLicense, 'STANDARD-PILOT-001');
       });
 
-      test('handles case-insensitive email matching', () async {
+      test('calls getPilotByEmail with provided email', () async {
         final testPilot = createTestPilot();
-        when(() => mockPilotService.getPilot('STANDARD-PILOT-001'))
+        when(() => mockPilotService.getPilotByEmail('STANDARD@HYPERLOG.AERO'))
             .thenAnswer((_) async => testPilot);
 
         await sessionState.logIn(email: 'STANDARD@HYPERLOG.AERO');
 
+        verify(() => mockPilotService.getPilotByEmail('STANDARD@HYPERLOG.AERO')).called(1);
         expect(sessionState.currentPilot, testPilot);
       });
 
-      test('currentPilot is null for unknown email', () async {
-        await sessionState.logIn(email: 'unknown@example.com');
-
-        expect(sessionState.currentPilot, isNull);
-        expect(sessionState.pilotLicense, isNull);
-        verifyNever(() => mockPilotService.getPilot(any()));
-      });
-
       test('currentPilot is null when pilot lookup fails', () async {
-        when(() => mockPilotService.getPilot(any()))
+        when(() => mockPilotService.getPilotByEmail(any()))
             .thenThrow(ApiException(message: 'Not found', statusCode: 404));
 
-        await sessionState.logIn(email: 'standard@hyperlog.aero');
+        await sessionState.logIn(email: 'unknown@example.com');
 
         expect(sessionState.isLoggedIn, true); // Still logged in
         expect(sessionState.currentPilot, isNull); // But no pilot data
+        expect(sessionState.userId, isNull);
       });
 
       test('notifies listeners after login', () async {
@@ -177,7 +178,7 @@ void main() {
       setUp(() async {
         // Set up logged-in state
         final testPilot = createTestPilot();
-        when(() => mockPilotService.getPilot('STANDARD-PILOT-001'))
+        when(() => mockPilotService.getPilotByEmail('standard@hyperlog.aero'))
             .thenAnswer((_) async => testPilot);
         when(() => mockAuthService.signOut()).thenAnswer((_) async {});
 
@@ -190,12 +191,14 @@ void main() {
         expect(sessionState.isLoggedIn, false);
       });
 
-      test('clears currentPilot', () async {
+      test('clears currentPilot and userId', () async {
         expect(sessionState.currentPilot, isNotNull); // Verify setup
+        expect(sessionState.userId, isNotNull);
 
         await sessionState.logOut();
 
         expect(sessionState.currentPilot, isNull);
+        expect(sessionState.userId, isNull);
         expect(sessionState.pilotLicense, isNull);
       });
 
@@ -231,12 +234,13 @@ void main() {
     });
 
     group('setCurrentPilot()', () {
-      test('sets the current pilot', () {
-        final pilot = createTestPilot(licenseNumber: 'UK-CPL-99999');
+      test('sets the current pilot and userId', () {
+        final pilot = createTestPilot(id: 'uuid-cpl-99999', licenseNumber: 'UK-CPL-99999');
 
         sessionState.setCurrentPilot(pilot);
 
         expect(sessionState.currentPilot, pilot);
+        expect(sessionState.userId, 'uuid-cpl-99999');
         expect(sessionState.pilotLicense, 'UK-CPL-99999');
       });
 
@@ -250,13 +254,15 @@ void main() {
       });
 
       test('can update pilot to different pilot', () {
-        final pilot1 = createTestPilot(licenseNumber: 'UK-PPL-111');
-        final pilot2 = createTestPilot(licenseNumber: 'UK-ATPL-222');
+        final pilot1 = createTestPilot(id: 'uuid-ppl-111', licenseNumber: 'UK-PPL-111');
+        final pilot2 = createTestPilot(id: 'uuid-atpl-222', licenseNumber: 'UK-ATPL-222');
 
         sessionState.setCurrentPilot(pilot1);
+        expect(sessionState.userId, 'uuid-ppl-111');
         expect(sessionState.pilotLicense, 'UK-PPL-111');
 
         sessionState.setCurrentPilot(pilot2);
+        expect(sessionState.userId, 'uuid-atpl-222');
         expect(sessionState.pilotLicense, 'UK-ATPL-222');
       });
     });
@@ -267,52 +273,61 @@ void main() {
 
         await sessionState.refreshPilot();
 
-        verifyNever(() => mockPilotService.getPilot(any()));
+        verifyNever(() => mockPilotService.getPilotByEmail(any()));
       });
     });
 
-    group('email to license mapping', () {
-      test('maps standard@hyperlog.aero to STANDARD-PILOT-001', () async {
+    group('getPilotByEmail behavior', () {
+      test('calls getPilotByEmail for any email', () async {
         final testPilot = createTestPilot();
-        when(() => mockPilotService.getPilot('STANDARD-PILOT-001'))
+        when(() => mockPilotService.getPilotByEmail('standard@hyperlog.aero'))
             .thenAnswer((_) async => testPilot);
 
         await sessionState.logIn(email: 'standard@hyperlog.aero');
 
-        verify(() => mockPilotService.getPilot('STANDARD-PILOT-001')).called(1);
+        verify(() => mockPilotService.getPilotByEmail('standard@hyperlog.aero')).called(1);
+        expect(sessionState.userId, 'uuid-standard-pilot');
       });
 
-      test('maps official@hyperlog.aero to OFFICIAL-PILOT-001', () async {
+      test('handles official tier pilot email lookup', () async {
         final officialPilot = createTestPilot(
+          id: 'uuid-official-pilot',
           licenseNumber: 'OFFICIAL-PILOT-001',
           email: 'official@hyperlog.aero',
         );
-        when(() => mockPilotService.getPilot('OFFICIAL-PILOT-001'))
+        when(() => mockPilotService.getPilotByEmail('official@hyperlog.aero'))
             .thenAnswer((_) async => officialPilot);
 
         await sessionState.logIn(email: 'official@hyperlog.aero');
 
-        verify(() => mockPilotService.getPilot('OFFICIAL-PILOT-001')).called(1);
+        verify(() => mockPilotService.getPilotByEmail('official@hyperlog.aero')).called(1);
+        expect(sessionState.userId, 'uuid-official-pilot');
       });
 
-      test('maps demo@hyperlog.aero to DEMO-PILOT-001', () async {
+      test('handles demo pilot email lookup', () async {
         final demoPilot = createTestPilot(
+          id: 'uuid-demo-pilot',
           licenseNumber: 'DEMO-PILOT-001',
           email: 'demo@hyperlog.aero',
         );
-        when(() => mockPilotService.getPilot('DEMO-PILOT-001'))
+        when(() => mockPilotService.getPilotByEmail('demo@hyperlog.aero'))
             .thenAnswer((_) async => demoPilot);
 
         await sessionState.logIn(email: 'demo@hyperlog.aero');
 
-        verify(() => mockPilotService.getPilot('DEMO-PILOT-001')).called(1);
+        verify(() => mockPilotService.getPilotByEmail('demo@hyperlog.aero')).called(1);
+        expect(sessionState.userId, 'uuid-demo-pilot');
       });
 
-      test('returns null for unmapped emails', () async {
+      test('handles unknown email gracefully', () async {
+        when(() => mockPilotService.getPilotByEmail('random@example.com'))
+            .thenThrow(ApiException(message: 'Not found', statusCode: 404));
+
         await sessionState.logIn(email: 'random@example.com');
 
-        verifyNever(() => mockPilotService.getPilot(any()));
+        verify(() => mockPilotService.getPilotByEmail('random@example.com')).called(1);
         expect(sessionState.currentPilot, isNull);
+        expect(sessionState.userId, isNull);
       });
     });
   });

@@ -66,8 +66,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   // Track changes for confirmation dialog
   bool _hasChanges = false;
 
-  String? get _pilotLicense {
-    return Provider.of<SessionState>(context, listen: false).pilotLicense;
+  String? get _userId {
+    return Provider.of<SessionState>(context, listen: false).userId;
   }
 
   String get _tier {
@@ -159,11 +159,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   }
 
   Future<void> _loadSavedPilots() async {
-    final license = _pilotLicense;
-    if (license == null) return;
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return;
 
     try {
-      final pilots = await _pilotService.getSavedPilots(license);
+      final pilots = await _pilotService.getSavedPilotsByUserId(userId);
       if (mounted) {
         setState(() {
           _savedPilots = pilots;
@@ -175,8 +175,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   }
 
   Future<void> _saveNewCrewNames() async {
-    final license = _pilotLicense;
-    if (license == null) return;
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return;
 
     final existingNames = _savedPilots.map((p) => p.name.toLowerCase()).toSet();
 
@@ -184,7 +184,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       final name = crew.name.trim();
       if (name.isNotEmpty && !existingNames.contains(name.toLowerCase())) {
         try {
-          await _pilotService.createSavedPilot(license, name);
+          await _pilotService.createSavedPilotByUserId(userId, name);
           existingNames.add(name.toLowerCase());
         } catch (e) {
           // Silently fail - pilot won't be saved but that's OK
@@ -307,8 +307,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       return;
     }
 
-    final license = _pilotLicense;
-    if (license == null) {
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) {
       setState(() {
         _errorMessage = 'No pilot profile found. Please complete registration.';
       });
@@ -346,8 +346,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
       // Build the creator's crew entry
       final creatorCrew = CrewMember(
-        pilotUUID: '', // Resolved by API from pilotLicense
-        pilotLicense: license,
+        pilotUUID: userId, // UUID for API
         roles: [
           RoleSegment(
             role: _pilotCrewEntry.role.toUpperCase(),
@@ -380,8 +379,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
       final entry = LogbookEntry(
         id: widget.entry?.id ?? '', // Use existing ID in edit mode
-        creatorUUID: widget.entry?.creatorUUID ?? '', // Resolved by API from pilotLicense
-        creatorLicense: license,
+        creatorUUID: userId, // UUID for API
         flightDate: _flightDate,
         flightNumber: _flightNumberController.text.isEmpty
             ? null

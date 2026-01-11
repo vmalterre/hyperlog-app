@@ -6,6 +6,7 @@ void main() {
     group('fromJson', () {
       test('parses all fields correctly', () {
         final json = {
+          'id': 'uuid-123-456',
           'licenseNumber': 'UK-ATPL-123456',
           'name': 'John Doe',
           'email': 'john.doe@example.com',
@@ -16,6 +17,7 @@ void main() {
 
         final pilot = Pilot.fromJson(json);
 
+        expect(pilot.id, 'uuid-123-456');
         expect(pilot.licenseNumber, 'UK-ATPL-123456');
         expect(pilot.name, 'John Doe');
         expect(pilot.email, 'john.doe@example.com');
@@ -24,8 +26,22 @@ void main() {
         expect(pilot.updatedAt, DateTime.utc(2024, 6, 20, 14, 45));
       });
 
+      test('defaults id to empty string when not provided', () {
+        final json = {
+          'licenseNumber': 'UK-12345',
+          'name': 'Jane Doe',
+          'email': 'jane@example.com',
+          'createdAt': '2024-01-01T00:00:00.000Z',
+          'updatedAt': '2024-01-01T00:00:00.000Z',
+        };
+
+        final pilot = Pilot.fromJson(json);
+        expect(pilot.id, '');
+      });
+
       test('defaults status to active when null', () {
         final json = {
+          'id': 'uuid-test',
           'licenseNumber': 'UK-12345',
           'name': 'Jane Doe',
           'email': 'jane@example.com',
@@ -40,6 +56,7 @@ void main() {
 
       test('defaults status to active when not provided', () {
         final json = {
+          'id': 'uuid-test',
           'licenseNumber': 'UK-12345',
           'name': 'Jane Doe',
           'email': 'jane@example.com',
@@ -53,6 +70,7 @@ void main() {
 
       test('parses suspended status', () {
         final json = {
+          'id': 'uuid-suspended',
           'licenseNumber': 'UK-12345',
           'name': 'Suspended Pilot',
           'email': 'suspended@example.com',
@@ -67,6 +85,7 @@ void main() {
 
       test('parses revoked status', () {
         final json = {
+          'id': 'uuid-revoked',
           'licenseNumber': 'UK-12345',
           'name': 'Revoked Pilot',
           'email': 'revoked@example.com',
@@ -81,6 +100,7 @@ void main() {
 
       test('throws FormatException for invalid createdAt date', () {
         final json = {
+          'id': 'uuid-test',
           'licenseNumber': 'UK-12345',
           'name': 'John Doe',
           'email': 'john@example.com',
@@ -94,6 +114,7 @@ void main() {
 
       test('throws FormatException for invalid updatedAt date', () {
         final json = {
+          'id': 'uuid-test',
           'licenseNumber': 'UK-12345',
           'name': 'John Doe',
           'email': 'john@example.com',
@@ -109,6 +130,7 @@ void main() {
     group('toJson', () {
       test('serializes required fields correctly', () {
         final pilot = Pilot(
+          id: 'uuid-serialize-test',
           licenseNumber: 'UK-ATPL-123456',
           name: 'John Doe',
           email: 'john@example.com',
@@ -126,6 +148,7 @@ void main() {
 
       test('does not include status in JSON output', () {
         final pilot = Pilot(
+          id: 'uuid-status-test',
           licenseNumber: 'UK-12345',
           name: 'John Doe',
           email: 'john@example.com',
@@ -140,6 +163,7 @@ void main() {
 
       test('does not include timestamps in JSON output', () {
         final pilot = Pilot(
+          id: 'uuid-timestamp-test',
           licenseNumber: 'UK-12345',
           name: 'John Doe',
           email: 'john@example.com',
@@ -157,6 +181,7 @@ void main() {
     group('isActive', () {
       test('returns true when status is active', () {
         final pilot = Pilot(
+          id: 'uuid-active',
           licenseNumber: 'UK-12345',
           name: 'Active Pilot',
           email: 'active@example.com',
@@ -170,6 +195,7 @@ void main() {
 
       test('returns false when status is suspended', () {
         final pilot = Pilot(
+          id: 'uuid-suspended',
           licenseNumber: 'UK-12345',
           name: 'Suspended Pilot',
           email: 'suspended@example.com',
@@ -183,6 +209,7 @@ void main() {
 
       test('returns false when status is revoked', () {
         final pilot = Pilot(
+          id: 'uuid-revoked',
           licenseNumber: 'UK-12345',
           name: 'Revoked Pilot',
           email: 'revoked@example.com',
@@ -196,6 +223,7 @@ void main() {
 
       test('returns false for unknown status', () {
         final pilot = Pilot(
+          id: 'uuid-unknown',
           licenseNumber: 'UK-12345',
           name: 'Unknown Status Pilot',
           email: 'unknown@example.com',
@@ -212,6 +240,7 @@ void main() {
       test('creates pilot with all required fields', () {
         final now = DateTime.now();
         final pilot = Pilot(
+          id: 'uuid-constructor-test',
           licenseNumber: 'UK-PPL-999',
           name: 'Test Pilot',
           email: 'test@aviation.com',
@@ -220,6 +249,7 @@ void main() {
           updatedAt: now,
         );
 
+        expect(pilot.id, 'uuid-constructor-test');
         expect(pilot.licenseNumber, 'UK-PPL-999');
         expect(pilot.name, 'Test Pilot');
         expect(pilot.email, 'test@aviation.com');

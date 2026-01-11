@@ -67,11 +67,11 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
     });
 
     try {
-      // Get pilot license for tier routing
-      final pilotLicense = Provider.of<SessionState>(context, listen: false).pilotLicense;
+      // Get user ID for tier routing
+      final userId = Provider.of<SessionState>(context, listen: false).userId;
 
       // Always fetch flight details
-      final entry = await _flightService.getFlight(widget.flightId, pilotLicense: pilotLicense);
+      final entry = await _flightService.getFlight(widget.flightId, userId: userId);
 
       // Only fetch history for official tier (standard tier doesn't have access)
       FlightHistory? history;

@@ -290,8 +290,9 @@ void main() {
         expect(result.creatorLicense, 'UK-ATPL-12345');
       });
 
-      test('calls correct API endpoint with entry JSON', () async {
+      test('calls correct API endpoint with entry JSON using userId', () async {
         final inputEntry = createTestEntry(
+          creatorUUID: 'uuid-user-12345',
           creatorLicense: 'UK-12345',
           dep: 'LHR',
           dest: 'CDG',
@@ -309,7 +310,7 @@ void main() {
         ).captured;
 
         final sentData = captured.first as Map<String, dynamic>;
-        expect(sentData['pilotLicense'], 'UK-12345');
+        expect(sentData['userId'], 'uuid-user-12345');
         expect(sentData['dep'], 'LHR');
         expect(sentData['dest'], 'CDG');
       });
@@ -346,6 +347,106 @@ void main() {
                 'dest': 'LEMD',
               },
             )).called(1);
+      });
+    });
+
+    group('getFlightsForUser (UUID-based)', () {
+      test('returns list of LogbookEntryShort for valid userId', () async {
+        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': [
+                createFlightJson(id: 'flight-1', crewCount: 1),
+                createFlightJson(id: 'flight-2', verificationCount: 1),
+              ],
+            });
+
+        final flights = await flightService.getFlightsForUser('uuid-user-12345');
+
+        expect(flights.length, 2);
+        expect(flights[0].id, 'flight-1');
+        expect(flights[0].trustLevel, TrustLevel.logged);
+        expect(flights[1].id, 'flight-2');
+        expect(flights[1].trustLevel, TrustLevel.tracked);
+      });
+
+      test('calls correct UUID-based API endpoint', () async {
+        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': [],
+            });
+
+        await flightService.getFlightsForUser('uuid-user-99999');
+
+        verify(() => mockApiService.get('/users/uuid-user-99999/flights'))
+            .called(1);
+      });
+
+      test('returns empty list when no flights exist', () async {
+        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': [],
+            });
+
+        final flights = await flightService.getFlightsForUser('uuid-empty');
+
+        expect(flights, isEmpty);
+      });
+    });
+
+    group('getFullFlightsForUser (UUID-based)', () {
+      test('returns full LogbookEntry list for valid userId', () async {
+        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': [
+                createFlightJson(id: 'flight-full-1'),
+                createFlightJson(id: 'flight-full-2'),
+              ],
+            });
+
+        final flights = await flightService.getFullFlightsForUser('uuid-user-67890');
+
+        expect(flights.length, 2);
+        expect(flights[0].id, 'flight-full-1');
+        expect(flights[0].dep, 'EGLL');
+        expect(flights[0].dest, 'KJFK');
+        expect(flights[1].id, 'flight-full-2');
+      });
+
+      test('calls correct UUID-based API endpoint', () async {
+        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': [],
+            });
+
+        await flightService.getFullFlightsForUser('uuid-user-full-test');
+
+        verify(() => mockApiService.get('/users/uuid-user-full-test/flights'))
+            .called(1);
+      });
+    });
+
+    group('getFlight with userId parameter', () {
+      test('appends userId query parameter when provided', () async {
+        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': createFlightJson(id: 'flight-with-userid'),
+            });
+
+        await flightService.getFlight('flight-123', userId: 'uuid-user-456');
+
+        verify(() => mockApiService.get('/flights/flight-123?userId=uuid-user-456'))
+            .called(1);
+      });
+
+      test('does not append query param when userId is null', () async {
+        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': createFlightJson(),
+            });
+
+        await flightService.getFlight('flight-789');
+
+        verify(() => mockApiService.get('/flights/flight-789')).called(1);
       });
     });
   });

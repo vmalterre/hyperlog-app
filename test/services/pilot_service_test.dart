@@ -28,13 +28,16 @@ void main() {
 
   // Helper to create valid pilot JSON
   Map<String, dynamic> createPilotJson({
+    String id = 'uuid-test-pilot',
     String licenseNumber = 'UK-ATPL-12345',
     String status = 'active',
+    String email = 'john.doe@example.com',
   }) {
     return {
+      'id': id,
       'licenseNumber': licenseNumber,
       'name': 'John Doe',
-      'email': 'john.doe@example.com',
+      'email': email,
       'status': status,
       'createdAt': '2024-01-15T10:30:00.000Z',
       'updatedAt': '2024-06-20T14:45:00.000Z',
@@ -43,10 +46,10 @@ void main() {
 
   group('PilotService', () {
     group('registerPilot', () {
-      test('creates pilot and returns Pilot object', () async {
+      test('creates pilot and returns Pilot object with id', () async {
         when(() => mockApiService.post(any(), any())).thenAnswer((_) async => {
               'success': true,
-              'data': createPilotJson(licenseNumber: 'UK-PPL-99999'),
+              'data': createPilotJson(id: 'uuid-new-pilot', licenseNumber: 'UK-PPL-99999'),
             });
 
         final pilot = await pilotService.registerPilot(
@@ -55,6 +58,7 @@ void main() {
           email: 'jane@aviation.com',
         );
 
+        expect(pilot.id, 'uuid-new-pilot');
         expect(pilot.licenseNumber, 'UK-PPL-99999');
         expect(pilot.name, 'John Doe'); // From mock response
         expect(pilot.isActive, true);
@@ -158,14 +162,15 @@ void main() {
     });
 
     group('getPilot', () {
-      test('returns Pilot for valid license number', () async {
+      test('returns Pilot with id for valid license number', () async {
         when(() => mockApiService.get(any())).thenAnswer((_) async => {
               'success': true,
-              'data': createPilotJson(licenseNumber: 'UK-ATPL-54321'),
+              'data': createPilotJson(id: 'uuid-atpl-54321', licenseNumber: 'UK-ATPL-54321'),
             });
 
         final pilot = await pilotService.getPilot('UK-ATPL-54321');
 
+        expect(pilot.id, 'uuid-atpl-54321');
         expect(pilot.licenseNumber, 'UK-ATPL-54321');
         expect(pilot.name, 'John Doe');
         expect(pilot.email, 'john.doe@example.com');
@@ -298,6 +303,158 @@ void main() {
         await pilotService.pilotExists('UK-CHECK-123');
 
         verify(() => mockApiService.get('/pilots/UK-CHECK-123')).called(1);
+      });
+    });
+
+    group('getPilotByEmail', () {
+      test('returns Pilot for valid email', () async {
+        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': createPilotJson(
+                id: 'uuid-email-lookup',
+                email: 'pilot@example.com',
+              ),
+            });
+
+        final pilot = await pilotService.getPilotByEmail('pilot@example.com');
+
+        expect(pilot.id, 'uuid-email-lookup');
+        expect(pilot.email, 'pilot@example.com');
+      });
+
+      test('calls correct API endpoint with encoded email', () async {
+        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': createPilotJson(),
+            });
+
+        await pilotService.getPilotByEmail('test+special@example.com');
+
+        verify(() => mockApiService.get('/users/email/test%2Bspecial%40example.com')).called(1);
+      });
+
+      test('throws ApiException for 404 not found', () async {
+        final exception = ApiException(message: 'User not found', statusCode: 404);
+
+        when(() => mockApiService.get(any())).thenThrow(exception);
+
+        expect(
+          () => pilotService.getPilotByEmail('unknown@example.com'),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.isNotFound, 'isNotFound', true),
+          ),
+        );
+      });
+    });
+
+    group('getSavedPilotsByUserId', () {
+      test('returns list of saved pilots', () async {
+        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': [
+                {'name': 'First Officer 1', 'flightCount': 5},
+                {'name': 'First Officer 2', 'flightCount': 3},
+              ],
+            });
+
+        final pilots = await pilotService.getSavedPilotsByUserId('uuid-user-123');
+
+        expect(pilots.length, 2);
+        expect(pilots[0].name, 'First Officer 1');
+        expect(pilots[0].flightCount, 5);
+      });
+
+      test('calls correct API endpoint', () async {
+        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': [],
+            });
+
+        await pilotService.getSavedPilotsByUserId('uuid-user-456');
+
+        verify(() => mockApiService.get('/users/uuid-user-456/saved-pilots')).called(1);
+      });
+
+      test('returns empty list when no saved pilots', () async {
+        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': [],
+            });
+
+        final pilots = await pilotService.getSavedPilotsByUserId('uuid-empty');
+
+        expect(pilots, isEmpty);
+      });
+    });
+
+    group('createSavedPilotByUserId', () {
+      test('creates saved pilot successfully', () async {
+        when(() => mockApiService.post(any(), any())).thenAnswer((_) async => {
+              'success': true,
+              'data': {'name': 'New Crew Member', 'flightCount': 0},
+            });
+
+        await pilotService.createSavedPilotByUserId('uuid-user-789', 'New Crew Member');
+
+        verify(() => mockApiService.post(
+              '/users/uuid-user-789/saved-pilots',
+              {'name': 'New Crew Member'},
+            )).called(1);
+      });
+    });
+
+    group('updateSavedPilotNameByUserId', () {
+      test('updates pilot name and returns affected count', () async {
+        when(() => mockApiService.put(any(), any())).thenAnswer((_) async => {
+              'success': true,
+              'data': {'updatedCount': 5},
+            });
+
+        final count = await pilotService.updateSavedPilotNameByUserId(
+          'uuid-user-123',
+          'Old Name',
+          'New Name',
+        );
+
+        expect(count, 5);
+        verify(() => mockApiService.put(
+              '/users/uuid-user-123/saved-pilots/Old%20Name',
+              {'name': 'New Name'},
+            )).called(1);
+      });
+    });
+
+    group('deleteSavedPilotByUserId', () {
+      test('deletes saved pilot and returns deleted count', () async {
+        when(() => mockApiService.delete(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': {'deletedCount': 3},
+            });
+
+        final count = await pilotService.deleteSavedPilotByUserId('uuid-user-123', 'Crew Name');
+
+        expect(count, 3);
+        verify(() => mockApiService.delete('/users/uuid-user-123/saved-pilots/Crew%20Name')).called(1);
+      });
+    });
+
+    group('getFlightCountForPilotByUserId', () {
+      test('returns flight count for pilot', () async {
+        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+              'success': true,
+              'data': {'flightCount': 42},
+            });
+
+        final count = await pilotService.getFlightCountForPilotByUserId(
+          'uuid-user-123',
+          'Captain Smith',
+        );
+
+        expect(count, 42);
+        verify(() => mockApiService.get(
+              '/users/uuid-user-123/saved-pilots/Captain%20Smith/flight-count',
+            )).called(1);
       });
     });
   });

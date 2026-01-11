@@ -379,8 +379,8 @@ class LogbookEntry {
         .toList();
 
     return {
-      // API uses pilotLicense to look up UUID from PostgreSQL
-      if (creatorLicense != null) 'pilotLicense': creatorLicense,
+      // Primary: UUID for API operations
+      'userId': creatorUUID,
       'flightDate': _formatDateOnly(flightDate),
       'flightNumber': flightNumber ?? '',
       'dep': dep,

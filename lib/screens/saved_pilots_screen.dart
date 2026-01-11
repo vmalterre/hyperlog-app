@@ -29,8 +29,8 @@ class _SavedPilotsScreenState extends State<SavedPilotsScreen> {
     return _pilots.where((p) => p.name.toLowerCase().contains(query)).toList();
   }
 
-  String? get _pilotLicense {
-    return Provider.of<SessionState>(context, listen: false).pilotLicense;
+  String? get _userId {
+    return Provider.of<SessionState>(context, listen: false).userId;
   }
 
   @override
@@ -51,8 +51,8 @@ class _SavedPilotsScreenState extends State<SavedPilotsScreen> {
   }
 
   Future<void> _loadPilots() async {
-    final license = _pilotLicense;
-    if (license == null) {
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) {
       setState(() {
         _errorMessage = 'No pilot profile found';
         _isLoading = false;
@@ -61,7 +61,7 @@ class _SavedPilotsScreenState extends State<SavedPilotsScreen> {
     }
 
     try {
-      final pilots = await _pilotService.getSavedPilots(license);
+      final pilots = await _pilotService.getSavedPilotsByUserId(userId);
       if (mounted) {
         setState(() {
           _pilots = pilots;
@@ -82,11 +82,11 @@ class _SavedPilotsScreenState extends State<SavedPilotsScreen> {
     final name = await _showNameDialog(title: 'Add Pilot');
     if (name == null || name.trim().isEmpty) return;
 
-    final license = _pilotLicense;
-    if (license == null) return;
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return;
 
     try {
-      await _pilotService.createSavedPilot(license, name.trim());
+      await _pilotService.createSavedPilotByUserId(userId, name.trim());
       _loadPilots();
     } catch (e) {
       if (mounted) {
@@ -109,12 +109,12 @@ class _SavedPilotsScreenState extends State<SavedPilotsScreen> {
       return;
     }
 
-    final license = _pilotLicense;
-    if (license == null) return;
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return;
 
     try {
-      final updatedCount = await _pilotService.updateSavedPilotName(
-        license,
+      final updatedCount = await _pilotService.updateSavedPilotNameByUserId(
+        userId,
         pilot.name,
         newName.trim(),
       );
@@ -140,12 +140,12 @@ class _SavedPilotsScreenState extends State<SavedPilotsScreen> {
   }
 
   Future<void> _deletePilot(SavedPilot pilot) async {
-    final license = _pilotLicense;
-    if (license == null) return;
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return;
 
     // Get flight count for confirmation
-    final flightCount = await _pilotService.getFlightCountForPilot(
-      license,
+    final flightCount = await _pilotService.getFlightCountForPilotByUserId(
+      userId,
       pilot.name,
     );
 
@@ -223,7 +223,7 @@ class _SavedPilotsScreenState extends State<SavedPilotsScreen> {
     if (confirmed != true) return;
 
     try {
-      await _pilotService.deleteSavedPilot(license, pilot.name);
+      await _pilotService.deleteSavedPilotByUserId(userId, pilot.name);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

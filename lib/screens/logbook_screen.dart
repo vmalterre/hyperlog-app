@@ -37,8 +37,8 @@ class _LogbookScreenState extends State<LogbookScreen> {
     _loadFlights();
   }
 
-  String? get _pilotLicense {
-    return Provider.of<SessionState>(context, listen: false).pilotLicense;
+  String? get _userId {
+    return Provider.of<SessionState>(context, listen: false).userId;
   }
 
   bool get _isOfficialTier {
@@ -52,8 +52,8 @@ class _LogbookScreenState extends State<LogbookScreen> {
   Future<void> _loadFlights() async {
     if (!mounted) return;
 
-    final license = _pilotLicense;
-    if (license == null) {
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) {
       final pilotError = _pilotLoadError;
       setState(() {
         _noPilotProfile = true;
@@ -70,7 +70,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
     });
 
     try {
-      final flights = await _flightService.getFlightsForPilot(license);
+      final flights = await _flightService.getFlightsForUser(userId);
       if (mounted) {
         setState(() {
           _logbookEntries = flights;

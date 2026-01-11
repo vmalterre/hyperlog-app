@@ -45,4 +45,5 @@ class AppConfig {
   // API endpoints
   static const String pilots = '/pilots';
   static const String flights = '/flights';
+  static const String users = '/users';
 }

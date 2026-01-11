@@ -6,6 +6,7 @@ enum SubscriptionTier {
 
 /// Pilot model matching backend API response
 class Pilot {
+  final String id; // PostgreSQL UUID - primary identifier for all operations
   final String licenseNumber;
   final String name; // Deprecated: use firstName + lastName
   final String? firstName;
@@ -19,6 +20,7 @@ class Pilot {
   final DateTime updatedAt;
 
   Pilot({
+    required this.id,
     required this.licenseNumber,
     required this.name,
     this.firstName,
@@ -36,6 +38,7 @@ class Pilot {
     final firstName = json['firstName'] as String?;
     final lastName = json['lastName'] as String?;
     return Pilot(
+      id: json['id'] ?? '', // UUID - primary identifier
       licenseNumber: json['licenseNumber'],
       name: json['name'] ?? [firstName, lastName].whereType<String>().join(' '),
       firstName: firstName,
@@ -58,6 +61,7 @@ class Pilot {
   }
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'licenseNumber': licenseNumber,
         'name': name,
         'firstName': firstName,

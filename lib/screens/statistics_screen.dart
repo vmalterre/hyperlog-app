@@ -49,8 +49,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     _loadFlights();
   }
 
-  String? get _pilotLicense {
-    return Provider.of<SessionState>(context, listen: false).pilotLicense;
+  String? get _userId {
+    return Provider.of<SessionState>(context, listen: false).userId;
   }
 
   String? get _pilotLoadError {
@@ -60,8 +60,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Future<void> _loadFlights() async {
     if (!mounted) return;
 
-    final license = _pilotLicense;
-    if (license == null) {
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) {
       final pilotError = _pilotLoadError;
       setState(() {
         _noPilotProfile = true;
@@ -78,7 +78,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     });
 
     try {
-      final flights = await _flightService.getFullFlightsForPilot(license);
+      final flights = await _flightService.getFullFlightsForUser(userId);
       if (mounted) {
         setState(() {
           _flights = flights;

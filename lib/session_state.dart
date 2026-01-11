@@ -32,7 +32,11 @@ class SessionState extends ChangeNotifier {
   /// The current pilot profile (null if not logged in or pilot not found)
   Pilot? get currentPilot => _currentPilot;
 
-  /// The current pilot's license number (convenience getter)
+  /// The current pilot's UUID - primary identifier for all API operations
+  String? get userId => _currentPilot?.id;
+
+  /// The current pilot's license number
+  /// @deprecated Use userId for API operations
   String? get pilotLicense => _currentPilot?.licenseNumber;
 
   /// Any error that occurred during session operations
@@ -88,40 +92,21 @@ class SessionState extends ChangeNotifier {
 
   /// Load pilot data by email
   ///
-  /// Looks up pilot by license number derived from email.
-  /// In a future phase, this could use a proper user-pilot mapping.
+  /// Uses the API to look up pilot by email, which returns the full profile
+  /// including the UUID for subsequent API calls.
   Future<void> _loadPilotData(String? email) async {
     if (email == null) return;
 
     _pilotLoadError = null;
 
     try {
-      // For now, we use a dev mapping for known test users
-      // In production, this would query a user-pilot mapping or use email lookup
-      final license = _getLicenseForEmail(email);
-      if (license != null) {
-        _currentPilot = await _pilotService.getPilot(license);
-      } else {
-        _pilotLoadError = 'No pilot license mapped for $email';
-      }
+      // Look up pilot by email - API returns full profile with UUID
+      _currentPilot = await _pilotService.getPilotByEmail(email);
     } catch (e) {
       // Capture the error for debugging
       _pilotLoadError = e.toString();
       _currentPilot = null;
     }
-  }
-
-  /// Map email to pilot license (development helper)
-  ///
-  /// In production, this would be replaced with a proper user-pilot lookup.
-  String? _getLicenseForEmail(String email) {
-    // Alpha test mappings
-    const emailToLicense = {
-      'standard@hyperlog.aero': 'STANDARD-PILOT-001',
-      'official@hyperlog.aero': 'OFFICIAL-PILOT-001',
-      'demo@hyperlog.aero': 'DEMO-PILOT-001',
-    };
-    return emailToLicense[email.toLowerCase()];
   }
 
   /// Refresh pilot data from the server

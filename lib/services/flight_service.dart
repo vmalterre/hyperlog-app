@@ -16,7 +16,66 @@ class FlightService {
       : _api = api ?? ApiService(),
         _errorService = errorService ?? ErrorService();
 
+  // ==========================================
+  // Flight Operations (UUID-based - preferred)
+  // ==========================================
+
+  /// Get all flights for a user by UUID (returns short format for list display)
+  /// This is the preferred method using the UUID-based route
+  Future<List<LogbookEntryShort>> getFlightsForUser(String userId) async {
+    try {
+      final response = await _api.get(
+        '${AppConfig.users}/$userId${AppConfig.flights}',
+      );
+
+      final List<dynamic> flightsJson = response['data'] ?? [];
+      return flightsJson
+          .map((json) => LogbookEntry.fromJson(json).toShort())
+          .toList();
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+              e,
+              StackTrace.current,
+              message: 'Failed to fetch flights',
+              metadata: {'userId': userId},
+            );
+      }
+      rethrow;
+    }
+  }
+
+  /// Get all flights for a user by UUID (returns full format for statistics)
+  /// This is the preferred method using the UUID-based route
+  Future<List<LogbookEntry>> getFullFlightsForUser(String userId) async {
+    try {
+      final response = await _api.get(
+        '${AppConfig.users}/$userId${AppConfig.flights}',
+      );
+
+      final List<dynamic> flightsJson = response['data'] ?? [];
+      return flightsJson
+          .map((json) => LogbookEntry.fromJson(json))
+          .toList();
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+              e,
+              StackTrace.current,
+              message: 'Failed to fetch flights for statistics',
+              metadata: {'userId': userId},
+            );
+      }
+      rethrow;
+    }
+  }
+
+  // ==========================================
+  // Flight Operations (deprecated - use UUID methods above)
+  // ==========================================
+
   /// Get all flights for a pilot (returns short format for list display)
+  /// @deprecated Use getFlightsForUser instead
   Future<List<LogbookEntryShort>> getFlightsForPilot(
       String licenseNumber) async {
     try {
@@ -42,6 +101,7 @@ class FlightService {
   }
 
   /// Get all flights for a pilot (returns full format for statistics)
+  /// @deprecated Use getFullFlightsForUser instead
   Future<List<LogbookEntry>> getFullFlightsForPilot(
       String licenseNumber) async {
     try {
@@ -67,10 +127,10 @@ class FlightService {
   }
 
   /// Get a single flight by ID (returns full format)
-  /// Pass [pilotLicense] to ensure correct tier routing on backend
-  Future<LogbookEntry> getFlight(String id, {String? pilotLicense}) async {
+  /// Pass [userId] to ensure correct tier routing on backend
+  Future<LogbookEntry> getFlight(String id, {String? userId}) async {
     try {
-      final queryParams = pilotLicense != null ? '?pilotLicense=$pilotLicense' : '';
+      final queryParams = userId != null ? '?userId=$userId' : '';
       final response = await _api.get('${AppConfig.flights}/$id$queryParams');
       return LogbookEntry.fromJson(response['data']);
     } on ApiException catch (e) {

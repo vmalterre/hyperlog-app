@@ -44,6 +44,7 @@ class PilotService {
   }
 
   /// Get pilot by license number
+  /// @deprecated Use getPilotByEmail for login flow
   Future<Pilot> getPilot(String licenseNumber) async {
     try {
       final response = await _api.get('${AppConfig.pilots}/$licenseNumber');
@@ -55,6 +56,26 @@ class PilotService {
               StackTrace.current,
               message: 'Failed to get pilot',
               metadata: {'licenseNumber': licenseNumber},
+            );
+      }
+      rethrow;
+    }
+  }
+
+  /// Get pilot by email (primary method for login flow)
+  /// Returns full profile with UUID for subsequent API operations
+  Future<Pilot> getPilotByEmail(String email) async {
+    try {
+      final encodedEmail = Uri.encodeComponent(email);
+      final response = await _api.get('${AppConfig.users}/email/$encodedEmail');
+      return Pilot.fromJson(response['data']);
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+              e,
+              StackTrace.current,
+              message: 'Failed to get pilot by email',
+              metadata: {'email': email},
             );
       }
       rethrow;
@@ -75,10 +96,138 @@ class PilotService {
   }
 
   // ==========================================
-  // Saved Pilots Operations
+  // Saved Pilots Operations (UUID-based - preferred)
+  // ==========================================
+
+  /// Get all saved pilots by user UUID (preferred method)
+  Future<List<SavedPilot>> getSavedPilotsByUserId(String userId) async {
+    try {
+      final response = await _api.get(
+        '${AppConfig.users}/$userId/saved-pilots',
+      );
+      final data = response['data'] as List;
+      return data.map((json) => SavedPilot.fromJson(json)).toList();
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to get saved pilots',
+          metadata: {'userId': userId},
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Create a saved pilot by user UUID (preferred method)
+  Future<SavedPilot> createSavedPilotByUserId(
+    String userId,
+    String name,
+  ) async {
+    try {
+      final response = await _api.post(
+        '${AppConfig.users}/$userId/saved-pilots',
+        {'name': name},
+      );
+      return SavedPilot.fromJson(response['data']);
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to create saved pilot',
+          metadata: {'userId': userId, 'name': name},
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Update pilot name by user UUID (preferred method)
+  Future<int> updateSavedPilotNameByUserId(
+    String userId,
+    String oldName,
+    String newName,
+  ) async {
+    try {
+      final encodedName = Uri.encodeComponent(oldName);
+      final response = await _api.put(
+        '${AppConfig.users}/$userId/saved-pilots/$encodedName',
+        {'name': newName},
+      );
+      return response['data']['updatedCount'] as int;
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to update saved pilot',
+          metadata: {
+            'userId': userId,
+            'oldName': oldName,
+            'newName': newName,
+          },
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Delete pilot by user UUID (preferred method)
+  Future<int> deleteSavedPilotByUserId(
+    String userId,
+    String name,
+  ) async {
+    try {
+      final encodedName = Uri.encodeComponent(name);
+      final response = await _api.delete(
+        '${AppConfig.users}/$userId/saved-pilots/$encodedName',
+      );
+      return response['data']['deletedCount'] as int;
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to delete saved pilot',
+          metadata: {'userId': userId, 'name': name},
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Get flight count by user UUID (preferred method)
+  Future<int> getFlightCountForPilotByUserId(
+    String userId,
+    String name,
+  ) async {
+    try {
+      final encodedName = Uri.encodeComponent(name);
+      final response = await _api.get(
+        '${AppConfig.users}/$userId/saved-pilots/$encodedName/flight-count',
+      );
+      return response['data']['flightCount'] as int;
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to get flight count for pilot',
+          metadata: {'userId': userId, 'name': name},
+        );
+      }
+      rethrow;
+    }
+  }
+
+  // ==========================================
+  // Saved Pilots Operations (deprecated - use UUID methods above)
   // ==========================================
 
   /// Get all saved pilots for a pilot (merged: saved_pilots + distinct crew names)
+  /// @deprecated Use getSavedPilotsByUserId instead
   Future<List<SavedPilot>> getSavedPilots(String licenseNumber) async {
     try {
       final response = await _api.get(
