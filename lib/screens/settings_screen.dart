@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:hyperlog/session_state.dart';
@@ -60,83 +61,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Profile card
-              GlassContainer(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  children: [
-                    // Avatar - photo or placeholder
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: AppColors.denim.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppColors.denim.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: photoUrl != null
-                          ? Image.network(
-                              photoUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                Icons.person,
-                                size: 32,
-                                color: AppColors.denim,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.person,
-                              size: 32,
-                              color: AppColors.denim,
-                            ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  displayName,
-                                  style: AppTypography.h4,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Subscription tier badge
-                              _SubscriptionBadge(isOfficial: isOfficial),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            email,
-                            style: AppTypography.bodySmall,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (pilotLoadError != null) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'Error: $pilotLoadError',
-                              style: AppTypography.caption.copyWith(
-                                color: AppColors.errorRed,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_right,
-                      color: AppColors.whiteDarker,
-                    ),
-                  ],
-                ),
+              // Identity Card
+              _PilotIdentityCard(
+                displayName: displayName,
+                email: email,
+                photoUrl: photoUrl,
+                isOfficial: isOfficial,
               ),
               const SizedBox(height: 24),
 
@@ -369,35 +299,304 @@ class _SettingsItem extends StatelessWidget {
   }
 }
 
-/// Subscription tier badge (Standard/Official)
-class _SubscriptionBadge extends StatelessWidget {
+/// Pilot Identity Card - Clean design with premium badge
+class _PilotIdentityCard extends StatelessWidget {
+  final String displayName;
+  final String email;
+  final String? photoUrl;
   final bool isOfficial;
 
-  const _SubscriptionBadge({required this.isOfficial});
+  const _PilotIdentityCard({
+    required this.displayName,
+    required this.email,
+    this.photoUrl,
+    required this.isOfficial,
+  });
 
   @override
   Widget build(BuildContext context) {
+    return GlassContainer(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          // Avatar with premium ring for Official
+          _buildAvatar(),
+          const SizedBox(width: 16),
+          // Name, email, and badge
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Name row with badge
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        displayName,
+                        style: AppTypography.h4,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    _TierBadge(isOfficial: isOfficial),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Email
+                Text(
+                  email,
+                  style: AppTypography.bodySmall,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Chevron
+          Icon(
+            Icons.chevron_right,
+            color: AppColors.whiteDarker,
+            size: 22,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvatar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      width: 56,
+      height: 56,
       decoration: BoxDecoration(
-        color: isOfficial
-            ? AppColors.endorsedGreen.withValues(alpha: 0.2)
-            : AppColors.denim.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(14),
+        // Premium gradient ring for Official tier
+        gradient: isOfficial
+            ? const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.denim,
+                  AppColors.denimLight,
+                  AppColors.denimLighter,
+                ],
+              )
+            : null,
+        color: isOfficial ? null : AppColors.denim.withValues(alpha: 0.3),
+      ),
+      padding: const EdgeInsets.all(2.5),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.nightRiderDark,
+          borderRadius: BorderRadius.circular(11.5),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: photoUrl != null
+            ? Image.network(
+                photoUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.person,
+                  size: 28,
+                  color: AppColors.denimLight,
+                ),
+              )
+            : const Icon(
+                Icons.person,
+                size: 28,
+                color: AppColors.denimLight,
+              ),
+      ),
+    );
+  }
+}
+
+/// Premium tier badge - Standard vs Official
+class _TierBadge extends StatelessWidget {
+  final bool isOfficial;
+
+  const _TierBadge({required this.isOfficial});
+
+  @override
+  Widget build(BuildContext context) {
+    if (isOfficial) {
+      // Premium Official badge with gradient and icon
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.denim,
+              AppColors.denimLight,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.denim.withValues(alpha: 0.4),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.workspace_premium,
+              size: 14,
+              color: AppColors.white,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'OFFICIAL',
+              style: GoogleFonts.outfit(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.white,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Standard badge - simpler style
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.nightRiderLight.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isOfficial
-              ? AppColors.endorsedGreen.withValues(alpha: 0.4)
-              : AppColors.denim.withValues(alpha: 0.3),
+          color: AppColors.whiteDarker.withValues(alpha: 0.2),
         ),
       ),
       child: Text(
-        isOfficial ? 'Official' : 'Standard',
-        style: AppTypography.caption.copyWith(
-          color: isOfficial ? AppColors.endorsedGreen : AppColors.denimLight,
+        'STANDARD',
+        style: GoogleFonts.outfit(
+          fontSize: 10,
           fontWeight: FontWeight.w600,
-          fontSize: 11,
+          color: AppColors.whiteDarker,
+          letterSpacing: 0.8,
         ),
       ),
+    );
+  }
+}
+
+/// Detail item in identity card
+class _DetailItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool isMonospace;
+
+  const _DetailItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.isMonospace = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: AppColors.denim.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 16,
+            color: AppColors.denimLight,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTypography.label.copyWith(fontSize: 9),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: isMonospace
+                    ? GoogleFonts.jetBrainsMono(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.white,
+                      )
+                    : AppTypography.bodySmall.copyWith(
+                        color: AppColors.white,
+                        fontSize: 13,
+                      ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Verification status indicator for Official tier
+class _VerificationStatus extends StatelessWidget {
+  final bool isVerified;
+
+  const _VerificationStatus({required this.isVerified});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: isVerified
+                ? AppColors.endorsedGreen.withValues(alpha: 0.1)
+                : AppColors.trackedAmber.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            isVerified ? Icons.verified : Icons.pending_outlined,
+            size: 16,
+            color: isVerified ? AppColors.endorsedGreen : AppColors.trackedAmber,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'IDENTITY',
+                style: AppTypography.label.copyWith(fontSize: 9),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                isVerified ? 'Verified' : 'Pending',
+                style: AppTypography.bodySmall.copyWith(
+                  color: isVerified ? AppColors.endorsedGreen : AppColors.trackedAmber,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
