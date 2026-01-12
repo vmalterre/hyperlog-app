@@ -7,7 +7,7 @@ void main() {
       test('parses all fields correctly', () {
         final json = {
           'id': 'uuid-123-456',
-          'licenseNumber': 'UK-ATPL-123456',
+          'pilotLicense': 'UK-ATPL-123456',
           'name': 'John Doe',
           'email': 'john.doe@example.com',
           'status': 'active',
@@ -28,7 +28,7 @@ void main() {
 
       test('defaults id to empty string when not provided', () {
         final json = {
-          'licenseNumber': 'UK-12345',
+          'pilotLicense': 'UK-12345',
           'name': 'Jane Doe',
           'email': 'jane@example.com',
           'createdAt': '2024-01-01T00:00:00.000Z',
@@ -42,7 +42,7 @@ void main() {
       test('defaults status to active when null', () {
         final json = {
           'id': 'uuid-test',
-          'licenseNumber': 'UK-12345',
+          'pilotLicense': 'UK-12345',
           'name': 'Jane Doe',
           'email': 'jane@example.com',
           'status': null,
@@ -57,7 +57,7 @@ void main() {
       test('defaults status to active when not provided', () {
         final json = {
           'id': 'uuid-test',
-          'licenseNumber': 'UK-12345',
+          'pilotLicense': 'UK-12345',
           'name': 'Jane Doe',
           'email': 'jane@example.com',
           'createdAt': '2024-01-01T00:00:00.000Z',
@@ -71,7 +71,7 @@ void main() {
       test('parses suspended status', () {
         final json = {
           'id': 'uuid-suspended',
-          'licenseNumber': 'UK-12345',
+          'pilotLicense': 'UK-12345',
           'name': 'Suspended Pilot',
           'email': 'suspended@example.com',
           'status': 'suspended',
@@ -86,7 +86,7 @@ void main() {
       test('parses revoked status', () {
         final json = {
           'id': 'uuid-revoked',
-          'licenseNumber': 'UK-12345',
+          'pilotLicense': 'UK-12345',
           'name': 'Revoked Pilot',
           'email': 'revoked@example.com',
           'status': 'revoked',
@@ -101,7 +101,7 @@ void main() {
       test('throws FormatException for invalid createdAt date', () {
         final json = {
           'id': 'uuid-test',
-          'licenseNumber': 'UK-12345',
+          'pilotLicense': 'UK-12345',
           'name': 'John Doe',
           'email': 'john@example.com',
           'status': 'active',
@@ -115,7 +115,7 @@ void main() {
       test('throws FormatException for invalid updatedAt date', () {
         final json = {
           'id': 'uuid-test',
-          'licenseNumber': 'UK-12345',
+          'pilotLicense': 'UK-12345',
           'name': 'John Doe',
           'email': 'john@example.com',
           'status': 'active',

@@ -35,7 +35,7 @@ void main() {
   }) {
     return {
       'id': id,
-      'licenseNumber': licenseNumber,
+      'pilotLicense': licenseNumber,
       'name': 'John Doe',
       'email': email,
       'status': status,
