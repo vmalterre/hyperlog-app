@@ -77,7 +77,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
       FlightHistory? history;
       if (_isOfficialTier) {
         try {
-          history = await _flightService.getFlightHistory(widget.flightId);
+          history = await _flightService.getFlightHistory(widget.flightId, userId: userId);
         } catch (_) {
           // History fetch failed, continue without it
         }
@@ -274,8 +274,8 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
             ),
           ),
 
-          // Crew section - show other crew members (not the creator)
-          if (_entry!.crew.where((c) => c.pilotUUID != _entry!.creatorUUID).isNotEmpty) ...[
+          // Crew section - show all crew members including the creator
+          if (_entry!.crew.isNotEmpty) ...[
             const SizedBox(height: 16),
             GlassContainer(
               child: Column(
@@ -293,7 +293,6 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                   ),
                   const SizedBox(height: 12),
                   ..._entry!.crew
-                      .where((c) => c.pilotUUID != _entry!.creatorUUID)
                       .map((member) => Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: Row(

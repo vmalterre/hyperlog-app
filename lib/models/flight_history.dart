@@ -68,6 +68,8 @@ class VersionDiff {
   final List<FieldChange> changes;
   final bool isCreation;
   final bool isDeletion;
+  final bool hasNewVerification;
+  final bool hasNewEndorsement;
   final String? pilotLicense;
   final String? pilotName;
   final List<Verification> verifications;
@@ -79,29 +81,19 @@ class VersionDiff {
     required this.changes,
     this.isCreation = false,
     this.isDeletion = false,
+    this.hasNewVerification = false,
+    this.hasNewEndorsement = false,
     this.pilotLicense,
     this.pilotName,
     this.verifications = const [],
     this.endorsements = const [],
   });
 
-  /// Check if this diff represents a trust level upgrade via external verification
-  bool get isVerificationUpgrade {
-    final trustChange = changes.firstWhere(
-      (c) => c.fieldName == 'trustLevel',
-      orElse: () => FieldChange(fieldName: '', displayName: ''),
-    );
-    return trustChange.oldValue == 'LOGGED' && trustChange.newValue == 'TRACKED';
-  }
+  /// Check if this diff represents a verification event (new verification added)
+  bool get isVerificationUpgrade => hasNewVerification;
 
-  /// Check if this diff represents a trust level upgrade via endorsement
-  bool get isEndorsementUpgrade {
-    final trustChange = changes.firstWhere(
-      (c) => c.fieldName == 'trustLevel',
-      orElse: () => FieldChange(fieldName: '', displayName: ''),
-    );
-    return trustChange.newValue == 'ENDORSED';
-  }
+  /// Check if this diff represents an endorsement event (new endorsement added)
+  bool get isEndorsementUpgrade => hasNewEndorsement;
 
   /// Get the latest verification (for display purposes)
   Verification? get latestVerification =>

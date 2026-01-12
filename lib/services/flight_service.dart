@@ -201,9 +201,11 @@ class FlightService {
   }
 
   /// Get flight history from blockchain
-  Future<FlightHistory> getFlightHistory(String id) async {
+  /// Pass [userId] for tier routing (required for Official tier to access history)
+  Future<FlightHistory> getFlightHistory(String id, {String? userId}) async {
     try {
-      final response = await _api.get('${AppConfig.flights}/$id/history');
+      final queryParams = userId != null ? '?userId=$userId' : '';
+      final response = await _api.get('${AppConfig.flights}/$id/history$queryParams');
       return FlightHistory.fromJson(response['data']);
     } on ApiException catch (e) {
       if (e.isServerError) {
@@ -226,6 +228,10 @@ class FlightService {
       final current = history.history[i];
       final pilotLicense = current.entry?.creatorLicense;
 
+      // Try to get pilot name from the entry's crew (creator crew member)
+      // Fall back to the passed-in pilotName if not available
+      final entryPilotName = current.entry?.creatorCrew?.pilotName ?? pilotName;
+
       if (i == 0) {
         // First entry is creation
         diffs.add(VersionDiff(
@@ -234,7 +240,7 @@ class FlightService {
           changes: [],
           isCreation: true,
           pilotLicense: pilotLicense,
-          pilotName: pilotName,
+          pilotName: entryPilotName,
         ));
         continue;
       }
@@ -246,7 +252,7 @@ class FlightService {
           changes: [],
           isDeletion: true,
           pilotLicense: pilotLicense,
-          pilotName: pilotName,
+          pilotName: entryPilotName,
         ));
         continue;
       }
@@ -256,12 +262,23 @@ class FlightService {
 
       final changes = _compareEntries(previous.entry!, current.entry!);
 
+      // Detect if new verifications or endorsements were added
+      final prevVerificationCount = previous.entry!.verifications.length;
+      final currVerificationCount = current.entry!.verifications.length;
+      final hasNewVerification = currVerificationCount > prevVerificationCount;
+
+      final prevEndorsementCount = previous.entry!.endorsements.length;
+      final currEndorsementCount = current.entry!.endorsements.length;
+      final hasNewEndorsement = currEndorsementCount > prevEndorsementCount;
+
       diffs.add(VersionDiff(
         txId: current.txId,
         timestamp: current.timestamp,
         changes: changes,
+        hasNewVerification: hasNewVerification,
+        hasNewEndorsement: hasNewEndorsement,
         pilotLicense: pilotLicense,
-        pilotName: pilotName,
+        pilotName: entryPilotName,
         verifications: current.entry!.verifications,
         endorsements: current.entry!.endorsements,
       ));
