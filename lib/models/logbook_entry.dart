@@ -385,6 +385,7 @@ class LogbookEntry {
   final String aircraftType;
   final String aircraftReg;
   final FlightTime flightTime;
+  final bool isPilotFlying;         // true = PF (can log landings), false = PM
   final List<CrewMember> crew;
   final List<Verification> verifications;
   final List<Endorsement> endorsements;
@@ -404,6 +405,7 @@ class LogbookEntry {
     required this.aircraftType,
     required this.aircraftReg,
     required this.flightTime,
+    this.isPilotFlying = true,
     this.crew = const [],
     this.verifications = const [],
     this.endorsements = const [],
@@ -424,7 +426,10 @@ class LogbookEntry {
       blockOn: DateTime.parse(json['blockOn']),
       aircraftType: json['aircraftType'],
       aircraftReg: json['aircraftReg'],
-      flightTime: FlightTime.fromJson(json['flightTime']),
+      flightTime: json['flightTime'] != null
+          ? FlightTime.fromJson(json['flightTime'])
+          : FlightTime(total: 0),
+      isPilotFlying: json['isPilotFlying'] ?? true, // Default true for backward compatibility
       crew: (json['crew'] as List<dynamic>?)
               ?.map((c) => CrewMember.fromJson(c as Map<String, dynamic>))
               .toList() ??
@@ -520,6 +525,7 @@ class LogbookEntry {
       'aircraftType': aircraftType,
       'aircraftReg': aircraftReg,
       'flightTime': flightTime.toJson(),
+      'isPilotFlying': isPilotFlying,
       'roles': creator?.roles.map((r) => r.toJson()).toList() ?? [],
       'landings': creator?.landings.toJson() ?? Landings().toJson(),
       'remarks': creator?.remarks ?? '',

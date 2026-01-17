@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../constants/role_standards.dart';
 import '../models/logbook_entry.dart';
 import '../models/flight_history.dart';
 import '../services/flight_service.dart';
 import '../services/pilot_service.dart';
+import '../services/preferences_service.dart';
 import '../session_state.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
@@ -40,6 +42,12 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
 
   bool get _isOfficialTier {
     return Provider.of<SessionState>(context, listen: false).currentPilot?.isOfficialTier ?? false;
+  }
+
+  /// Get display label for a role code based on user's regulatory standard
+  String _getRoleLabel(String roleCode) {
+    final standard = PreferencesService.instance.getRoleStandard();
+    return RoleStandards.getLabel(standard, roleCode);
   }
 
   bool _hasLoadedData = false;
@@ -264,8 +272,9 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                 _buildDetailRow('Flight Time', _entry!.flightTime.formatted),
                 _buildDivider(),
                 _buildDetailRow('Aircraft', '${_entry!.aircraftType} (${_entry!.aircraftReg})'),
-                _buildDetailRow('Role', _entry!.creatorCrew?.primaryRole ?? '-'),
-                _buildDetailRow('Landings', _entry!.totalLandings.total.toString()),
+                _buildDetailRow('Function', _entry!.isPilotFlying ? 'Pilot Flying' : 'Pilot Monitoring'),
+                if (_entry!.isPilotFlying)
+                  _buildDetailRow('Landings', _entry!.totalLandings.total.toString()),
                 if (_entry!.creatorCrew != null && _entry!.creatorCrew!.remarks.isNotEmpty) ...[
                   _buildDivider(),
                   _buildDetailRow('Remarks', _entry!.creatorCrew!.remarks),
@@ -321,7 +330,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                                         ),
                                       ),
                                       Text(
-                                        member.primaryRole,
+                                        _getRoleLabel(member.primaryRole),
                                         style: AppTypography.caption.copyWith(
                                           color: AppColors.whiteDarker,
                                         ),

@@ -64,6 +64,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
   // Selection state
   late String _role;
+  late bool _isPilotFlying;
   late int _dayLandings;
   late int _nightLandings;
 
@@ -121,6 +122,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       _blockOn = TimeOfDay(hour: entry.blockOn.hour, minute: entry.blockOn.minute);
 
       _role = creatorCrew?.primaryRole ?? PreferencesService.instance.getDefaultRole();
+      _isPilotFlying = entry.isPilotFlying;
       _dayLandings = entry.totalLandings.day;
       _nightLandings = entry.totalLandings.night;
 
@@ -150,6 +152,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       _blockOn = const TimeOfDay(hour: 10, minute: 0);
 
       _role = PreferencesService.instance.getDefaultRole();
+      _isPilotFlying = true;
       _dayLandings = 1;
       _nightLandings = 0;
 
@@ -350,8 +353,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       return false;
     }
 
-    // Check at least one landing
-    if (_dayLandings + _nightLandings < 1) {
+    // Check at least one landing (only for Pilot Flying)
+    if (_isPilotFlying && _dayLandings + _nightLandings < 1) {
       setState(() => _landingsError = 'At least one landing is required');
       _scrollToField(_landingsKey);
       return false;
@@ -455,6 +458,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         aircraftType: _aircraftTypeController.text.toUpperCase(),
         aircraftReg: _aircraftRegController.text.toUpperCase(),
         flightTime: _calculatedFlightTime,
+        isPilotFlying: _isPilotFlying,
         crew: [creatorCrew, ...additionalCrew],
         createdAt: widget.entry?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
@@ -867,33 +871,53 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                         padding: const EdgeInsets.all(20),
                         child: Column(
                           children: [
-                            NumberStepper(
-                              label: 'Day Landings',
-                              value: _dayLandings,
-                              minValue: 0,
-                              maxValue: 99,
+                            // PF/PM Toggle
+                            _PfPmToggle(
+                              isPilotFlying: _isPilotFlying,
                               onChanged: (value) {
                                 setState(() {
-                                  _dayLandings = value;
+                                  _isPilotFlying = value;
                                   _hasChanges = true;
+                                  // Reset landings to 0 when switching to PM
+                                  if (!value) {
+                                    _dayLandings = 0;
+                                    _nightLandings = 0;
+                                  }
                                   _landingsError = null;
                                 });
                               },
                             ),
-                            const SizedBox(height: 12),
-                            NumberStepper(
-                              label: 'Night Landings',
-                              value: _nightLandings,
-                              minValue: 0,
-                              maxValue: 99,
-                              onChanged: (value) {
-                                setState(() {
-                                  _nightLandings = value;
-                                  _hasChanges = true;
-                                  _landingsError = null;
-                                });
-                              },
-                            ),
+                            // Show landing steppers only for PF
+                            if (_isPilotFlying) ...[
+                              const SizedBox(height: 16),
+                              NumberStepper(
+                                label: 'Day Landings',
+                                value: _dayLandings,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _dayLandings = value;
+                                    _hasChanges = true;
+                                    _landingsError = null;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              NumberStepper(
+                                label: 'Night Landings',
+                                value: _nightLandings,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _nightLandings = value;
+                                    _hasChanges = true;
+                                    _landingsError = null;
+                                  });
+                                },
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -960,6 +984,84 @@ class _SectionHeader extends StatelessWidget {
       style: AppTypography.label.copyWith(
         color: AppColors.denim,
         letterSpacing: 1.5,
+      ),
+    );
+  }
+}
+
+/// Toggle for Pilot Flying (PF) vs Pilot Monitoring (PM)
+class _PfPmToggle extends StatelessWidget {
+  final bool isPilotFlying;
+  final ValueChanged<bool> onChanged;
+
+  const _PfPmToggle({
+    required this.isPilotFlying,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ToggleButton(
+            label: 'PF',
+            isSelected: isPilotFlying,
+            onTap: () => onChanged(true),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _ToggleButton(
+            label: 'PM',
+            isSelected: !isPilotFlying,
+            onTap: () => onChanged(false),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ToggleButton extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ToggleButton({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.denim.withValues(alpha: 0.2)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.denim
+                : AppColors.whiteDarker.withValues(alpha: 0.3),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: AppTypography.h4.copyWith(
+              color: isSelected ? AppColors.denim : AppColors.whiteDarker,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ),
       ),
     );
   }
