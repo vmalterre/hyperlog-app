@@ -25,4 +25,29 @@ class AirportFormats {
         return '4-letter codes (EGLL, KJFK)';
     }
   }
+
+  /// Format an airport code based on user preference
+  ///
+  /// Returns the preferred code format (ICAO or IATA) if available,
+  /// otherwise falls back to the other format or the primary code.
+  ///
+  /// [icaoCode] - 4-letter ICAO code (e.g., "EGLL")
+  /// [iataCode] - 3-letter IATA code (e.g., "LHR")
+  /// [fallbackCode] - Primary/fallback code if neither ICAO nor IATA available
+  /// [format] - The user's preferred format
+  static String formatCode({
+    String? icaoCode,
+    String? iataCode,
+    required String fallbackCode,
+    required AirportCodeFormat format,
+  }) {
+    switch (format) {
+      case AirportCodeFormat.icao:
+        // Prefer ICAO, fall back to IATA, then fallback code
+        return icaoCode ?? iataCode ?? fallbackCode;
+      case AirportCodeFormat.iata:
+        // Prefer IATA, fall back to ICAO, then fallback code
+        return iataCode ?? icaoCode ?? fallbackCode;
+    }
+  }
 }

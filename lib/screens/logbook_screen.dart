@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:hyperlog/constants/airport_format.dart';
 import 'package:hyperlog/models/logbook_entry_short.dart';
 import 'package:hyperlog/screens/add_flight_screen.dart';
 import 'package:hyperlog/screens/flight_detail_screen.dart';
 import 'package:hyperlog/services/api_exception.dart';
 import 'package:hyperlog/services/flight_service.dart';
+import 'package:hyperlog/services/preferences_service.dart';
 import 'package:hyperlog/session_state.dart';
 import 'package:hyperlog/theme/app_colors.dart';
 import 'package:hyperlog/theme/app_typography.dart';
@@ -31,10 +33,18 @@ class _LogbookScreenState extends State<LogbookScreen> {
   bool _noPilotProfile = false;
   String? _errorMessage;
 
+  // Airport code format preference
+  AirportCodeFormat _airportFormat = AirportCodeFormat.iata;
+
   @override
   void initState() {
     super.initState();
+    _loadAirportFormat();
     _loadFlights();
+  }
+
+  void _loadAirportFormat() {
+    _airportFormat = PreferencesService.instance.getAirportCodeFormat();
   }
 
   String? get _userId {
@@ -273,9 +283,22 @@ class _LogbookScreenState extends State<LogbookScreen> {
       delegate: SliverChildBuilderDelegate(
         (context, index) {
           final entry = entries[index];
+          // Format airport codes based on user preference
+          final depDisplay = AirportFormats.formatCode(
+            icaoCode: entry.depIcao,
+            iataCode: entry.depIata,
+            fallbackCode: entry.depCode,
+            format: _airportFormat,
+          );
+          final destDisplay = AirportFormats.formatCode(
+            icaoCode: entry.destIcao,
+            iataCode: entry.destIata,
+            fallbackCode: entry.destCode,
+            format: _airportFormat,
+          );
           return FlightEntryCard(
-            departureCode: entry.depIata,
-            arrivalCode: entry.desIata,
+            departureCode: depDisplay,
+            arrivalCode: destDisplay,
             blockTime: entry.blockTime ?? '--:--',
             date: entry.date,
             aircraftType: entry.acftType,
@@ -291,7 +314,8 @@ class _LogbookScreenState extends State<LogbookScreen> {
                   ),
                 ),
               );
-              // Refresh list in case flight was amended
+              // Refresh list and format in case settings changed
+              _loadAirportFormat();
               _loadFlights();
             },
           );

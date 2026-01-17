@@ -200,6 +200,23 @@ class FlightService {
     }
   }
 
+  /// Delete a flight entry (Standard tier only - blockchain entries cannot be deleted)
+  Future<void> deleteFlight(String id) async {
+    try {
+      await _api.delete('${AppConfig.flights}/$id');
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+              e,
+              StackTrace.current,
+              message: 'Failed to delete flight',
+              metadata: {'flightId': id},
+            );
+      }
+      rethrow;
+    }
+  }
+
   /// Get flight history from blockchain
   /// Pass [userId] for tier routing (required for Official tier to access history)
   Future<FlightHistory> getFlightHistory(String id, {String? userId}) async {

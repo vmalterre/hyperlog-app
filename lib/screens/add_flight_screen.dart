@@ -612,6 +612,68 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     return result ?? false;
   }
 
+  Future<void> _deleteEntry() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.nightRiderDark,
+        title: Text(
+          'Delete Flight?',
+          style: AppTypography.h4.copyWith(color: AppColors.white),
+        ),
+        content: Text(
+          'This will permanently delete this flight and all associated crew records. This action cannot be undone.',
+          style: AppTypography.body.copyWith(color: AppColors.whiteDark),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancel',
+              style: AppTypography.button.copyWith(color: AppColors.whiteDarker),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Delete',
+              style: AppTypography.button.copyWith(color: const Color(0xFFEF4444)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _flightService.deleteFlight(widget.entry!.id);
+
+      if (mounted) {
+        // Pop back to logbook screen (skip flight detail since flight no longer exists)
+        // LogbookScreen refreshes automatically when returning from FlightDetailScreen
+        final navigator = Navigator.of(context);
+        navigator.pop(); // Pop AddFlightScreen
+        navigator.pop(); // Pop FlightDetailScreen back to LogbookScreen
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showErrorSnackBar(e.message);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showErrorSnackBar('Failed to delete flight. Please try again.');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -1310,6 +1372,27 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                     ),
 
                     const SizedBox(height: 32),
+
+                    // Delete Button (edit mode only)
+                    if (widget.isEditMode) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _isLoading ? null : _deleteEntry,
+                          icon: const Icon(Icons.delete_outline, size: 20),
+                          label: const Text('Delete Flight'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFEF4444),
+                            side: const BorderSide(color: Color(0xFFEF4444)),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
                     // Save Button
                     PrimaryButton(

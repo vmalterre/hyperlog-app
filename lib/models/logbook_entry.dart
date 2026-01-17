@@ -506,8 +506,13 @@ class LogbookEntry {
   final String? creatorLicense;     // Resolved from PostgreSQL for display
   final DateTime flightDate;
   final String? flightNumber;
-  final String dep;
-  final String dest;
+  final String dep;                 // Primary display code (ICAO preferred)
+  final String dest;                // Primary display code (ICAO preferred)
+  // Separate ICAO/IATA codes for display format preference
+  final String? depIcao;            // 4-letter ICAO code (e.g., "EGLL")
+  final String? depIata;            // 3-letter IATA code (e.g., "LHR")
+  final String? destIcao;           // 4-letter ICAO code (e.g., "KJFK")
+  final String? destIata;           // 3-letter IATA code (e.g., "JFK")
   final DateTime blockOff;
   final DateTime blockOn;
   final String aircraftType;
@@ -529,6 +534,10 @@ class LogbookEntry {
     this.flightNumber,
     required this.dep,
     required this.dest,
+    this.depIcao,
+    this.depIata,
+    this.destIcao,
+    this.destIata,
     required this.blockOff,
     required this.blockOn,
     required this.aircraftType,
@@ -552,6 +561,11 @@ class LogbookEntry {
       flightNumber: json['flightNumber'],
       dep: json['dep'],
       dest: json['dest'],
+      // Parse separate ICAO/IATA codes for display format preference
+      depIcao: json['depIcao'],
+      depIata: json['depIata'],
+      destIcao: json['destIcao'],
+      destIata: json['destIata'],
       blockOff: DateTime.parse(json['blockOff']),
       blockOn: DateTime.parse(json['blockOn']),
       aircraftType: json['aircraftType'],
@@ -622,8 +636,12 @@ class LogbookEntry {
     return LogbookEntryShort(
       id: id,
       date: flightDate,
-      depIata: dep,
-      desIata: dest,
+      depCode: dep,
+      destCode: dest,
+      depIcao: depIcao,
+      depIata: depIata,
+      destIcao: destIcao,
+      destIata: destIata,
       acftReg: aircraftReg,
       acftType: aircraftType,
       blockTime: flightTime.formatted,

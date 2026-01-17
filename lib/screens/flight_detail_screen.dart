@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../constants/airport_format.dart';
 import '../constants/role_standards.dart';
 import '../models/logbook_entry.dart';
 import '../models/flight_history.dart';
@@ -230,33 +231,51 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Route header
-          GlassContainer(
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+          Builder(
+            builder: (context) {
+              // Get user's preferred airport code format
+              final airportFormat = PreferencesService.instance.getAirportCodeFormat();
+              final depDisplay = AirportFormats.formatCode(
+                icaoCode: _entry!.depIcao,
+                iataCode: _entry!.depIata,
+                fallbackCode: _entry!.dep,
+                format: airportFormat,
+              );
+              final destDisplay = AirportFormats.formatCode(
+                icaoCode: _entry!.destIcao,
+                iataCode: _entry!.destIata,
+                fallbackCode: _entry!.dest,
+                format: airportFormat,
+              );
+              return GlassContainer(
+                child: Column(
                   children: [
-                    Text(
-                      _entry!.dep,
-                      style: AppTypography.airportCode.copyWith(fontSize: 32),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          depDisplay,
+                          style: AppTypography.airportCode.copyWith(fontSize: 32),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Icon(Icons.arrow_forward, color: AppColors.denim, size: 32),
+                        ),
+                        Text(
+                          destDisplay,
+                          style: AppTypography.airportCode.copyWith(fontSize: 32),
+                        ),
+                      ],
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Icon(Icons.arrow_forward, color: AppColors.denim, size: 32),
-                    ),
+                    const SizedBox(height: 8),
                     Text(
-                      _entry!.dest,
-                      style: AppTypography.airportCode.copyWith(fontSize: 32),
+                      dateFormat.format(_entry!.flightDate),
+                      style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  dateFormat.format(_entry!.flightDate),
-                  style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
-                ),
-              ],
-            ),
+              );
+            },
           ),
 
           const SizedBox(height: 16),
