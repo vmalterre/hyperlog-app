@@ -211,7 +211,10 @@ class Endorsement {
 /// - Primary roles (seat position): PIC, SIC, PICUS
 /// - Secondary roles (activity): DUAL, INSTRUCTOR
 ///
-/// SOLO was removed as it's derivable from flight data (PIC + no crew = solo time)
+/// Detail time fields (flight conditions/characteristics):
+/// - solo: Time flown without instructor/crew
+/// - multiEngine: Time in multi-engine aircraft
+/// - crossCountry: Time on cross-country flights (>50nm)
 class FlightTime {
   final int total;
   final int night;
@@ -226,6 +229,11 @@ class FlightTime {
   final int dual;       // Dual instruction received
   final int instructor; // Instructor time given
 
+  // Detail time fields (flight conditions/characteristics)
+  final int solo;        // Solo flight time (no instructor/crew)
+  final int multiEngine; // Multi-engine aircraft time
+  final int crossCountry; // Cross-country flight time (>50nm)
+
   // Custom time fields (user-defined, name -> minutes)
   final Map<String, int> customFields;
 
@@ -238,6 +246,9 @@ class FlightTime {
     this.sic = 0,
     this.dual = 0,
     this.instructor = 0,
+    this.solo = 0,
+    this.multiEngine = 0,
+    this.crossCountry = 0,
     this.customFields = const {},
   });
 
@@ -251,6 +262,9 @@ class FlightTime {
       sic: json['sic'] ?? 0,
       dual: json['dual'] ?? 0,
       instructor: json['instructor'] ?? 0,
+      solo: json['solo'] ?? 0,
+      multiEngine: json['multiEngine'] ?? 0,
+      crossCountry: json['crossCountry'] ?? 0,
       customFields: (json['customFields'] as Map<String, dynamic>?)
               ?.map((k, v) => MapEntry(k, v as int)) ??
           {},
@@ -266,6 +280,9 @@ class FlightTime {
         'sic': sic,
         'dual': dual,
         'instructor': instructor,
+        'solo': solo,
+        'multiEngine': multiEngine,
+        'crossCountry': crossCountry,
         if (customFields.isNotEmpty) 'customFields': customFields,
       };
 
@@ -296,6 +313,12 @@ class FlightTime {
         return dual;
       case 'INSTRUCTOR':
         return instructor;
+      case 'SOLO':
+        return solo;
+      case 'MULTI_ENGINE':
+        return multiEngine;
+      case 'CROSS_COUNTRY':
+        return crossCountry;
       default:
         return customFields[fieldCode] ?? 0;
     }
@@ -311,6 +334,9 @@ class FlightTime {
     int? sic,
     int? dual,
     int? instructor,
+    int? solo,
+    int? multiEngine,
+    int? crossCountry,
     Map<String, int>? customFields,
   }) {
     return FlightTime(
@@ -322,6 +348,9 @@ class FlightTime {
       sic: sic ?? this.sic,
       dual: dual ?? this.dual,
       instructor: instructor ?? this.instructor,
+      solo: solo ?? this.solo,
+      multiEngine: multiEngine ?? this.multiEngine,
+      crossCountry: crossCountry ?? this.crossCountry,
       customFields: customFields ?? this.customFields,
     );
   }
@@ -335,6 +364,9 @@ class FlightTime {
     required int totalMinutes,
     int night = 0,
     int ifr = 0,
+    int solo = 0,
+    int multiEngine = 0,
+    int crossCountry = 0,
     Map<String, int>? customFields,
   }) {
     return FlightTime(
@@ -348,6 +380,10 @@ class FlightTime {
       // Secondary role (activity)
       dual: secondaryRole == 'DUAL' ? totalMinutes : 0,
       instructor: secondaryRole == 'INSTRUCTOR' ? totalMinutes : 0,
+      // Detail fields
+      solo: solo,
+      multiEngine: multiEngine,
+      crossCountry: crossCountry,
       customFields: customFields ?? {},
     );
   }
@@ -357,6 +393,9 @@ class FlightTime {
   factory FlightTime.fromPrimaryRole(String primaryRole, int totalMinutes, {
     int night = 0,
     int ifr = 0,
+    int solo = 0,
+    int multiEngine = 0,
+    int crossCountry = 0,
     Map<String, int>? customFields,
   }) {
     return FlightTime.fromRoles(
@@ -364,6 +403,9 @@ class FlightTime {
       totalMinutes: totalMinutes,
       night: night,
       ifr: ifr,
+      solo: solo,
+      multiEngine: multiEngine,
+      crossCountry: crossCountry,
       customFields: customFields,
     );
   }

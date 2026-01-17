@@ -16,6 +16,7 @@ import '../widgets/form/glass_text_field.dart';
 import '../widgets/form/glass_date_picker.dart';
 import '../widgets/form/glass_time_picker.dart';
 import '../widgets/form/number_stepper.dart';
+import '../widgets/form/duration_stepper.dart';
 import '../widgets/form/crew_entry_card.dart';
 
 class AddFlightScreen extends StatefulWidget {
@@ -74,6 +75,15 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   // Validation error state for non-text fields
   String? _landingsError;
 
+  // Details section state
+  bool _detailsExpanded = false;
+  int _nightMinutes = 0;
+  int _ifrMinutes = 0;
+  int _soloMinutes = 0;
+  int _multiEngineMinutes = 0;
+  int _crossCountryMinutes = 0;
+  Map<String, int> _customTimeFields = {};
+
   // Track changes for confirmation dialog
   bool _hasChanges = false;
 
@@ -125,6 +135,22 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       _isPilotFlying = entry.isPilotFlying;
       _dayLandings = entry.totalLandings.day;
       _nightLandings = entry.totalLandings.night;
+
+      // Initialize detail time fields from existing entry
+      final ft = entry.flightTime;
+      _nightMinutes = ft.night;
+      _ifrMinutes = ft.ifr;
+      _soloMinutes = ft.solo;
+      _multiEngineMinutes = ft.multiEngine;
+      _crossCountryMinutes = ft.crossCountry;
+      _customTimeFields = Map.from(ft.customFields);
+
+      // Auto-expand if any detail values are set
+      if (ft.night > 0 || ft.ifr > 0 || ft.solo > 0 ||
+          ft.multiEngine > 0 || ft.crossCountry > 0 ||
+          ft.customFields.values.any((v) => v > 0)) {
+        _detailsExpanded = true;
+      }
 
       // Initialize pilot crew entry
       _pilotCrewEntry = CrewEntry(name: '', role: _role);
@@ -280,11 +306,16 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   FlightTime get _calculatedFlightTime {
     final total = _totalFlightMinutes;
     // Auto-populate time fields based on the selected primary role
+    // Detail times are clamped to not exceed total flight time
     return FlightTime.fromPrimaryRole(
       _role.toUpperCase(),
       total,
-      night: 0, // TODO: Add night time picker in future
-      ifr: 0,   // TODO: Add IFR time picker in future
+      night: _nightMinutes.clamp(0, total),
+      ifr: _ifrMinutes.clamp(0, total),
+      solo: _soloMinutes.clamp(0, total),
+      multiEngine: _multiEngineMinutes.clamp(0, total),
+      crossCountry: _crossCountryMinutes.clamp(0, total),
+      customFields: _customTimeFields,
     );
   }
 
@@ -771,6 +802,117 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                               ],
                             ),
                           ),
+                          // Expandable Details section
+                          const SizedBox(height: 16),
+                          Divider(
+                            color: AppColors.borderSubtle,
+                            height: 1,
+                          ),
+                          const SizedBox(height: 12),
+                          // Tappable header to expand/collapse
+                          GestureDetector(
+                            onTap: () => setState(() => _detailsExpanded = !_detailsExpanded),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Details',
+                                  style: AppTypography.body.copyWith(
+                                    color: AppColors.whiteDarker,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                AnimatedRotation(
+                                  turns: _detailsExpanded ? 0.5 : 0,
+                                  duration: const Duration(milliseconds: 200),
+                                  child: Icon(
+                                    Icons.expand_more,
+                                    color: AppColors.whiteDarker,
+                                    size: 20,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_detailsExpanded) ...[
+                            const SizedBox(height: 16),
+                            DurationStepper(
+                              label: 'Night',
+                              minutes: _nightMinutes,
+                              maxMinutes: _totalFlightMinutes,
+                              onChanged: (value) {
+                                setState(() {
+                                  _nightMinutes = value;
+                                  _hasChanges = true;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            DurationStepper(
+                              label: 'IFR',
+                              minutes: _ifrMinutes,
+                              maxMinutes: _totalFlightMinutes,
+                              onChanged: (value) {
+                                setState(() {
+                                  _ifrMinutes = value;
+                                  _hasChanges = true;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            DurationStepper(
+                              label: 'Solo',
+                              minutes: _soloMinutes,
+                              maxMinutes: _totalFlightMinutes,
+                              onChanged: (value) {
+                                setState(() {
+                                  _soloMinutes = value;
+                                  _hasChanges = true;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            DurationStepper(
+                              label: 'Multi-Engine',
+                              minutes: _multiEngineMinutes,
+                              maxMinutes: _totalFlightMinutes,
+                              onChanged: (value) {
+                                setState(() {
+                                  _multiEngineMinutes = value;
+                                  _hasChanges = true;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            DurationStepper(
+                              label: 'Cross-Country',
+                              minutes: _crossCountryMinutes,
+                              maxMinutes: _totalFlightMinutes,
+                              onChanged: (value) {
+                                setState(() {
+                                  _crossCountryMinutes = value;
+                                  _hasChanges = true;
+                                });
+                              },
+                            ),
+                            // Custom time fields from preferences
+                            ...PreferencesService.instance.getCustomTimeFields().map((fieldName) {
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: DurationStepper(
+                                  label: fieldName,
+                                  minutes: _customTimeFields[fieldName] ?? 0,
+                                  maxMinutes: _totalFlightMinutes,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _customTimeFields[fieldName] = value;
+                                      _hasChanges = true;
+                                    });
+                                  },
+                                ),
+                              );
+                            }),
+                          ],
                         ],
                       ),
                     ),

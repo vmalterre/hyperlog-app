@@ -80,22 +80,24 @@ class _MyAppState extends State<MyApp> {
       theme: AppTheme.darkTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.dark,
-      home: EnvironmentBanner(
-        child: Consumer<SessionState>(
-          builder: (context, session, _) {
-            // Show loading while session initializes
-            if (!session.isInitialized) {
-              return const Scaffold(
-                body: Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
-            }
-            return session.isLoggedIn
-                ? const HomeScreen(title: "HYPERLOG")
-                : const AuthScreen();
-          },
-        ),
+      builder: (context, child) {
+        // Wrap ALL routes with EnvironmentBanner so it appears on every screen
+        return EnvironmentBanner(child: child ?? const SizedBox.shrink());
+      },
+      home: Consumer<SessionState>(
+        builder: (context, session, _) {
+          // Show loading while session initializes
+          if (!session.isInitialized) {
+            return const Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+          return session.isLoggedIn
+              ? const HomeScreen(title: "HYPERLOG")
+              : const AuthScreen();
+        },
       ),
     );
   }

@@ -17,10 +17,23 @@ void main() {
           total: 180,
           night: 30,
           ifr: 60,
+          solo: 45,
+          multiEngine: 120,
+          crossCountry: 90,
         );
         expect(ft.total, 180);
         expect(ft.night, 30);
         expect(ft.ifr, 60);
+        expect(ft.solo, 45);
+        expect(ft.multiEngine, 120);
+        expect(ft.crossCountry, 90);
+      });
+
+      test('defaults detail fields to 0', () {
+        final ft = FlightTime(total: 120);
+        expect(ft.solo, 0);
+        expect(ft.multiEngine, 0);
+        expect(ft.crossCountry, 0);
       });
     });
 
@@ -30,6 +43,9 @@ void main() {
           'total': 240,
           'night': 60,
           'ifr': 120,
+          'solo': 30,
+          'multiEngine': 200,
+          'crossCountry': 180,
         };
 
         final ft = FlightTime.fromJson(json);
@@ -37,6 +53,9 @@ void main() {
         expect(ft.total, 240);
         expect(ft.night, 60);
         expect(ft.ifr, 120);
+        expect(ft.solo, 30);
+        expect(ft.multiEngine, 200);
+        expect(ft.crossCountry, 180);
       });
 
       test('defaults missing fields to 0', () {
@@ -47,6 +66,9 @@ void main() {
         expect(ft.total, 90);
         expect(ft.night, 0);
         expect(ft.ifr, 0);
+        expect(ft.solo, 0);
+        expect(ft.multiEngine, 0);
+        expect(ft.crossCountry, 0);
       });
 
       test('handles null values as 0', () {
@@ -68,6 +90,9 @@ void main() {
           total: 120,
           night: 30,
           ifr: 45,
+          solo: 60,
+          multiEngine: 100,
+          crossCountry: 80,
         );
 
         final json = ft.toJson();
@@ -75,6 +100,61 @@ void main() {
         expect(json['total'], 120);
         expect(json['night'], 30);
         expect(json['ifr'], 45);
+        expect(json['solo'], 60);
+        expect(json['multiEngine'], 100);
+        expect(json['crossCountry'], 80);
+      });
+    });
+
+    group('copyWith', () {
+      test('copies with updated detail fields', () {
+        final ft = FlightTime(total: 120);
+        final updated = ft.copyWith(
+          solo: 30,
+          multiEngine: 60,
+          crossCountry: 90,
+        );
+
+        expect(updated.total, 120);
+        expect(updated.solo, 30);
+        expect(updated.multiEngine, 60);
+        expect(updated.crossCountry, 90);
+      });
+
+      test('preserves original values when not specified', () {
+        final ft = FlightTime(
+          total: 120,
+          solo: 30,
+          multiEngine: 60,
+          crossCountry: 90,
+        );
+        final updated = ft.copyWith(night: 15);
+
+        expect(updated.total, 120);
+        expect(updated.night, 15);
+        expect(updated.solo, 30);
+        expect(updated.multiEngine, 60);
+        expect(updated.crossCountry, 90);
+      });
+    });
+
+    group('getTimeForField', () {
+      test('returns detail field values', () {
+        final ft = FlightTime(
+          total: 120,
+          solo: 30,
+          multiEngine: 60,
+          crossCountry: 90,
+        );
+
+        expect(ft.getTimeForField('SOLO'), 30);
+        expect(ft.getTimeForField('MULTI_ENGINE'), 60);
+        expect(ft.getTimeForField('CROSS_COUNTRY'), 90);
+      });
+
+      test('returns 0 for unknown fields', () {
+        final ft = FlightTime(total: 120);
+        expect(ft.getTimeForField('UNKNOWN'), 0);
       });
     });
 
