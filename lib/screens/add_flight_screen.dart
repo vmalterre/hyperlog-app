@@ -75,6 +75,19 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   // Validation error state for non-text fields
   String? _landingsError;
 
+  // Approaches state
+  int _visualApproaches = 0;
+  int _ilsCatIApproaches = 0;
+  int _ilsCatIIApproaches = 0;
+  int _ilsCatIIIApproaches = 0;
+  int _rnpApproaches = 0;
+  int _rnpArApproaches = 0;
+  int _vorApproaches = 0;
+  int _ndbApproaches = 0;
+  int _ilsBackCourseApproaches = 0;
+  int _localizerApproaches = 0;
+  bool _approachesExpanded = false;
+
   // Details section state
   bool _detailsExpanded = false;
   int _nightMinutes = 0;
@@ -145,11 +158,29 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       _crossCountryMinutes = ft.crossCountry;
       _customTimeFields = Map.from(ft.customFields);
 
+      // Initialize approaches from existing entry
+      final ap = entry.approaches;
+      _visualApproaches = ap.visual;
+      _ilsCatIApproaches = ap.ilsCatI;
+      _ilsCatIIApproaches = ap.ilsCatII;
+      _ilsCatIIIApproaches = ap.ilsCatIII;
+      _rnpApproaches = ap.rnp;
+      _rnpArApproaches = ap.rnpAr;
+      _vorApproaches = ap.vor;
+      _ndbApproaches = ap.ndb;
+      _ilsBackCourseApproaches = ap.ilsBackCourse;
+      _localizerApproaches = ap.localizer;
+
       // Auto-expand if any detail values are set
       if (ft.night > 0 || ft.ifr > 0 || ft.solo > 0 ||
           ft.multiEngine > 0 || ft.crossCountry > 0 ||
           ft.customFields.values.any((v) => v > 0)) {
         _detailsExpanded = true;
+      }
+
+      // Auto-expand approaches if any are set
+      if (ap.hasAny) {
+        _approachesExpanded = true;
       }
 
       // Initialize pilot crew entry
@@ -475,6 +506,22 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
               ))
           .toList();
 
+      // Build approaches object (only when PF)
+      final approaches = _isPilotFlying
+          ? Approaches(
+              visual: _visualApproaches,
+              ilsCatI: _ilsCatIApproaches,
+              ilsCatII: _ilsCatIIApproaches,
+              ilsCatIII: _ilsCatIIIApproaches,
+              rnp: _rnpApproaches,
+              rnpAr: _rnpArApproaches,
+              vor: _vorApproaches,
+              ndb: _ndbApproaches,
+              ilsBackCourse: _ilsBackCourseApproaches,
+              localizer: _localizerApproaches,
+            )
+          : const Approaches();
+
       final entry = LogbookEntry(
         id: widget.entry?.id ?? '', // Use existing ID in edit mode
         creatorUUID: userId, // UUID for API
@@ -490,6 +537,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         aircraftReg: _aircraftRegController.text.toUpperCase(),
         flightTime: _calculatedFlightTime,
         isPilotFlying: _isPilotFlying,
+        approaches: approaches,
         crew: [creatorCrew, ...additionalCrew],
         createdAt: widget.entry?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
@@ -786,7 +834,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Flight Time: ',
+                                  'Block Time: ',
                                   style: AppTypography.body.copyWith(
                                     color: AppColors.whiteDark,
                                   ),
@@ -1074,6 +1122,176 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                           ),
                         ),
                       ),
+
+                    // Approaches Section (only for PF)
+                    if (_isPilotFlying) ...[
+                      const SizedBox(height: 24),
+                      _SectionHeader(title: 'APPROACHES'),
+                      const SizedBox(height: 12),
+                      GlassContainer(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            // Expandable header
+                            GestureDetector(
+                              onTap: () => setState(() => _approachesExpanded = !_approachesExpanded),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _approachesExpanded ? 'Hide approach types' : 'Add approaches',
+                                    style: AppTypography.body.copyWith(
+                                      color: AppColors.whiteDarker,
+                                    ),
+                                  ),
+                                  AnimatedRotation(
+                                    turns: _approachesExpanded ? 0.5 : 0,
+                                    duration: const Duration(milliseconds: 200),
+                                    child: Icon(
+                                      Icons.expand_more,
+                                      color: AppColors.whiteDarker,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (_approachesExpanded) ...[
+                              const SizedBox(height: 16),
+                              NumberStepper(
+                                label: 'Visual',
+                                value: _visualApproaches,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _visualApproaches = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              NumberStepper(
+                                label: 'ILS CAT I',
+                                value: _ilsCatIApproaches,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _ilsCatIApproaches = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              NumberStepper(
+                                label: 'ILS CAT II',
+                                value: _ilsCatIIApproaches,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _ilsCatIIApproaches = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              NumberStepper(
+                                label: 'ILS CAT III',
+                                value: _ilsCatIIIApproaches,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _ilsCatIIIApproaches = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              NumberStepper(
+                                label: 'RNP',
+                                value: _rnpApproaches,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _rnpApproaches = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              NumberStepper(
+                                label: 'RNP AR',
+                                value: _rnpArApproaches,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _rnpArApproaches = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              NumberStepper(
+                                label: 'VOR',
+                                value: _vorApproaches,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _vorApproaches = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              NumberStepper(
+                                label: 'NDB',
+                                value: _ndbApproaches,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _ndbApproaches = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              NumberStepper(
+                                label: 'ILS Back Course',
+                                value: _ilsBackCourseApproaches,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _ilsBackCourseApproaches = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              NumberStepper(
+                                label: 'Localizer',
+                                value: _localizerApproaches,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _localizerApproaches = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 24),
 

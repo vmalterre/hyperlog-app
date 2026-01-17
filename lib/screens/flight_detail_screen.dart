@@ -269,12 +269,35 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                 _buildDivider(),
                 _buildDetailRow('Block Off', timeFormat.format(_entry!.blockOff)),
                 _buildDetailRow('Block On', timeFormat.format(_entry!.blockOn)),
-                _buildDetailRow('Flight Time', _entry!.flightTime.formatted),
+                _buildDetailRow('Block Time', _entry!.flightTime.formatted),
                 _buildDivider(),
                 _buildDetailRow('Aircraft', '${_entry!.aircraftType} (${_entry!.aircraftReg})'),
                 _buildDetailRow('Function', _entry!.isPilotFlying ? 'Pilot Flying' : 'Pilot Monitoring'),
                 if (_entry!.isPilotFlying)
                   _buildDetailRow('Landings', _entry!.totalLandings.total.toString()),
+                if (_entry!.approaches.hasAny) ...[
+                  _buildDivider(),
+                  if (_entry!.approaches.visual > 0)
+                    _buildDetailRow('Visual', _entry!.approaches.visual.toString()),
+                  if (_entry!.approaches.ilsCatI > 0)
+                    _buildDetailRow('ILS CAT I', _entry!.approaches.ilsCatI.toString()),
+                  if (_entry!.approaches.ilsCatII > 0)
+                    _buildDetailRow('ILS CAT II', _entry!.approaches.ilsCatII.toString()),
+                  if (_entry!.approaches.ilsCatIII > 0)
+                    _buildDetailRow('ILS CAT III', _entry!.approaches.ilsCatIII.toString()),
+                  if (_entry!.approaches.rnp > 0)
+                    _buildDetailRow('RNP', _entry!.approaches.rnp.toString()),
+                  if (_entry!.approaches.rnpAr > 0)
+                    _buildDetailRow('RNP AR', _entry!.approaches.rnpAr.toString()),
+                  if (_entry!.approaches.vor > 0)
+                    _buildDetailRow('VOR', _entry!.approaches.vor.toString()),
+                  if (_entry!.approaches.ndb > 0)
+                    _buildDetailRow('NDB', _entry!.approaches.ndb.toString()),
+                  if (_entry!.approaches.ilsBackCourse > 0)
+                    _buildDetailRow('ILS Back Course', _entry!.approaches.ilsBackCourse.toString()),
+                  if (_entry!.approaches.localizer > 0)
+                    _buildDetailRow('Localizer', _entry!.approaches.localizer.toString()),
+                ],
                 if (_entry!.creatorCrew != null && _entry!.creatorCrew!.remarks.isNotEmpty) ...[
                   _buildDivider(),
                   _buildDetailRow('Remarks', _entry!.creatorCrew!.remarks),

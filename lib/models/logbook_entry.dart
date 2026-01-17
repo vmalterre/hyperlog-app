@@ -84,7 +84,7 @@ class Landings {
   final int day;
   final int night;
 
-  Landings({this.day = 0, this.night = 0});
+  const Landings({this.day = 0, this.night = 0});
 
   factory Landings.fromJson(Map<String, dynamic> json) {
     return Landings(
@@ -99,6 +99,92 @@ class Landings {
       };
 
   int get total => day + night;
+}
+
+/// Approaches breakdown by type
+class Approaches {
+  final int visual;
+  final int ilsCatI;
+  final int ilsCatII;
+  final int ilsCatIII;
+  final int rnp;
+  final int rnpAr;
+  final int vor;
+  final int ndb;
+  final int ilsBackCourse;
+  final int localizer;
+
+  const Approaches({
+    this.visual = 0,
+    this.ilsCatI = 0,
+    this.ilsCatII = 0,
+    this.ilsCatIII = 0,
+    this.rnp = 0,
+    this.rnpAr = 0,
+    this.vor = 0,
+    this.ndb = 0,
+    this.ilsBackCourse = 0,
+    this.localizer = 0,
+  });
+
+  factory Approaches.fromJson(Map<String, dynamic> json) {
+    return Approaches(
+      visual: json['visual'] ?? 0,
+      ilsCatI: json['ilsCatI'] ?? 0,
+      ilsCatII: json['ilsCatII'] ?? 0,
+      ilsCatIII: json['ilsCatIII'] ?? 0,
+      rnp: json['rnp'] ?? 0,
+      rnpAr: json['rnpAr'] ?? 0,
+      vor: json['vor'] ?? 0,
+      ndb: json['ndb'] ?? 0,
+      ilsBackCourse: json['ilsBackCourse'] ?? 0,
+      localizer: json['localizer'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'visual': visual,
+        'ilsCatI': ilsCatI,
+        'ilsCatII': ilsCatII,
+        'ilsCatIII': ilsCatIII,
+        'rnp': rnp,
+        'rnpAr': rnpAr,
+        'vor': vor,
+        'ndb': ndb,
+        'ilsBackCourse': ilsBackCourse,
+        'localizer': localizer,
+      };
+
+  int get total =>
+      visual +
+      ilsCatI +
+      ilsCatII +
+      ilsCatIII +
+      rnp +
+      rnpAr +
+      vor +
+      ndb +
+      ilsBackCourse +
+      localizer;
+
+  bool get hasAny => total > 0;
+
+  /// Returns a formatted string of non-zero approaches
+  /// e.g., "2 ILS I, 1 VOR" or "3 Visual"
+  String get formatted {
+    final parts = <String>[];
+    if (visual > 0) parts.add('$visual Visual');
+    if (ilsCatI > 0) parts.add('$ilsCatI ILS I');
+    if (ilsCatII > 0) parts.add('$ilsCatII ILS II');
+    if (ilsCatIII > 0) parts.add('$ilsCatIII ILS III');
+    if (rnp > 0) parts.add('$rnp RNP');
+    if (rnpAr > 0) parts.add('$rnpAr RNP AR');
+    if (vor > 0) parts.add('$vor VOR');
+    if (ndb > 0) parts.add('$ndb NDB');
+    if (ilsBackCourse > 0) parts.add('$ilsBackCourse ILS BC');
+    if (localizer > 0) parts.add('$localizer LOC');
+    return parts.isEmpty ? '0' : parts.join(', ');
+  }
 }
 
 /// Crew member on a flight
@@ -428,6 +514,7 @@ class LogbookEntry {
   final String aircraftReg;
   final FlightTime flightTime;
   final bool isPilotFlying;         // true = PF (can log landings), false = PM
+  final Approaches approaches;      // Approaches by type (only for PF)
   final List<CrewMember> crew;
   final List<Verification> verifications;
   final List<Endorsement> endorsements;
@@ -448,6 +535,7 @@ class LogbookEntry {
     required this.aircraftReg,
     required this.flightTime,
     this.isPilotFlying = true,
+    this.approaches = const Approaches(),
     this.crew = const [],
     this.verifications = const [],
     this.endorsements = const [],
@@ -472,6 +560,9 @@ class LogbookEntry {
           ? FlightTime.fromJson(json['flightTime'])
           : FlightTime(total: 0),
       isPilotFlying: json['isPilotFlying'] ?? true, // Default true for backward compatibility
+      approaches: json['approaches'] != null
+          ? Approaches.fromJson(json['approaches'])
+          : const Approaches(),
       crew: (json['crew'] as List<dynamic>?)
               ?.map((c) => CrewMember.fromJson(c as Map<String, dynamic>))
               .toList() ??
@@ -568,8 +659,9 @@ class LogbookEntry {
       'aircraftReg': aircraftReg,
       'flightTime': flightTime.toJson(),
       'isPilotFlying': isPilotFlying,
+      'approaches': approaches.toJson(),
       'roles': creator?.roles.map((r) => r.toJson()).toList() ?? [],
-      'landings': creator?.landings.toJson() ?? Landings().toJson(),
+      'landings': creator?.landings.toJson() ?? const Landings().toJson(),
       'remarks': creator?.remarks ?? '',
       if (standardCrew.isNotEmpty) 'crew': standardCrew,
     };
