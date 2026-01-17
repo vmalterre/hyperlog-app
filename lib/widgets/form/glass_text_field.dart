@@ -7,6 +7,7 @@ import '../../theme/app_typography.dart';
 /// Styled text input with glass container background
 class GlassTextField extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final String label;
   final String? hint;
   final IconData? prefixIcon;
@@ -24,6 +25,7 @@ class GlassTextField extends StatelessWidget {
   const GlassTextField({
     super.key,
     required this.controller,
+    this.focusNode,
     required this.label,
     this.hint,
     this.prefixIcon,
@@ -51,6 +53,7 @@ class GlassTextField extends StatelessWidget {
 
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
       maxLength: maxLength,

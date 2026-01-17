@@ -49,6 +49,14 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   late TextEditingController _aircraftRegController;
   late TextEditingController _remarksController;
 
+  // Keys for validation scrolling
+  final _depKey = GlobalKey();
+  final _destKey = GlobalKey();
+  final _aircraftTypeKey = GlobalKey();
+  final _aircraftRegKey = GlobalKey();
+  final _landingsKey = GlobalKey();
+  final _timesKey = GlobalKey();
+
   // Date/Time state
   late DateTime _flightDate;
   late TimeOfDay _blockOff;
@@ -61,7 +69,9 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
   // Loading state
   bool _isLoading = false;
-  String? _errorMessage;
+
+  // Validation error state for non-text fields
+  String? _landingsError;
 
   // Track changes for confirmation dialog
   bool _hasChanges = false;
@@ -210,6 +220,41 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     }
   }
 
+  /// Scrolls to a widget by its GlobalKey and triggers form validation
+  void _scrollToField(GlobalKey key) {
+    final context = key.currentContext;
+    if (context != null) {
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        alignment: 0.3, // Position field 30% from top
+      );
+    }
+    // Trigger inline error display on all fields
+    _formKey.currentState?.validate();
+  }
+
+  /// Shows error snackbar for API/system errors (not field validation)
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: const Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
   /// Calculate total flight time in minutes from block times
   int get _totalFlightMinutes {
     final offMinutes = _blockOff.hour * 60 + _blockOff.minute;
@@ -271,33 +316,53 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   }
 
   bool _validateForm() {
-    // Validate form fields
-    if (!_formKey.currentState!.validate()) {
+    // Check departure
+    final dep = _depController.text.trim();
+    if (dep.isEmpty || dep.length != 3) {
+      _scrollToField(_depKey);
       return false;
     }
 
-    // Check departure != destination
-    if (_depController.text.toUpperCase() ==
-        _destController.text.toUpperCase()) {
-      setState(() {
-        _errorMessage = 'Destination must differ from departure';
-      });
+    // Check destination
+    final dest = _destController.text.trim();
+    if (dest.isEmpty || dest.length != 3) {
+      _scrollToField(_destKey);
       return false;
     }
 
-    // Check at least one landing
-    if (_dayLandings + _nightLandings < 1) {
-      setState(() {
-        _errorMessage = 'At least one landing is required';
-      });
+    // Check aircraft type
+    final aircraftType = _aircraftTypeController.text.trim();
+    if (aircraftType.isEmpty || aircraftType.length < 2) {
+      _scrollToField(_aircraftTypeKey);
+      return false;
+    }
+
+    // Check aircraft registration
+    final aircraftReg = _aircraftRegController.text.trim();
+    if (aircraftReg.isEmpty || aircraftReg.length < 4) {
+      _scrollToField(_aircraftRegKey);
       return false;
     }
 
     // Check positive flight time
     if (_totalFlightMinutes <= 0) {
-      setState(() {
-        _errorMessage = 'Flight time must be positive';
-      });
+      _scrollToField(_timesKey);
+      return false;
+    }
+
+    // Check at least one landing
+    if (_dayLandings + _nightLandings < 1) {
+      setState(() => _landingsError = 'At least one landing is required');
+      _scrollToField(_landingsKey);
+      return false;
+    } else {
+      if (_landingsError != null) {
+        setState(() => _landingsError = null);
+      }
+    }
+
+    // Run form validators for any remaining validation
+    if (!_formKey.currentState!.validate()) {
       return false;
     }
 
@@ -311,15 +376,12 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
     final userId = _userId;
     if (userId == null || userId.isEmpty) {
-      setState(() {
-        _errorMessage = 'No pilot profile found. Please complete registration.';
-      });
+      _showErrorSnackBar('No pilot profile found. Please complete registration.');
       return;
     }
 
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     try {
@@ -416,18 +478,14 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) {
-        setState(() {
-          _errorMessage = e.message;
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
+        _showErrorSnackBar(e.message);
       }
     } catch (e) {
       // Catch any unexpected errors (parsing, network, etc.)
       if (mounted) {
-        setState(() {
-          _errorMessage = 'An unexpected error occurred. Please try again.';
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
+        _showErrorSnackBar('An unexpected error occurred. Please try again.');
       }
     }
   }
@@ -515,12 +573,6 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Error message
-                    if (_errorMessage != null) ...[
-                      _ErrorBanner(message: _errorMessage!),
-                      const SizedBox(height: 16),
-                    ],
-
                     // Flight Details Section
                     _SectionHeader(title: 'FLIGHT DETAILS'),
                     const SizedBox(height: 12),
@@ -553,6 +605,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                             children: [
                               Expanded(
                                 child: GlassTextField(
+                                  key: _depKey,
                                   controller: _depController,
                                   label: 'From',
                                   hint: 'LHR',
@@ -576,6 +629,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                               ),
                               Expanded(
                                 child: GlassTextField(
+                                  key: _destKey,
                                   controller: _destController,
                                   label: 'To',
                                   hint: 'JFK',
@@ -606,6 +660,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                         children: [
                           Expanded(
                             child: GlassTextField(
+                              key: _aircraftTypeKey,
                               controller: _aircraftTypeController,
                               label: 'Type',
                               hint: 'B777',
@@ -619,6 +674,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                           const SizedBox(width: 16),
                           Expanded(
                             child: GlassTextField(
+                              key: _aircraftRegKey,
                               controller: _aircraftRegController,
                               label: 'Registration',
                               hint: 'G-STBA',
@@ -639,6 +695,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                     _SectionHeader(title: 'TIMES'),
                     const SizedBox(height: 12),
                     GlassContainer(
+                      key: _timesKey,
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
@@ -795,38 +852,62 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                     // Landings Section
                     _SectionHeader(title: 'LANDINGS'),
                     const SizedBox(height: 12),
-                    GlassContainer(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          NumberStepper(
-                            label: 'Day Landings',
-                            value: _dayLandings,
-                            minValue: 0,
-                            maxValue: 99,
-                            onChanged: (value) {
-                              setState(() {
-                                _dayLandings = value;
-                                _hasChanges = true;
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          NumberStepper(
-                            label: 'Night Landings',
-                            value: _nightLandings,
-                            minValue: 0,
-                            maxValue: 99,
-                            onChanged: (value) {
-                              setState(() {
-                                _nightLandings = value;
-                                _hasChanges = true;
-                              });
-                            },
-                          ),
-                        ],
+                    Container(
+                      key: _landingsKey,
+                      decoration: _landingsError != null
+                          ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: const Color(0xFFEF4444),
+                                width: 1.5,
+                              ),
+                            )
+                          : null,
+                      child: GlassContainer(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            NumberStepper(
+                              label: 'Day Landings',
+                              value: _dayLandings,
+                              minValue: 0,
+                              maxValue: 99,
+                              onChanged: (value) {
+                                setState(() {
+                                  _dayLandings = value;
+                                  _hasChanges = true;
+                                  _landingsError = null;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            NumberStepper(
+                              label: 'Night Landings',
+                              value: _nightLandings,
+                              minValue: 0,
+                              maxValue: 99,
+                              onChanged: (value) {
+                                setState(() {
+                                  _nightLandings = value;
+                                  _hasChanges = true;
+                                  _landingsError = null;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ),
+                    if (_landingsError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, left: 12),
+                        child: Text(
+                          _landingsError!,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: const Color(0xFFEF4444),
+                          ),
+                        ),
+                      ),
 
                     const SizedBox(height: 24),
 
@@ -884,40 +965,3 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _ErrorBanner extends StatelessWidget {
-  final String message;
-
-  const _ErrorBanner({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEF4444).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: const Color(0xFFEF4444).withValues(alpha: 0.3),
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.error_outline,
-            color: Color(0xFFEF4444),
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: AppTypography.bodySmall.copyWith(
-                color: const Color(0xFFEF4444),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
