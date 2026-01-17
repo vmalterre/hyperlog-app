@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../constants/airport_format.dart';
 import '../constants/role_standards.dart';
 
 /// Service for managing user preferences using shared_preferences
@@ -8,6 +9,7 @@ class PreferencesService {
   static const String _keyDefaultRole = 'default_role';
   static const String _keyDefaultSecondaryRole = 'default_secondary_role';
   static const String _keyCustomTimeFields = 'custom_time_fields';
+  static const String _keyAirportCodeFormat = 'airport_code_format';
 
   static PreferencesService? _instance;
   SharedPreferences? _prefs;
@@ -110,5 +112,20 @@ class PreferencesService {
       fields[index] = newName;
       await setCustomTimeFields(fields);
     }
+  }
+
+  /// Get the user's preferred airport code format
+  AirportCodeFormat getAirportCodeFormat() {
+    final value = _prefs?.getString(_keyAirportCodeFormat);
+    if (value == null) return AirportCodeFormat.iata;
+    return AirportCodeFormat.values.firstWhere(
+      (f) => f.name == value,
+      orElse: () => AirportCodeFormat.iata,
+    );
+  }
+
+  /// Set the user's preferred airport code format
+  Future<void> setAirportCodeFormat(AirportCodeFormat format) async {
+    await _prefs?.setString(_keyAirportCodeFormat, format.name);
   }
 }

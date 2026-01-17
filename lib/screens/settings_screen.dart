@@ -7,6 +7,9 @@ import 'package:hyperlog/theme/app_colors.dart';
 import 'package:hyperlog/theme/app_typography.dart';
 import 'package:hyperlog/widgets/glass_card.dart';
 import 'package:hyperlog/widgets/app_button.dart';
+import '../constants/airport_format.dart';
+import '../services/preferences_service.dart';
+import 'display_options_screen.dart';
 import 'saved_pilots_screen.dart';
 import 'my_roles_screen.dart';
 
@@ -19,11 +22,13 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   String _appVersion = '';
+  AirportCodeFormat _airportCodeFormat = AirportCodeFormat.iata;
 
   @override
   void initState() {
     super.initState();
     _loadVersion();
+    _loadPreferences();
   }
 
   Future<void> _loadVersion() async {
@@ -33,6 +38,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _appVersion = packageInfo.version;
       });
     }
+  }
+
+  void _loadPreferences() {
+    setState(() {
+      _airportCodeFormat = PreferencesService.instance.getAirportCodeFormat();
+    });
   }
 
   @override
@@ -112,6 +123,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _SettingsSection(
                 title: 'LOGBOOK',
                 items: [
+                  _SettingsItem(
+                    icon: Icons.tune,
+                    title: 'Display Options',
+                    subtitle: '${AirportFormats.getDisplayName(_airportCodeFormat)} codes',
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DisplayOptionsScreen(),
+                        ),
+                      );
+                      _loadPreferences();
+                    },
+                  ),
                   _SettingsItem(
                     icon: Icons.badge_outlined,
                     title: 'My Roles',
