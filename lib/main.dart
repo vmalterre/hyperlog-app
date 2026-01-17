@@ -2,6 +2,7 @@ import 'package:hyperlog/config/app_config.dart';
 import 'package:hyperlog/session_state.dart';
 import 'package:hyperlog/services/preferences_service.dart';
 import 'package:hyperlog/theme/app_theme.dart';
+import 'package:hyperlog/widgets/environment_banner.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
@@ -79,20 +80,22 @@ class _MyAppState extends State<MyApp> {
       theme: AppTheme.darkTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.dark,
-      home: Consumer<SessionState>(
-        builder: (context, session, _) {
-          // Show loading while session initializes
-          if (!session.isInitialized) {
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          return session.isLoggedIn
-              ? const HomeScreen(title: "HYPERLOG")
-              : const AuthScreen();
-        },
+      home: EnvironmentBanner(
+        child: Consumer<SessionState>(
+          builder: (context, session, _) {
+            // Show loading while session initializes
+            if (!session.isInitialized) {
+              return const Scaffold(
+                body: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+            return session.isLoggedIn
+                ? const HomeScreen(title: "HYPERLOG")
+                : const AuthScreen();
+          },
+        ),
       ),
     );
   }
