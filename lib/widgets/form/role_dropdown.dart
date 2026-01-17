@@ -5,16 +5,15 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 
 /// Legacy PilotRoles class for backward compatibility
-/// New code should use RoleStandards from constants/role_standards.dart
+/// New code should use TimeFieldCodes and RoleStandards
 class PilotRoles {
   static List<String> get values {
-    final prefs = PreferencesService.instance;
-    return RoleStandards.getRoleCodes(prefs.getRoleStandard());
+    return TimeFieldCodes.primaryRoles;
   }
 
   static String getDescription(String role) {
     final prefs = PreferencesService.instance;
-    return RoleStandards.getDescription(prefs.getRoleStandard(), role);
+    return RoleStandards.getLabel(prefs.getRoleStandard(), role);
   }
 
   /// Get list of roles including any custom role that might exist in data
@@ -46,11 +45,25 @@ class RoleDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final standard = PreferencesService.instance.getRoleStandard();
+    final rolesWithLabels = RoleStandards.getPrimaryRolesWithLabels(standard);
+    final roleCodes = rolesWithLabels.map((r) => r.code).toList();
+
     // Include custom role if value is not in standard list
-    final roles = PilotRoles.getValuesWithCustom(value);
+    var displayRoles = rolesWithLabels;
+    if (value != null && value!.isNotEmpty && !roleCodes.contains(value)) {
+      displayRoles = [
+        ...rolesWithLabels,
+        (code: value!, label: value!),
+      ];
+    }
+
+    final effectiveValue = displayRoles.any((r) => r.code == value)
+        ? value
+        : displayRoles.first.code;
 
     return DropdownButtonFormField<String>(
-      initialValue: roles.contains(value) ? value : roles.first,
+      value: effectiveValue,
       onChanged: enabled ? onChanged : null,
       validator: validator,
       decoration: InputDecoration(
@@ -67,11 +80,11 @@ class RoleDropdown extends StatelessWidget {
         Icons.expand_more,
         color: AppColors.whiteDarker,
       ),
-      items: roles.map((role) {
+      items: displayRoles.map((role) {
         return DropdownMenuItem<String>(
-          value: role,
+          value: role.code,
           child: Text(
-            role,
+            role.label,
             style: AppTypography.body.copyWith(
               color: AppColors.white,
             ),

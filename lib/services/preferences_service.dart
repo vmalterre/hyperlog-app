@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/role_standards.dart';
 
@@ -5,6 +6,8 @@ import '../constants/role_standards.dart';
 class PreferencesService {
   static const String _keyRoleStandard = 'role_standard';
   static const String _keyDefaultRole = 'default_role';
+  static const String _keyDefaultSecondaryRole = 'default_secondary_role';
+  static const String _keyCustomTimeFields = 'custom_time_fields';
 
   static PreferencesService? _instance;
   SharedPreferences? _prefs;
@@ -35,11 +38,10 @@ class PreferencesService {
   /// Set the user's preferred role standard
   Future<void> setRoleStandard(RoleStandard standard) async {
     await _prefs?.setString(_keyRoleStandard, standard.name);
-    // Reset default role when standard changes
-    await setDefaultRole(RoleStandards.getDefaultRole(standard));
+    // Keep the same default role code when standard changes (labels change, code stays)
   }
 
-  /// Get the user's default role
+  /// Get the user's default primary role
   String getDefaultRole() {
     final role = _prefs?.getString(_keyDefaultRole);
     if (role == null || role.isEmpty) {
@@ -48,8 +50,65 @@ class PreferencesService {
     return role;
   }
 
-  /// Set the user's default role
+  /// Set the user's default primary role
   Future<void> setDefaultRole(String role) async {
     await _prefs?.setString(_keyDefaultRole, role);
+  }
+
+  /// Get the user's default secondary role (null if none)
+  String? getDefaultSecondaryRole() {
+    return _prefs?.getString(_keyDefaultSecondaryRole);
+  }
+
+  /// Set the user's default secondary role (null to clear)
+  Future<void> setDefaultSecondaryRole(String? role) async {
+    if (role == null || role.isEmpty) {
+      await _prefs?.remove(_keyDefaultSecondaryRole);
+    } else {
+      await _prefs?.setString(_keyDefaultSecondaryRole, role);
+    }
+  }
+
+  /// Get custom time fields (user-defined field names)
+  List<String> getCustomTimeFields() {
+    final json = _prefs?.getString(_keyCustomTimeFields);
+    if (json == null || json.isEmpty) return [];
+    try {
+      final list = jsonDecode(json) as List<dynamic>;
+      return list.cast<String>();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Set custom time fields
+  Future<void> setCustomTimeFields(List<String> fields) async {
+    await _prefs?.setString(_keyCustomTimeFields, jsonEncode(fields));
+  }
+
+  /// Add a custom time field
+  Future<void> addCustomTimeField(String fieldName) async {
+    final fields = getCustomTimeFields();
+    if (!fields.contains(fieldName)) {
+      fields.add(fieldName);
+      await setCustomTimeFields(fields);
+    }
+  }
+
+  /// Remove a custom time field
+  Future<void> removeCustomTimeField(String fieldName) async {
+    final fields = getCustomTimeFields();
+    fields.remove(fieldName);
+    await setCustomTimeFields(fields);
+  }
+
+  /// Rename a custom time field
+  Future<void> renameCustomTimeField(String oldName, String newName) async {
+    final fields = getCustomTimeFields();
+    final index = fields.indexOf(oldName);
+    if (index != -1) {
+      fields[index] = newName;
+      await setCustomTimeFields(fields);
+    }
   }
 }

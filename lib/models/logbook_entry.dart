@@ -205,16 +205,40 @@ class Endorsement {
 }
 
 /// Flight time breakdown (values in minutes)
-/// Note: PIC/SIC/Dual time is derived from crew roles, not stored here
+/// Includes the 5 universal required time fields for role-based tracking
+///
+/// Role categories:
+/// - Primary roles (seat position): PIC, SIC, PICUS
+/// - Secondary roles (activity): DUAL, INSTRUCTOR
+///
+/// SOLO was removed as it's derivable from flight data (PIC + no crew = solo time)
 class FlightTime {
   final int total;
   final int night;
   final int ifr;
 
+  // Primary role time fields (seat position - mutually exclusive)
+  final int pic;        // PIC / P1 / Captain
+  final int picus;      // PIC Under Supervision / P1 u/s
+  final int sic;        // SIC / Co-pilot / P2
+
+  // Secondary role time fields (activity - can combine with primary)
+  final int dual;       // Dual instruction received
+  final int instructor; // Instructor time given
+
+  // Custom time fields (user-defined, name -> minutes)
+  final Map<String, int> customFields;
+
   FlightTime({
     required this.total,
     this.night = 0,
     this.ifr = 0,
+    this.pic = 0,
+    this.picus = 0,
+    this.sic = 0,
+    this.dual = 0,
+    this.instructor = 0,
+    this.customFields = const {},
   });
 
   factory FlightTime.fromJson(Map<String, dynamic> json) {
@@ -222,6 +246,14 @@ class FlightTime {
       total: json['total'] ?? 0,
       night: json['night'] ?? 0,
       ifr: json['ifr'] ?? 0,
+      pic: json['pic'] ?? 0,
+      picus: json['picus'] ?? 0,
+      sic: json['sic'] ?? 0,
+      dual: json['dual'] ?? 0,
+      instructor: json['instructor'] ?? 0,
+      customFields: (json['customFields'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(k, v as int)) ??
+          {},
     );
   }
 
@@ -229,6 +261,12 @@ class FlightTime {
         'total': total,
         'night': night,
         'ifr': ifr,
+        'pic': pic,
+        'picus': picus,
+        'sic': sic,
+        'dual': dual,
+        'instructor': instructor,
+        if (customFields.isNotEmpty) 'customFields': customFields,
       };
 
   /// Format total minutes as HH:MM
@@ -236,6 +274,98 @@ class FlightTime {
     final hours = total ~/ 60;
     final minutes = total % 60;
     return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
+  }
+
+  /// Format a duration in minutes as HH:MM
+  static String formatMinutes(int minutes) {
+    final hours = minutes ~/ 60;
+    final mins = minutes % 60;
+    return '${hours.toString().padLeft(2, '0')}:${mins.toString().padLeft(2, '0')}';
+  }
+
+  /// Get time value for a given field code
+  int getTimeForField(String fieldCode) {
+    switch (fieldCode) {
+      case 'PIC':
+        return pic;
+      case 'PICUS':
+        return picus;
+      case 'SIC':
+        return sic;
+      case 'DUAL':
+        return dual;
+      case 'INSTRUCTOR':
+        return instructor;
+      default:
+        return customFields[fieldCode] ?? 0;
+    }
+  }
+
+  /// Create a copy with updated values
+  FlightTime copyWith({
+    int? total,
+    int? night,
+    int? ifr,
+    int? pic,
+    int? picus,
+    int? sic,
+    int? dual,
+    int? instructor,
+    Map<String, int>? customFields,
+  }) {
+    return FlightTime(
+      total: total ?? this.total,
+      night: night ?? this.night,
+      ifr: ifr ?? this.ifr,
+      pic: pic ?? this.pic,
+      picus: picus ?? this.picus,
+      sic: sic ?? this.sic,
+      dual: dual ?? this.dual,
+      instructor: instructor ?? this.instructor,
+      customFields: customFields ?? this.customFields,
+    );
+  }
+
+  /// Create FlightTime from primary and optional secondary role
+  /// Primary role determines seat position time (PIC, SIC, PICUS)
+  /// Secondary role determines activity time (DUAL, INSTRUCTOR)
+  factory FlightTime.fromRoles({
+    required String primaryRole,
+    String? secondaryRole,
+    required int totalMinutes,
+    int night = 0,
+    int ifr = 0,
+    Map<String, int>? customFields,
+  }) {
+    return FlightTime(
+      total: totalMinutes,
+      night: night,
+      ifr: ifr,
+      // Primary role (seat position)
+      pic: primaryRole == 'PIC' ? totalMinutes : 0,
+      picus: primaryRole == 'PICUS' ? totalMinutes : 0,
+      sic: primaryRole == 'SIC' ? totalMinutes : 0,
+      // Secondary role (activity)
+      dual: secondaryRole == 'DUAL' ? totalMinutes : 0,
+      instructor: secondaryRole == 'INSTRUCTOR' ? totalMinutes : 0,
+      customFields: customFields ?? {},
+    );
+  }
+
+  /// Create FlightTime from primary role only
+  /// @deprecated Use fromRoles instead for primary + secondary support
+  factory FlightTime.fromPrimaryRole(String primaryRole, int totalMinutes, {
+    int night = 0,
+    int ifr = 0,
+    Map<String, int>? customFields,
+  }) {
+    return FlightTime.fromRoles(
+      primaryRole: primaryRole,
+      totalMinutes: totalMinutes,
+      night: night,
+      ifr: ifr,
+      customFields: customFields,
+    );
   }
 }
 

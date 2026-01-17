@@ -228,13 +228,15 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
   }
 
-  /// Build FlightTime (role-based time is now computed from crew roles)
+  /// Build FlightTime with role-based time auto-populated from primary role
   FlightTime get _calculatedFlightTime {
     final total = _totalFlightMinutes;
-    return FlightTime(
-      total: total,
-      night: 0,
-      ifr: 0,
+    // Auto-populate time fields based on the selected primary role
+    return FlightTime.fromPrimaryRole(
+      _role.toUpperCase(),
+      total,
+      night: 0, // TODO: Add night time picker in future
+      ifr: 0,   // TODO: Add IFR time picker in future
     );
   }
 
