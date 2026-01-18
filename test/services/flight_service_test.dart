@@ -63,6 +63,10 @@ void main() {
       'flightDate': '2024-06-15',
       'dep': 'EGLL',
       'dest': 'KJFK',
+      'depIcao': 'EGLL',
+      'depIata': 'LHR',
+      'destIcao': 'KJFK',
+      'destIata': 'JFK',
       'blockOff': '2024-06-15T08:30:00.000Z',
       'blockOn': '2024-06-15T16:00:00.000Z',
       'aircraftType': 'B777',
@@ -132,8 +136,8 @@ void main() {
 
         expect(flights.length, 2);
         expect(flights[0].id, 'flight-1');
-        expect(flights[0].depIata, 'EGLL');
-        expect(flights[0].destIata, 'KJFK');
+        expect(flights[0].depIata, 'LHR');
+        expect(flights[0].destIata, 'JFK');
         expect(flights[0].trustLevel, TrustLevel.logged);
         expect(flights[1].id, 'flight-2');
         expect(flights[1].trustLevel, TrustLevel.tracked);

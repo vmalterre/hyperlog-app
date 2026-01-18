@@ -493,6 +493,10 @@ void main() {
         'flightNumber': 'BA117',
         'dep': 'EGLL',
         'dest': 'KJFK',
+        'depIcao': 'EGLL',
+        'depIata': 'LHR',
+        'destIcao': 'KJFK',
+        'destIata': 'JFK',
         'blockOff': '2024-06-15T08:30:00.000Z',
         'blockOn': '2024-06-15T16:00:00.000Z',
         'aircraftType': 'B777',
@@ -635,8 +639,8 @@ void main() {
 
         expect(short.id, 'flight-123');
         expect(short.date, DateTime.utc(2024, 6, 15));
-        expect(short.depIata, 'EGLL');
-        expect(short.destIata, 'KJFK');
+        expect(short.depIata, 'LHR');
+        expect(short.destIata, 'JFK');
         expect(short.acftReg, 'G-VIIA');
         expect(short.acftType, 'B777');
         expect(short.blockTime, '07:30'); // 450 min
