@@ -671,6 +671,11 @@ class LogbookEntry {
       'flightNumber': flightNumber ?? '',
       'dep': dep,
       'dest': dest,
+      // Include ICAO/IATA codes when available (from airport autocomplete)
+      if (depIcao != null) 'depIcao': depIcao,
+      if (depIata != null) 'depIata': depIata,
+      if (destIcao != null) 'destIcao': destIcao,
+      if (destIata != null) 'destIata': destIata,
       'blockOff': blockOff.toUtc().toIso8601String(),
       'blockOn': blockOn.toUtc().toIso8601String(),
       'aircraftType': aircraftType,

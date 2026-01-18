@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../models/airport.dart';
 import '../models/logbook_entry.dart';
 import '../models/saved_pilot.dart';
 import '../services/api_exception.dart';
@@ -18,6 +19,7 @@ import '../widgets/form/glass_time_picker.dart';
 import '../widgets/form/number_stepper.dart';
 import '../widgets/form/duration_stepper.dart';
 import '../widgets/form/crew_entry_card.dart';
+import '../widgets/form/airport_route_fields.dart';
 
 class AddFlightScreen extends StatefulWidget {
   /// Entry to edit. If null, creates a new flight.
@@ -41,6 +43,10 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   late CrewEntry _pilotCrewEntry;
   final List<CrewEntry> _additionalCrewEntries = [];
   List<SavedPilot> _savedPilots = [];
+
+  // Selected airports (for ICAO/IATA extraction)
+  Airport? _selectedDepAirport;
+  Airport? _selectedDestAirport;
 
   // Text controllers
   late TextEditingController _flightNumberController;
@@ -350,13 +356,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     );
   }
 
-  String? _validateIataCode(String? value) {
+  String? _validateAirportCode(String? value) {
     if (value == null || value.isEmpty) {
       return 'Required';
     }
-    if (value.length != 3) {
-      return '3 letters';
-    }
+    // Allow any non-empty input (codes, names, unknown airfields)
     return null;
   }
 
@@ -381,16 +385,16 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   }
 
   bool _validateForm() {
-    // Check departure
+    // Check departure (any non-empty value for codes, names, unknown airfields)
     final dep = _depController.text.trim();
-    if (dep.isEmpty || dep.length != 3) {
+    if (dep.isEmpty) {
       _scrollToField(_depKey);
       return false;
     }
 
-    // Check destination
+    // Check destination (any non-empty value)
     final dest = _destController.text.trim();
-    if (dest.isEmpty || dest.length != 3) {
+    if (dest.isEmpty) {
       _scrollToField(_destKey);
       return false;
     }
@@ -531,6 +535,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
             : _flightNumberController.text.toUpperCase(),
         dep: _depController.text.toUpperCase(),
         dest: _destController.text.toUpperCase(),
+        // Include ICAO/IATA codes when airport was selected from autocomplete
+        depIcao: _selectedDepAirport?.icaoCode,
+        depIata: _selectedDepAirport?.iataCode,
+        destIcao: _selectedDestAirport?.icaoCode,
+        destIata: _selectedDestAirport?.iataCode,
         blockOff: blockOffDateTime,
         blockOn: blockOnDateTime,
         aircraftType: _aircraftTypeController.text.toUpperCase(),
@@ -746,49 +755,27 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                             maxLength: 10,
                           ),
                           const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: GlassTextField(
-                                  key: _depKey,
-                                  controller: _depController,
-                                  label: 'From',
-                                  hint: 'LHR',
-                                  monospace: true,
-                                  textCapitalization: TextCapitalization.characters,
-                                  maxLength: 3,
-                                  validator: _validateIataCode,
-                                  inputFormatters: [
-                                    UpperCaseTextFormatter(),
-                                    LettersOnlyFormatter(),
-                                  ],
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: Icon(
-                                  Icons.arrow_forward,
-                                  color: AppColors.denimLight,
-                                  size: 24,
-                                ),
-                              ),
-                              Expanded(
-                                child: GlassTextField(
-                                  key: _destKey,
-                                  controller: _destController,
-                                  label: 'To',
-                                  hint: 'JFK',
-                                  monospace: true,
-                                  textCapitalization: TextCapitalization.characters,
-                                  maxLength: 3,
-                                  validator: _validateIataCode,
-                                  inputFormatters: [
-                                    UpperCaseTextFormatter(),
-                                    LettersOnlyFormatter(),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          AirportRouteFields(
+                            depController: _depController,
+                            destController: _destController,
+                            initialDepAirport: _selectedDepAirport,
+                            initialDestAirport: _selectedDestAirport,
+                            depKey: _depKey,
+                            destKey: _destKey,
+                            depValidator: _validateAirportCode,
+                            destValidator: _validateAirportCode,
+                            onDepAirportSelected: (airport) {
+                              setState(() {
+                                _selectedDepAirport = airport;
+                                _hasChanges = true;
+                              });
+                            },
+                            onDestAirportSelected: (airport) {
+                              setState(() {
+                                _selectedDestAirport = airport;
+                                _hasChanges = true;
+                              });
+                            },
                           ),
                         ],
                       ),
