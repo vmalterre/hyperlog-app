@@ -636,7 +636,7 @@ void main() {
         expect(short.id, 'flight-123');
         expect(short.date, DateTime.utc(2024, 6, 15));
         expect(short.depIata, 'EGLL');
-        expect(short.desIata, 'KJFK');
+        expect(short.destIata, 'KJFK');
         expect(short.acftReg, 'G-VIIA');
         expect(short.acftType, 'B777');
         expect(short.blockTime, '07:30'); // 450 min

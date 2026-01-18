@@ -133,7 +133,7 @@ void main() {
         expect(flights.length, 2);
         expect(flights[0].id, 'flight-1');
         expect(flights[0].depIata, 'EGLL');
-        expect(flights[0].desIata, 'KJFK');
+        expect(flights[0].destIata, 'KJFK');
         expect(flights[0].trustLevel, TrustLevel.logged);
         expect(flights[1].id, 'flight-2');
         expect(flights[1].trustLevel, TrustLevel.tracked);
