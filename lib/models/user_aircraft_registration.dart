@@ -50,12 +50,12 @@ class UserAircraftRegistration {
           'userAircraftType': userAircraftType!.toJson(),
       };
 
-  /// Get the aircraft type display name
+  /// Get the aircraft type display name (includes variant if set, no ICAO)
   String get aircraftTypeDisplay {
-    if (userAircraftType?.aircraftType != null) {
-      return userAircraftType!.aircraftType!.displayName;
+    if (userAircraftType != null) {
+      return userAircraftType!.displayNameWithVariant;
     }
-    return userAircraftType?.displayName ?? 'Unknown';
+    return 'Unknown';
   }
 
   /// Get the ICAO designator

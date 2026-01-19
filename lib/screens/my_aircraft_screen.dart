@@ -9,6 +9,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../widgets/app_button.dart';
 import '../widgets/glass_card.dart';
+import 'aircraft_type_search_screen.dart';
 
 /// View options for the aircraft screen
 enum _AircraftView { types, registrations }
@@ -100,10 +101,7 @@ class _MyAircraftScreenState extends State<MyAircraftScreen> {
   }
 
   Future<void> _addAircraftType() async {
-    final result = await showSearch<AircraftType?>(
-      context: context,
-      delegate: _AircraftTypeSearchDelegate(_aircraftService),
-    );
+    final result = await AircraftTypeSearchScreen.show(context);
 
     if (result == null) return;
 
@@ -715,162 +713,6 @@ class _RegistrationCard extends StatelessWidget {
 }
 
 // ===========================================================================
-// Search Delegate for Aircraft Types
-// ===========================================================================
-
-class _AircraftTypeSearchDelegate extends SearchDelegate<AircraftType?> {
-  final AircraftService _aircraftService;
-  List<AircraftType> _results = [];
-  bool _isLoading = false;
-
-  _AircraftTypeSearchDelegate(this._aircraftService);
-
-  @override
-  ThemeData appBarTheme(BuildContext context) {
-    return ThemeData(
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.nightRider,
-        foregroundColor: AppColors.white,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        hintStyle: AppTypography.body.copyWith(color: AppColors.whiteDarker),
-      ),
-      textTheme: TextTheme(
-        titleLarge: AppTypography.body.copyWith(color: AppColors.white),
-      ),
-      scaffoldBackgroundColor: AppColors.nightRider,
-    );
-  }
-
-  @override
-  List<Widget> buildActions(BuildContext context) {
-    return [
-      IconButton(
-        icon: const Icon(Icons.clear),
-        onPressed: () {
-          query = '';
-        },
-      ),
-    ];
-  }
-
-  @override
-  Widget buildLeading(BuildContext context) {
-    return IconButton(
-      icon: const Icon(Icons.arrow_back),
-      onPressed: () {
-        close(context, null);
-      },
-    );
-  }
-
-  @override
-  Widget buildResults(BuildContext context) {
-    return _buildSearchResults(context);
-  }
-
-  @override
-  Widget buildSuggestions(BuildContext context) {
-    if (query.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.search,
-              color: AppColors.whiteDarker,
-              size: 48,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Search for an aircraft type',
-              style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'e.g. "A320", "Boeing 737", "C172"',
-              style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return _buildSearchResults(context);
-  }
-
-  Widget _buildSearchResults(BuildContext context) {
-    return FutureBuilder<List<AircraftType>>(
-      future: _aircraftService.searchAircraftTypes(query, limit: 20),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppColors.denim),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Error: ${snapshot.error}',
-              style: AppTypography.body.copyWith(color: AppColors.errorRed),
-            ),
-          );
-        }
-
-        final results = snapshot.data ?? [];
-
-        if (results.isEmpty) {
-          return Center(
-            child: Text(
-              'No aircraft types found',
-              style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
-            ),
-          );
-        }
-
-        return ListView.builder(
-          itemCount: results.length,
-          itemBuilder: (context, index) {
-            final type = results[index];
-            return ListTile(
-              leading: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.denim.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.flight,
-                  color: AppColors.denim,
-                  size: 20,
-                ),
-              ),
-              title: Text(
-                type.icaoDesignator,
-                style: AppTypography.body.copyWith(color: AppColors.white),
-              ),
-              subtitle: Text(
-                '${type.manufacturer} ${type.model}',
-                style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
-              ),
-              trailing: Text(
-                type.engineType,
-                style: AppTypography.caption.copyWith(color: AppColors.whiteDark),
-              ),
-              onTap: () {
-                close(context, type);
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-// ===========================================================================
 // Edit Aircraft Type Screen
 // ===========================================================================
 
@@ -1312,29 +1154,41 @@ class _AddRegistrationScreenState extends State<AddRegistrationScreen> {
               style: AppTypography.label,
             ),
             const SizedBox(height: 8),
-            GlassContainer(
-              padding: EdgeInsets.zero,
-              child: DropdownButtonFormField<UserAircraftType>(
-                value: _selectedType,
-                dropdownColor: AppColors.nightRiderDark,
-                style: AppTypography.body.copyWith(color: AppColors.white),
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  border: InputBorder.none,
+            DropdownButtonFormField<UserAircraftType>(
+              value: _selectedType,
+              dropdownColor: AppColors.nightRiderDark,
+              style: AppTypography.body.copyWith(color: AppColors.white),
+              icon: Icon(Icons.keyboard_arrow_down, color: AppColors.whiteDarker),
+              isExpanded: true,
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                filled: true,
+                fillColor: AppColors.nightRiderDark,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.borderSubtle),
                 ),
-                items: widget.availableTypes.map((type) {
-                  return DropdownMenuItem(
-                    value: type,
-                    child: Text(
-                      type.displayName,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() => _selectedType = value);
-                },
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.borderSubtle),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.denim),
+                ),
               ),
+              items: widget.availableTypes.map((type) {
+                return DropdownMenuItem(
+                  value: type,
+                  child: Text(
+                    type.fullDisplayName,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() => _selectedType = value);
+              },
             ),
             const SizedBox(height: 16),
             Text(

@@ -72,25 +72,40 @@ class UserAircraftType {
         if (aircraftType != null) 'aircraftType': aircraftType!.toJson(),
       };
 
-  /// Display name - shows variant if set, otherwise the ICAO type
+  /// Display name - shows manufacturer + model
   String get displayName {
-    if (variant != null && variant!.isNotEmpty) {
-      return variant!;
-    }
     if (aircraftType != null) {
-      return aircraftType!.displayName;
+      return '${aircraftType!.manufacturer} ${aircraftType!.model}';
     }
     return 'Unknown Type ($aircraftTypeId)';
   }
 
-  /// Full display name with ICAO designator
+  /// Full display name for dropdowns: "ICAO - Manufacturer Model" or "ICAO - Manufacturer Model (Variant)"
   String get fullDisplayName {
     final icao = icaoDesignator;
-    final display = displayName;
-    if (icao.isNotEmpty && !display.startsWith(icao)) {
-      return '$icao - $display';
+    final base = displayName;
+
+    if (variant != null && variant!.isNotEmpty) {
+      return '$icao - $base ($variant)';
     }
-    return display;
+    return '$icao - $base';
+  }
+
+  /// Short display for cards: "Manufacturer Model" or "Variant" if set
+  String get shortDisplayName {
+    if (variant != null && variant!.isNotEmpty) {
+      return variant!;
+    }
+    return displayName;
+  }
+
+  /// Display name with variant but without ICAO: "Manufacturer Model" or "Manufacturer Model (Variant)"
+  String get displayNameWithVariant {
+    final base = displayName;
+    if (variant != null && variant!.isNotEmpty) {
+      return '$base ($variant)';
+    }
+    return base;
   }
 
   /// ICAO designator from the joined aircraft type
