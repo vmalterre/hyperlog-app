@@ -16,32 +16,64 @@ class RouteLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
+    if (!showPlane) {
+      // Simple continuous line when no plane
+      return Container(
+        height: height,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.denim,
+              AppColors.denimLight,
+              AppColors.denim,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(height / 2),
+        ),
+      );
+    }
+
+    // Line with gap for airplane icon
+    return Row(
       children: [
-        Container(
-          height: height,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.denim,
-                AppColors.denimLight,
-                AppColors.denim,
-              ],
+        // Left line segment
+        Expanded(
+          child: Container(
+            height: height,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.denim,
+                  AppColors.denimLight,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(height / 2),
             ),
-            borderRadius: BorderRadius.circular(height / 2),
           ),
         ),
-        if (showPlane)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            color: AppColors.nightRider,
-            child: Icon(
-              Icons.flight,
-              size: planeSize,
-              color: AppColors.denimLight,
+        // Gap + airplane icon + gap
+        const SizedBox(width: 6),
+        Icon(
+          Icons.flight,
+          size: planeSize,
+          color: AppColors.denimLight,
+        ),
+        const SizedBox(width: 6),
+        // Right line segment
+        Expanded(
+          child: Container(
+            height: height,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.denimLight,
+                  AppColors.denim,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(height / 2),
             ),
           ),
+        ),
       ],
     );
   }
