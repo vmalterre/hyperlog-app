@@ -3,6 +3,7 @@ import '../../constants/role_standards.dart';
 import '../../models/saved_pilot.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import 'pilot_search_modal.dart';
 import 'role_dropdown.dart';
 
 /// Data class for crew member input
@@ -17,6 +18,7 @@ class CrewEntry {
 }
 
 /// Card widget for entering a crew member (name + role)
+/// Tapping the name field opens a full-screen modal for pilot selection
 class CrewEntryCard extends StatefulWidget {
   final CrewEntry entry;
   final List<SavedPilot> suggestions;
@@ -38,6 +40,29 @@ class CrewEntryCard extends StatefulWidget {
 }
 
 class _CrewEntryCardState extends State<CrewEntryCard> {
+  late TextEditingController _nameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.entry.name);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(CrewEntryCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update controller if entry name changed externally
+    if (widget.entry.name != _nameController.text) {
+      _nameController.text = widget.entry.name;
+    }
+  }
+
   void _onRoleChanged(String? value) {
     if (value != null) {
       widget.entry.role = value;
@@ -45,8 +70,20 @@ class _CrewEntryCardState extends State<CrewEntryCard> {
     }
   }
 
-  void _selectSuggestion(SavedPilot pilot) {
-    widget.entry.name = pilot.name;
+  Future<void> _openPilotSearch() async {
+    final result = await PilotSearchModal.show(
+      context,
+      title: 'Select Pilot',
+      savedPilots: widget.suggestions,
+      initialValue: widget.entry.name,
+    );
+
+    if (result == null) return;
+
+    setState(() {
+      widget.entry.name = result.name;
+      _nameController.text = result.name;
+    });
     widget.onChanged?.call(widget.entry);
   }
 
@@ -96,94 +133,35 @@ class _CrewEntryCardState extends State<CrewEntryCard> {
           ),
           const SizedBox(height: 12),
 
-          // Name field with autocomplete
-          Autocomplete<SavedPilot>(
-            initialValue: TextEditingValue(text: widget.entry.name),
-            optionsBuilder: (textEditingValue) {
-              if (textEditingValue.text.isEmpty) {
-                return widget.suggestions;
-              }
-              final query = textEditingValue.text.toLowerCase();
-              return widget.suggestions.where(
-                (pilot) => pilot.name.toLowerCase().contains(query),
-              );
-            },
-            displayStringForOption: (pilot) => pilot.name,
-            onSelected: _selectSuggestion,
-            fieldViewBuilder: (
-              context,
-              controller,
-              focusNode,
-              onFieldSubmitted,
-            ) {
-              return TextFormField(
-                controller: controller,
-                focusNode: focusNode,
+          // Name field - tappable to open modal
+          GestureDetector(
+            onTap: _openPilotSearch,
+            child: AbsorbPointer(
+              child: TextFormField(
+                controller: _nameController,
+                readOnly: true,
                 style: AppTypography.body.copyWith(color: AppColors.white),
                 decoration: InputDecoration(
                   labelText: 'Name',
-                  hintText: 'Enter pilot name',
+                  hintText: 'Tap to select pilot',
                   prefixIcon: Icon(
                     Icons.badge,
                     color: AppColors.whiteDarker,
                     size: 20,
                   ),
+                  suffixIcon: Icon(
+                    Icons.search,
+                    color: AppColors.whiteDarker,
+                  ),
                 ),
-                textCapitalization: TextCapitalization.words,
-                onChanged: (value) {
-                  widget.entry.name = value;
-                  // Don't call onChanged here to avoid setState during build
-                },
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Name is required';
                   }
                   return null;
                 },
-              );
-            },
-            optionsViewBuilder: (context, onSelected, options) {
-              return Align(
-                alignment: Alignment.topLeft,
-                child: Material(
-                  color: AppColors.nightRiderDark,
-                  borderRadius: BorderRadius.circular(8),
-                  elevation: 4,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: 200,
-                      maxWidth: MediaQuery.of(context).size.width - 64,
-                    ),
-                    child: ListView.builder(
-                      padding: EdgeInsets.zero,
-                      shrinkWrap: true,
-                      itemCount: options.length,
-                      itemBuilder: (context, index) {
-                        final pilot = options.elementAt(index);
-                        return ListTile(
-                          title: Text(
-                            pilot.name,
-                            style: AppTypography.body.copyWith(
-                              color: AppColors.white,
-                            ),
-                          ),
-                          subtitle: pilot.flightCount > 0
-                              ? Text(
-                                  '${pilot.flightCount} flight${pilot.flightCount == 1 ? '' : 's'}',
-                                  style: AppTypography.caption.copyWith(
-                                    color: AppColors.whiteDarker,
-                                  ),
-                                )
-                              : null,
-                          dense: true,
-                          onTap: () => onSelected(pilot),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              );
-            },
+              ),
+            ),
           ),
           const SizedBox(height: 12),
 
