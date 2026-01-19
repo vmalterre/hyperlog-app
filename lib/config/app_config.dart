@@ -47,4 +47,5 @@ class AppConfig {
   static const String flights = '/flights';
   static const String users = '/users';
   static const String airports = '/airports';
+  static const String aircraftTypes = '/aircraft-types';
 }

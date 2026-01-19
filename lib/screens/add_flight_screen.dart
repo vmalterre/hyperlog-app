@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/airport.dart';
 import '../models/logbook_entry.dart';
 import '../models/saved_pilot.dart';
+import '../services/aircraft_service.dart';
 import '../services/api_exception.dart';
 import '../services/flight_service.dart';
 import '../services/pilot_service.dart';
@@ -38,6 +39,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   final _formKey = GlobalKey<FormState>();
   final FlightService _flightService = FlightService();
   final PilotService _pilotService = PilotService();
+  final AircraftService _aircraftService = AircraftService();
 
   // Crew members - first entry is always the current pilot
   late CrewEntry _pilotCrewEntry;
@@ -55,6 +57,9 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   late TextEditingController _aircraftTypeController;
   late TextEditingController _aircraftRegController;
   late TextEditingController _remarksController;
+
+  // Focus node for registration auto-fill
+  final _aircraftRegFocusNode = FocusNode();
 
   // Keys for validation scrolling
   final _depKey = GlobalKey();
@@ -127,6 +132,9 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     _aircraftTypeController.addListener(_onFormChanged);
     _aircraftRegController.addListener(_onFormChanged);
     _remarksController.addListener(_onFormChanged);
+
+    // Auto-fill aircraft type when registration loses focus
+    _aircraftRegFocusNode.addListener(_onRegistrationFocusChange);
 
     // Load saved pilots for autocomplete
     _loadSavedPilots();
@@ -250,6 +258,53 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     }
   }
 
+  /// Called when registration field focus changes.
+  /// Auto-fills aircraft type when a saved registration is found.
+  void _onRegistrationFocusChange() {
+    // Only trigger on focus loss
+    if (_aircraftRegFocusNode.hasFocus) return;
+
+    final registration = _aircraftRegController.text.trim();
+    if (registration.isEmpty) return;
+
+    _lookupAndFillAircraftType(registration);
+  }
+
+  /// Looks up a registration in user's saved aircraft and auto-fills type.
+  Future<void> _lookupAndFillAircraftType(String registration) async {
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return;
+
+    try {
+      final result = await _aircraftService.lookupRegistration(
+        userId,
+        registration.toUpperCase(),
+      );
+
+      if (result == null || !mounted) return;
+
+      // Only auto-fill if aircraft type is empty (don't override user input)
+      if (_aircraftTypeController.text.trim().isEmpty) {
+        setState(() {
+          _aircraftTypeController.text = result.icaoDesignator;
+        });
+      }
+
+      // Auto-set multi-engine time if aircraft is multi-engine
+      if (result.isMultiEngine && _multiEngineMinutes == 0) {
+        setState(() {
+          _multiEngineMinutes = _totalFlightMinutes;
+          // Auto-expand details section to show the auto-filled value
+          if (!_detailsExpanded) {
+            _detailsExpanded = true;
+          }
+        });
+      }
+    } catch (e) {
+      // Silently fail - auto-fill is a convenience feature
+    }
+  }
+
   Future<void> _saveNewCrewNames() async {
     final userId = _userId;
     if (userId == null || userId.isEmpty) return;
@@ -277,6 +332,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     _aircraftTypeController.dispose();
     _aircraftRegController.dispose();
     _remarksController.dispose();
+    _aircraftRegFocusNode.dispose();
     super.dispose();
   }
 
@@ -808,6 +864,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                             child: GlassTextField(
                               key: _aircraftRegKey,
                               controller: _aircraftRegController,
+                              focusNode: _aircraftRegFocusNode,
                               label: 'Registration',
                               hint: 'G-STBA',
                               monospace: true,
