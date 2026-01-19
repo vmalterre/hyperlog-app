@@ -19,10 +19,21 @@ class LogbookScreen extends StatefulWidget {
   const LogbookScreen({super.key});
 
   @override
-  State<LogbookScreen> createState() => _LogbookScreenState();
+  State<LogbookScreen> createState() => LogbookScreenState();
 }
 
-class _LogbookScreenState extends State<LogbookScreen> {
+class LogbookScreenState extends State<LogbookScreen> {
+  /// Called when the screen becomes visible (e.g., tab switch)
+  /// Reloads preferences that may have changed in settings
+  void onBecameVisible() {
+    final newFormat = PreferencesService.instance.getAirportCodeFormat();
+    if (newFormat != _airportFormat) {
+      setState(() {
+        _airportFormat = newFormat;
+      });
+    }
+  }
+
   int _selectedFilter = 0;
   final List<String> _filters = ['All', 'This Month', 'This Year'];
 
@@ -279,6 +290,9 @@ class _LogbookScreenState extends State<LogbookScreen> {
       return SliverToBoxAdapter(child: _buildEmptyState());
     }
 
+    // Read preference fresh each build to catch changes from settings
+    final currentFormat = PreferencesService.instance.getAirportCodeFormat();
+
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
@@ -288,13 +302,13 @@ class _LogbookScreenState extends State<LogbookScreen> {
             icaoCode: entry.depIcao,
             iataCode: entry.depIata,
             fallbackCode: entry.depCode,
-            format: _airportFormat,
+            format: currentFormat,
           );
           final destDisplay = AirportFormats.formatCode(
             icaoCode: entry.destIcao,
             iataCode: entry.destIata,
             fallbackCode: entry.destCode,
-            format: _airportFormat,
+            format: currentFormat,
           );
           return FlightEntryCard(
             departureCode: depDisplay,

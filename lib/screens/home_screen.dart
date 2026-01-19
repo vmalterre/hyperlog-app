@@ -16,26 +16,37 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  final _logbookKey = GlobalKey<LogbookScreenState>();
 
   void _onItemTapped(int index) {
+    final previousIndex = _selectedIndex;
     setState(() {
       _selectedIndex = index;
     });
+    // Notify logbook screen when it becomes visible (returning from settings)
+    if (index == 0 && previousIndex != 0) {
+      // Use post-frame callback to ensure the widget is built
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _logbookKey.currentState?.onBecameVisible();
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> screens = [
-      const LogbookScreen(),
-      const StatisticsScreen(),
-      SettingsScreen(),
-    ];
-
     return Scaffold(
       backgroundColor: AppColors.nightRider,
       extendBody: true,
       extendBodyBehindAppBar: true,
-      body: screens[_selectedIndex],
+      // Use IndexedStack to keep all tabs alive (preserves state when switching)
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          LogbookScreen(key: _logbookKey),
+          const StatisticsScreen(),
+          SettingsScreen(),
+        ],
+      ),
       bottomNavigationBar: GlassBottomNav(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
