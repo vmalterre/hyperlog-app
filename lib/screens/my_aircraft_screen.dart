@@ -6,7 +6,6 @@ import '../services/aircraft_service.dart';
 import '../session_state.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
-import '../widgets/app_button.dart';
 import '../widgets/glass_card.dart';
 import 'aircraft_type_search_screen.dart';
 
@@ -23,7 +22,6 @@ class _MyAircraftScreenState extends State<MyAircraftScreen> {
   List<UserAircraftType> _types = [];
   List<UserAircraftRegistration> _registrations = [];
   bool _isLoadingTypes = true;
-  bool _isLoadingRegs = true;
   String? _errorMessage;
 
   String? get _userId {
@@ -71,9 +69,6 @@ class _MyAircraftScreenState extends State<MyAircraftScreen> {
   Future<void> _loadRegistrations() async {
     final userId = _userId;
     if (userId == null || userId.isEmpty) {
-      setState(() {
-        _isLoadingRegs = false;
-      });
       return;
     }
 
@@ -82,14 +77,12 @@ class _MyAircraftScreenState extends State<MyAircraftScreen> {
       if (mounted) {
         setState(() {
           _registrations = regs;
-          _isLoadingRegs = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _errorMessage = 'Failed to load registrations';
-          _isLoadingRegs = false;
         });
       }
     }
