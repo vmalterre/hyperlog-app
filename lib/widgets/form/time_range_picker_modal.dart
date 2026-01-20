@@ -70,11 +70,6 @@ class _TimeRangePickerModalState extends State<TimeRangePickerModal> {
 
   int get _duration => _endMinutes - _startMinutes;
 
-  int _snapToStep(int minutes) {
-    return ((minutes / _stepSize).round() * _stepSize)
-        .clamp(0, widget.totalMinutes);
-  }
-
   String _formatTimeOffset(int offsetMinutes) {
     if (widget.blockOff == null) {
       // Just show offset as HH:MM

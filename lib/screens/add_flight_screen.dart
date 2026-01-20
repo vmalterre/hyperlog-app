@@ -174,6 +174,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       _ifrMinutes = ft.ifr;
       _soloMinutes = ft.solo;
       _multiEngineMinutes = ft.multiEngine;
+      _multiPilotMinutes = 0; // TODO: load from model when field is added
       _crossCountryMinutes = ft.crossCountry;
       _customTimeFields = Map.from(ft.customFields);
 
