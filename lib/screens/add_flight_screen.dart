@@ -19,7 +19,8 @@ import '../widgets/form/glass_text_field.dart';
 import '../widgets/form/glass_date_picker.dart';
 import '../widgets/form/glass_time_picker.dart';
 import '../widgets/form/number_stepper.dart';
-import '../widgets/form/duration_stepper.dart';
+import '../widgets/form/duration_quick_set.dart';
+import '../widgets/form/duration_display.dart';
 import '../widgets/form/crew_entry_card.dart';
 import '../widgets/form/airport_route_fields.dart';
 
@@ -104,10 +105,13 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
   // Details section state
   bool _detailsExpanded = false;
+  // Automatic fields (calculated based on aircraft/times)
   int _nightMinutes = 0;
+  int _multiEngineMinutes = 0;
+  int _multiPilotMinutes = 0;
+  // Manual fields (user-entered)
   int _ifrMinutes = 0;
   int _soloMinutes = 0;
-  int _multiEngineMinutes = 0;
   int _crossCountryMinutes = 0;
   Map<String, int> _customTimeFields = {};
 
@@ -1058,23 +1062,39 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                             ),
                           ),
                           if (_detailsExpanded) ...[
+                            // Automatic fields (calculated based on aircraft/times)
                             const SizedBox(height: 16),
-                            DurationStepper(
+                            DurationDisplay(
                               label: 'Night',
                               minutes: _nightMinutes,
-                              maxMinutes: _totalFlightMinutes,
-                              onChanged: (value) {
-                                setState(() {
-                                  _nightMinutes = value;
-                                  _hasChanges = true;
-                                });
-                              },
                             ),
                             const SizedBox(height: 12),
-                            DurationStepper(
+                            DurationDisplay(
+                              label: 'Multi-Engine',
+                              minutes: _multiEngineMinutes,
+                            ),
+                            const SizedBox(height: 12),
+                            DurationDisplay(
+                              label: 'Multi-Pilot',
+                              minutes: _multiPilotMinutes,
+                            ),
+
+                            // Divider between automatic and manual fields
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              child: Divider(
+                                color: AppColors.borderSubtle,
+                                height: 1,
+                              ),
+                            ),
+
+                            // Manual fields (user-entered)
+                            DurationQuickSet(
                               label: 'IFR',
                               minutes: _ifrMinutes,
                               maxMinutes: _totalFlightMinutes,
+                              blockOff: _blockOff,
+                              blockOn: _blockOn,
                               onChanged: (value) {
                                 setState(() {
                                   _ifrMinutes = value;
@@ -1083,10 +1103,12 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                               },
                             ),
                             const SizedBox(height: 12),
-                            DurationStepper(
+                            DurationQuickSet(
                               label: 'Solo',
                               minutes: _soloMinutes,
                               maxMinutes: _totalFlightMinutes,
+                              blockOff: _blockOff,
+                              blockOn: _blockOn,
                               onChanged: (value) {
                                 setState(() {
                                   _soloMinutes = value;
@@ -1095,22 +1117,12 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                               },
                             ),
                             const SizedBox(height: 12),
-                            DurationStepper(
-                              label: 'Multi-Engine',
-                              minutes: _multiEngineMinutes,
-                              maxMinutes: _totalFlightMinutes,
-                              onChanged: (value) {
-                                setState(() {
-                                  _multiEngineMinutes = value;
-                                  _hasChanges = true;
-                                });
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            DurationStepper(
+                            DurationQuickSet(
                               label: 'Cross-Country',
                               minutes: _crossCountryMinutes,
                               maxMinutes: _totalFlightMinutes,
+                              blockOff: _blockOff,
+                              blockOn: _blockOn,
                               onChanged: (value) {
                                 setState(() {
                                   _crossCountryMinutes = value;
@@ -1122,10 +1134,12 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                             ...PreferencesService.instance.getCustomTimeFields().map((fieldName) {
                               return Padding(
                                 padding: const EdgeInsets.only(top: 12),
-                                child: DurationStepper(
+                                child: DurationQuickSet(
                                   label: fieldName,
                                   minutes: _customTimeFields[fieldName] ?? 0,
                                   maxMinutes: _totalFlightMinutes,
+                                  blockOff: _blockOff,
+                                  blockOn: _blockOn,
                                   onChanged: (value) {
                                     setState(() {
                                       _customTimeFields[fieldName] = value;
