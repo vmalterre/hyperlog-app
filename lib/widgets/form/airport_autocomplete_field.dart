@@ -32,14 +32,6 @@ class AirportAutocompleteField extends StatefulWidget {
 }
 
 class AirportAutocompleteFieldState extends State<AirportAutocompleteField> {
-  Airport? _selectedAirport;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedAirport = widget.initialAirport;
-  }
-
   /// Get the preferred airport code based on user settings
   String _getPreferredCode(Airport airport) {
     final format = PreferencesService.instance.getAirportCodeFormat();
@@ -53,9 +45,6 @@ class AirportAutocompleteFieldState extends State<AirportAutocompleteField> {
 
   /// Select an airport programmatically (for AirportRouteFields compatibility)
   void selectAirport(Airport airport) {
-    setState(() {
-      _selectedAirport = airport;
-    });
     widget.controller.text = _getPreferredCode(airport);
     widget.onAirportSelected(airport);
   }
@@ -72,9 +61,6 @@ class AirportAutocompleteFieldState extends State<AirportAutocompleteField> {
     if (result.isAirport) {
       selectAirport(result.airport!);
     } else if (result.isManual) {
-      setState(() {
-        _selectedAirport = null;
-      });
       widget.controller.text = result.manualEntry!;
       widget.onAirportSelected(null);
     }

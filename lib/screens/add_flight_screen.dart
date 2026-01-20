@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/airport.dart';
 import '../models/logbook_entry.dart';
 import '../models/saved_pilot.dart';
+import '../models/user_aircraft_registration.dart';
 import '../services/aircraft_service.dart';
 import '../services/api_exception.dart';
 import '../services/flight_service.dart';
@@ -46,6 +47,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   final List<CrewEntry> _additionalCrewEntries = [];
   List<SavedPilot> _savedPilots = [];
 
+  // User aircraft registrations
+  List<UserAircraftRegistration> _userAircraft = [];
+  UserAircraftRegistration? _selectedAircraft;
+  bool _isLoadingAircraft = true;
+
   // Selected airports (for ICAO/IATA extraction)
   Airport? _selectedDepAirport;
   Airport? _selectedDestAirport;
@@ -58,13 +64,9 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   late TextEditingController _aircraftRegController;
   late TextEditingController _remarksController;
 
-  // Focus node for registration auto-fill
-  final _aircraftRegFocusNode = FocusNode();
-
   // Keys for validation scrolling
   final _depKey = GlobalKey();
   final _destKey = GlobalKey();
-  final _aircraftTypeKey = GlobalKey();
   final _aircraftRegKey = GlobalKey();
   final _landingsKey = GlobalKey();
   final _timesKey = GlobalKey();
@@ -85,6 +87,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
   // Validation error state for non-text fields
   String? _landingsError;
+  String? _aircraftError;
 
   // Approaches state
   int _visualApproaches = 0;
@@ -129,15 +132,13 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     _flightNumberController.addListener(_onFormChanged);
     _depController.addListener(_onFormChanged);
     _destController.addListener(_onFormChanged);
-    _aircraftTypeController.addListener(_onFormChanged);
-    _aircraftRegController.addListener(_onFormChanged);
     _remarksController.addListener(_onFormChanged);
-
-    // Auto-fill aircraft type when registration loses focus
-    _aircraftRegFocusNode.addListener(_onRegistrationFocusChange);
 
     // Load saved pilots for autocomplete
     _loadSavedPilots();
+
+    // Load user's saved aircraft
+    _loadUserAircraft();
   }
 
   void _initializeFields() {
@@ -258,51 +259,160 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     }
   }
 
-  /// Called when registration field focus changes.
-  /// Auto-fills aircraft type when a saved registration is found.
-  void _onRegistrationFocusChange() {
-    // Only trigger on focus loss
-    if (_aircraftRegFocusNode.hasFocus) return;
-
-    final registration = _aircraftRegController.text.trim();
-    if (registration.isEmpty) return;
-
-    _lookupAndFillAircraftType(registration);
-  }
-
-  /// Looks up a registration in user's saved aircraft and auto-fills type.
-  Future<void> _lookupAndFillAircraftType(String registration) async {
+  Future<void> _loadUserAircraft() async {
     final userId = _userId;
-    if (userId == null || userId.isEmpty) return;
+    if (userId == null || userId.isEmpty) {
+      setState(() => _isLoadingAircraft = false);
+      return;
+    }
 
     try {
-      final result = await _aircraftService.lookupRegistration(
-        userId,
-        registration.toUpperCase(),
-      );
-
-      if (result == null || !mounted) return;
-
-      // Only auto-fill if aircraft type is empty (don't override user input)
-      if (_aircraftTypeController.text.trim().isEmpty) {
+      final aircraft = await _aircraftService.getUserAircraftRegistrations(userId);
+      if (mounted) {
         setState(() {
-          _aircraftTypeController.text = result.icaoDesignator;
+          _userAircraft = aircraft;
+          _isLoadingAircraft = false;
         });
-      }
 
-      // Auto-set multi-engine time if aircraft is multi-engine
-      if (result.isMultiEngine && _multiEngineMinutes == 0) {
-        setState(() {
-          _multiEngineMinutes = _totalFlightMinutes;
-          // Auto-expand details section to show the auto-filled value
-          if (!_detailsExpanded) {
-            _detailsExpanded = true;
-          }
-        });
+        // In edit mode, try to match existing registration to user's aircraft
+        if (widget.entry != null) {
+          _matchExistingAircraft();
+        }
       }
     } catch (e) {
-      // Silently fail - auto-fill is a convenience feature
+      if (mounted) {
+        setState(() => _isLoadingAircraft = false);
+      }
     }
+  }
+
+  /// In edit mode, try to match the existing aircraft registration to user's saved aircraft
+  void _matchExistingAircraft() {
+    final entry = widget.entry;
+    if (entry == null) return;
+
+    final existingReg = entry.aircraftReg.toUpperCase();
+
+    // Find matching registration in user's aircraft list
+    final match = _userAircraft.cast<UserAircraftRegistration?>().firstWhere(
+      (a) => a?.registration.toUpperCase() == existingReg,
+      orElse: () => null,
+    );
+
+    if (match != null) {
+      setState(() {
+        _selectedAircraft = match;
+        _aircraftTypeController.text = match.icaoDesignator;
+        _aircraftRegController.text = match.registration;
+      });
+    }
+  }
+
+  /// Shows the aircraft picker bottom sheet
+  void _showAircraftPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _AircraftPickerSheet(
+        aircraft: _userAircraft,
+        selectedAircraft: _selectedAircraft,
+        onSelect: _onAircraftSelected,
+      ),
+    );
+  }
+
+  /// Called when an aircraft is selected from the picker
+  void _onAircraftSelected(UserAircraftRegistration aircraft) {
+    setState(() {
+      _selectedAircraft = aircraft;
+      _aircraftTypeController.text = aircraft.icaoDesignator;
+      _aircraftRegController.text = aircraft.registration;
+      _aircraftError = null;
+      _hasChanges = true;
+    });
+
+    // Auto-set multi-engine time if aircraft is multi-engine
+    if (aircraft.isMultiEngine && _multiEngineMinutes == 0) {
+      setState(() {
+        _multiEngineMinutes = _totalFlightMinutes;
+        if (!_detailsExpanded) {
+          _detailsExpanded = true;
+        }
+      });
+    }
+  }
+
+  /// Build empty state when user has no saved aircraft
+  Widget _buildNoAircraftState() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.airplanemode_inactive,
+          color: AppColors.whiteDarker,
+          size: 32,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'No aircraft saved',
+          style: AppTypography.body.copyWith(
+            color: AppColors.whiteDark,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Add aircraft in My Aircraft first',
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.whiteDarker,
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextButton.icon(
+          onPressed: () {
+            Navigator.pushNamed(context, '/my-aircraft');
+          },
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Add Aircraft'),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.denim,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Build the aircraft picker field
+  Widget _buildAircraftPicker() {
+    // Display text: "REG - Type" or empty for hint
+    final displayText = _selectedAircraft != null
+        ? '${_selectedAircraft!.registration} - ${_selectedAircraft!.aircraftTypeDisplay}'
+        : '';
+
+    return GestureDetector(
+      onTap: _showAircraftPicker,
+      child: AbsorbPointer(
+        child: TextFormField(
+          readOnly: true,
+          controller: TextEditingController(text: displayText),
+          style: GoogleFonts.jetBrainsMono(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: AppColors.white,
+          ),
+          validator: (_) => _aircraftError,
+          decoration: InputDecoration(
+            labelText: 'Aircraft',
+            hintText: 'G-ABCD',
+            counterText: '',
+            suffixIcon: Icon(
+              Icons.search,
+              color: AppColors.whiteDarker,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _saveNewCrewNames() async {
@@ -332,7 +442,6 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     _aircraftTypeController.dispose();
     _aircraftRegController.dispose();
     _remarksController.dispose();
-    _aircraftRegFocusNode.dispose();
     super.dispose();
   }
 
@@ -420,26 +529,6 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     return null;
   }
 
-  String? _validateAircraftType(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Required';
-    }
-    if (value.length < 2) {
-      return 'Min 2 chars';
-    }
-    return null;
-  }
-
-  String? _validateAircraftReg(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Required';
-    }
-    if (value.length < 4) {
-      return 'Min 4 chars';
-    }
-    return null;
-  }
-
   bool _validateForm() {
     // Check departure (any non-empty value for codes, names, unknown airfields)
     final dep = _depController.text.trim();
@@ -455,18 +544,15 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       return false;
     }
 
-    // Check aircraft type
-    final aircraftType = _aircraftTypeController.text.trim();
-    if (aircraftType.isEmpty || aircraftType.length < 2) {
-      _scrollToField(_aircraftTypeKey);
-      return false;
-    }
-
-    // Check aircraft registration
-    final aircraftReg = _aircraftRegController.text.trim();
-    if (aircraftReg.isEmpty || aircraftReg.length < 4) {
+    // Check aircraft selection
+    if (_selectedAircraft == null) {
+      setState(() => _aircraftError = 'Please select an aircraft');
       _scrollToField(_aircraftRegKey);
       return false;
+    } else {
+      if (_aircraftError != null) {
+        setState(() => _aircraftError = null);
+      }
     }
 
     // Check positive flight time
@@ -843,39 +929,22 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                     _SectionHeader(title: 'AIRCRAFT'),
                     const SizedBox(height: 12),
                     GlassContainer(
+                      key: _aircraftRegKey,
                       padding: const EdgeInsets.all(20),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GlassTextField(
-                              key: _aircraftTypeKey,
-                              controller: _aircraftTypeController,
-                              label: 'Type',
-                              hint: 'B777',
-                              monospace: true,
-                              textCapitalization: TextCapitalization.characters,
-                              maxLength: 10,
-                              validator: _validateAircraftType,
-                              inputFormatters: [UpperCaseTextFormatter()],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: GlassTextField(
-                              key: _aircraftRegKey,
-                              controller: _aircraftRegController,
-                              focusNode: _aircraftRegFocusNode,
-                              label: 'Registration',
-                              hint: 'G-STBA',
-                              monospace: true,
-                              textCapitalization: TextCapitalization.characters,
-                              maxLength: 10,
-                              validator: _validateAircraftReg,
-                              inputFormatters: [AircraftRegFormatter()],
-                            ),
-                          ),
-                        ],
-                      ),
+                      child: _isLoadingAircraft
+                          ? const Center(
+                              child: SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.denim,
+                                ),
+                              ),
+                            )
+                          : _userAircraft.isEmpty
+                              ? _buildNoAircraftState()
+                              : _buildAircraftPicker(),
                     ),
 
                     const SizedBox(height: 24),
@@ -1548,6 +1617,281 @@ class _ToggleButton extends StatelessWidget {
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet for selecting aircraft from user's saved registrations
+class _AircraftPickerSheet extends StatefulWidget {
+  final List<UserAircraftRegistration> aircraft;
+  final UserAircraftRegistration? selectedAircraft;
+  final ValueChanged<UserAircraftRegistration> onSelect;
+
+  const _AircraftPickerSheet({
+    required this.aircraft,
+    required this.selectedAircraft,
+    required this.onSelect,
+  });
+
+  @override
+  State<_AircraftPickerSheet> createState() => _AircraftPickerSheetState();
+}
+
+class _AircraftPickerSheetState extends State<_AircraftPickerSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  List<UserAircraftRegistration> _filteredAircraft = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredAircraft = widget.aircraft;
+    _searchController.addListener(_onSearchChanged);
+    // Auto-focus the search field
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _searchFocusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.trim().toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _filteredAircraft = widget.aircraft;
+      } else {
+        _filteredAircraft = widget.aircraft.where((a) {
+          final reg = a.registration.toLowerCase();
+          final type = a.aircraftTypeDisplay.toLowerCase();
+          final icao = a.icaoDesignator.toLowerCase();
+          return reg.contains(query) || type.contains(query) || icao.contains(query);
+        }).toList();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Container(
+      height: screenHeight * 0.85,
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      decoration: const BoxDecoration(
+        color: AppColors.nightRiderDark,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.whiteDarker,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Row(
+              children: [
+                Text(
+                  'Select Aircraft',
+                  style: AppTypography.h4,
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: Icon(Icons.close, color: AppColors.whiteDarker),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+          // Search field
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: AppColors.white,
+              ),
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                hintText: 'Search registration or type...',
+                hintStyle: AppTypography.body.copyWith(
+                  color: AppColors.whiteDarker,
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: AppColors.whiteDarker,
+                ),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        onPressed: () {
+                          _searchController.clear();
+                        },
+                        icon: Icon(Icons.clear, color: AppColors.whiteDarker),
+                      )
+                    : null,
+                filled: true,
+                fillColor: AppColors.nightRider,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.borderVisible),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.borderVisible),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.denim, width: 2),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Aircraft list
+          Expanded(
+            child: _filteredAircraft.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _searchController.text.isEmpty
+                                ? Icons.flight
+                                : Icons.search_off,
+                            color: AppColors.whiteDarker,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _searchController.text.isEmpty
+                                ? 'Search for an aircraft'
+                                : 'No aircraft found',
+                            style: AppTypography.body.copyWith(
+                              color: AppColors.whiteDarker,
+                            ),
+                          ),
+                          Text(
+                            _searchController.text.isEmpty
+                                ? 'Enter registration or type'
+                                : 'Try a different search',
+                            style: AppTypography.caption,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: _filteredAircraft.length,
+                    itemBuilder: (context, index) {
+                      final item = _filteredAircraft[index];
+                      final isSelected = widget.selectedAircraft?.id == item.id;
+                      return _AircraftListItem(
+                        aircraft: item,
+                        isSelected: isSelected,
+                        onTap: () {
+                          widget.onSelect(item);
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Individual aircraft item in the picker list
+class _AircraftListItem extends StatelessWidget {
+  final UserAircraftRegistration aircraft;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _AircraftListItem({
+    required this.aircraft,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.denim.withValues(alpha: 0.15)
+              : AppColors.glass50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.denim : AppColors.borderSubtle,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.flight,
+              color: isSelected ? AppColors.denim : AppColors.whiteDarker,
+              size: 24,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    aircraft.registration,
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? AppColors.denim : AppColors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    aircraft.aircraftTypeDisplay,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.whiteDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                color: AppColors.denim,
+                size: 24,
+              ),
+          ],
         ),
       ),
     );

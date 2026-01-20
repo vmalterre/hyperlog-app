@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/aircraft_type.dart';
 import '../models/user_aircraft_type.dart';
 import '../models/user_aircraft_registration.dart';
 import '../services/aircraft_service.dart';
@@ -11,9 +10,6 @@ import '../widgets/app_button.dart';
 import '../widgets/glass_card.dart';
 import 'aircraft_type_search_screen.dart';
 
-/// View options for the aircraft screen
-enum _AircraftView { types, registrations }
-
 class MyAircraftScreen extends StatefulWidget {
   const MyAircraftScreen({super.key});
 
@@ -23,7 +19,6 @@ class MyAircraftScreen extends StatefulWidget {
 
 class _MyAircraftScreenState extends State<MyAircraftScreen> {
   final AircraftService _aircraftService = AircraftService();
-  _AircraftView _selectedView = _AircraftView.types;
 
   List<UserAircraftType> _types = [];
   List<UserAircraftRegistration> _registrations = [];
@@ -131,202 +126,6 @@ class _MyAircraftScreenState extends State<MyAircraftScreen> {
     }
   }
 
-  Future<void> _editAircraftType(UserAircraftType type) async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EditAircraftTypeScreen(aircraftType: type),
-      ),
-    );
-
-    if (result == true) {
-      _loadTypes();
-    }
-  }
-
-  Future<void> _deleteAircraftType(UserAircraftType type) async {
-    final hasRegs = _registrations.any((r) => r.userAircraftTypeId == type.id);
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.nightRiderDark,
-        title: Text(
-          'Delete Aircraft Type?',
-          style: AppTypography.h4.copyWith(color: AppColors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Are you sure you want to delete "${type.displayName}"?',
-              style: AppTypography.body.copyWith(color: AppColors.whiteDark),
-            ),
-            if (hasRegs) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.errorRed.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.errorRed.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.warning_amber,
-                      color: AppColors.errorRed,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'This will also delete all registrations linked to this type',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.errorRed,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancel',
-              style: AppTypography.button.copyWith(color: AppColors.whiteDarker),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'Delete',
-              style: AppTypography.button.copyWith(color: AppColors.errorRed),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    final userId = _userId;
-    if (userId == null || userId.isEmpty) return;
-
-    try {
-      await _aircraftService.deleteUserAircraftType(userId, type.id);
-      _loadTypes();
-      _loadRegistrations();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Deleted "${type.displayName}"'),
-            backgroundColor: AppColors.nightRiderLight,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete: $e'),
-            backgroundColor: AppColors.errorRed,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _addRegistration() async {
-    if (_types.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Add an aircraft type first'),
-          backgroundColor: AppColors.errorRed,
-        ),
-      );
-      return;
-    }
-
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddRegistrationScreen(availableTypes: _types),
-      ),
-    );
-
-    if (result == true) {
-      _loadRegistrations();
-    }
-  }
-
-  Future<void> _deleteRegistration(UserAircraftRegistration reg) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.nightRiderDark,
-        title: Text(
-          'Delete Registration?',
-          style: AppTypography.h4.copyWith(color: AppColors.white),
-        ),
-        content: Text(
-          'Are you sure you want to delete "${reg.registration}"?',
-          style: AppTypography.body.copyWith(color: AppColors.whiteDark),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancel',
-              style: AppTypography.button.copyWith(color: AppColors.whiteDarker),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'Delete',
-              style: AppTypography.button.copyWith(color: AppColors.errorRed),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    final userId = _userId;
-    if (userId == null || userId.isEmpty) return;
-
-    try {
-      await _aircraftService.deleteUserAircraftRegistration(userId, reg.id);
-      _loadRegistrations();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Deleted "${reg.registration}"'),
-            backgroundColor: AppColors.nightRiderLight,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete: $e'),
-            backgroundColor: AppColors.errorRed,
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -344,13 +143,7 @@ class _MyAircraftScreenState extends State<MyAircraftScreen> {
               padding: EdgeInsets.zero,
               borderColor: AppColors.denim.withValues(alpha: 0.3),
               child: IconButton(
-                onPressed: () {
-                  if (_selectedView == _AircraftView.types) {
-                    _addAircraftType();
-                  } else {
-                    _addRegistration();
-                  }
-                },
+                onPressed: _addAircraftType,
                 icon: const Icon(Icons.add, color: AppColors.denimLight),
                 iconSize: 24,
                 constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
@@ -359,41 +152,7 @@ class _MyAircraftScreenState extends State<MyAircraftScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Tab buttons
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TabButton(
-                    label: 'Types',
-                    isActive: _selectedView == _AircraftView.types,
-                    onPressed: () => setState(() => _selectedView = _AircraftView.types),
-                    expand: true,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TabButton(
-                    label: 'Registrations',
-                    isActive: _selectedView == _AircraftView.registrations,
-                    onPressed: () => setState(() => _selectedView = _AircraftView.registrations),
-                    expand: true,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Content
-          Expanded(
-            child: _selectedView == _AircraftView.types
-                ? _buildTypesTab()
-                : _buildRegistrationsTab(),
-          ),
-        ],
-      ),
+      body: _buildTypesTab(),
     );
   }
 
@@ -443,67 +202,32 @@ class _MyAircraftScreenState extends State<MyAircraftScreen> {
         itemCount: _types.length,
         itemBuilder: (context, index) {
           final type = _types[index];
+          final regCount = _registrations.where((r) => r.userAircraftTypeId == type.id).length;
           return _AircraftTypeCard(
             type: type,
-            onEdit: () => _editAircraftType(type),
-            onDelete: () => _deleteAircraftType(type),
+            registrationCount: regCount,
+            onTap: () => _openTypeDetail(type),
           );
         },
       ),
     );
   }
 
-  Widget _buildRegistrationsTab() {
-    if (_isLoadingRegs) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.denim),
-      );
-    }
-
-    if (_registrations.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.confirmation_number_outlined,
-              color: AppColors.whiteDarker,
-              size: 64,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No registrations yet',
-              style: AppTypography.h4.copyWith(color: AppColors.whiteDark),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _types.isEmpty
-                  ? 'Add an aircraft type first,\nthen add registrations'
-                  : 'Tap + to add a registration',
-              style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
-              textAlign: TextAlign.center,
-            ),
-          ],
+  Future<void> _openTypeDetail(UserAircraftType type) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AircraftTypeDetailScreen(
+          aircraftType: type,
+          registrations: _registrations.where((r) => r.userAircraftTypeId == type.id).toList(),
+          allTypes: _types,
         ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadRegistrations,
-      color: AppColors.denim,
-      backgroundColor: AppColors.nightRiderDark,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _registrations.length,
-        itemBuilder: (context, index) {
-          final reg = _registrations[index];
-          return _RegistrationCard(
-            registration: reg,
-            onDelete: () => _deleteRegistration(reg),
-          );
-        },
       ),
     );
+
+    if (result == true) {
+      _loadData();
+    }
   }
 
   Widget _buildError() {
@@ -537,80 +261,107 @@ class _MyAircraftScreenState extends State<MyAircraftScreen> {
 
 class _AircraftTypeCard extends StatelessWidget {
   final UserAircraftType type;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final int registrationCount;
+  final VoidCallback onTap;
 
   const _AircraftTypeCard({
     required this.type,
-    required this.onEdit,
-    required this.onDelete,
+    required this.registrationCount,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GlassContainer(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          // Icon
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.denim.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.flight,
-              color: AppColors.denim,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            Row(
               children: [
-                // Manufacturer + Model
-                Text(
-                  '${type.manufacturer} ${type.model}',
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.white,
+                // Icon
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.denim.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.flight,
+                    color: AppColors.denim,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Manufacturer + Model
+                      Text(
+                        '${type.manufacturer} ${type.model}',
+                        style: AppTypography.body.copyWith(
+                          color: AppColors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      // ICAO - Variant (or just ICAO if no variant)
+                      Text(
+                        type.variant != null && type.variant!.isNotEmpty
+                            ? '${type.icaoDesignator} - ${type.variant}'
+                            : type.icaoDesignator,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.whiteDark,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      _buildTags(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            // Aircraft count badge in top right
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: registrationCount > 0
+                      ? AppColors.denim.withValues(alpha: 0.2)
+                      : AppColors.whiteDarker.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$registrationCount',
+                  style: AppTypography.caption.copyWith(
+                    color: registrationCount > 0
+                        ? AppColors.denimLight
+                        : AppColors.whiteDarker,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 2),
-                // ICAO - Variant (or just ICAO if no variant)
-                Text(
-                  type.variant != null && type.variant!.isNotEmpty
-                      ? '${type.icaoDesignator} - ${type.variant}'
-                      : type.icaoDesignator,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.whiteDark,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                _buildTags(),
-              ],
+              ),
             ),
-          ),
-
-          // Edit button
-          IconButton(
-            icon: const Icon(Icons.edit, color: AppColors.denim, size: 20),
-            onPressed: onEdit,
-            tooltip: 'Edit properties',
-          ),
-
-          // Delete button
-          IconButton(
-            icon: Icon(Icons.delete_outline, color: AppColors.errorRed, size: 20),
-            onPressed: onDelete,
-            tooltip: 'Delete',
-          ),
-        ],
+            // Chevron icon in bottom right
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Icon(
+                Icons.chevron_right,
+                color: AppColors.whiteDarker,
+                size: 24,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -670,8 +421,8 @@ class _RegistrationCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
-              Icons.confirmation_number_outlined,
-              color: AppColors.denimLight,
+              Icons.flight,
+              color: AppColors.denim,
               size: 24,
             ),
           ),
@@ -679,24 +430,12 @@ class _RegistrationCard extends StatelessWidget {
 
           // Info
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  registration.registration,
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  registration.aircraftTypeDisplay,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.whiteDark,
-                  ),
-                ),
-              ],
+            child: Text(
+              registration.registration,
+              style: AppTypography.body.copyWith(
+                color: AppColors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
 
@@ -975,15 +714,439 @@ class _EditAircraftTypeScreenState extends State<EditAircraftTypeScreen> {
 }
 
 // ===========================================================================
+// Aircraft Type Detail Screen
+// ===========================================================================
+
+class AircraftTypeDetailScreen extends StatefulWidget {
+  final UserAircraftType aircraftType;
+  final List<UserAircraftRegistration> registrations;
+  final List<UserAircraftType> allTypes;
+
+  const AircraftTypeDetailScreen({
+    super.key,
+    required this.aircraftType,
+    required this.registrations,
+    required this.allTypes,
+  });
+
+  @override
+  State<AircraftTypeDetailScreen> createState() => _AircraftTypeDetailScreenState();
+}
+
+class _AircraftTypeDetailScreenState extends State<AircraftTypeDetailScreen> {
+  final AircraftService _aircraftService = AircraftService();
+  late UserAircraftType _aircraftType;
+  late List<UserAircraftRegistration> _registrations;
+  bool _hasChanges = false;
+
+  String? get _userId {
+    return Provider.of<SessionState>(context, listen: false).userId;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _aircraftType = widget.aircraftType;
+    _registrations = List.from(widget.registrations);
+  }
+
+  Future<void> _editType() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditAircraftTypeScreen(aircraftType: _aircraftType),
+      ),
+    );
+
+    if (result == true) {
+      _hasChanges = true;
+      // Reload the type data
+      final userId = _userId;
+      if (userId != null) {
+        try {
+          final types = await _aircraftService.getUserAircraftTypes(userId);
+          final updatedType = types.firstWhere(
+            (t) => t.id == _aircraftType.id,
+            orElse: () => _aircraftType,
+          );
+          if (mounted) {
+            setState(() => _aircraftType = updatedType);
+          }
+        } catch (_) {}
+      }
+    }
+  }
+
+  Future<void> _deleteType() async {
+    final hasRegs = _registrations.isNotEmpty;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.nightRiderDark,
+        title: Text(
+          'Delete Aircraft Type?',
+          style: AppTypography.h4.copyWith(color: AppColors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete "${_aircraftType.displayName}"?',
+              style: AppTypography.body.copyWith(color: AppColors.whiteDark),
+            ),
+            if (hasRegs) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.errorRed.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.errorRed.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber,
+                      color: AppColors.errorRed,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'This will also delete ${_registrations.length} registration${_registrations.length > 1 ? 's' : ''} linked to this type',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.errorRed,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancel',
+              style: AppTypography.button.copyWith(color: AppColors.whiteDarker),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Delete',
+              style: AppTypography.button.copyWith(color: AppColors.errorRed),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return;
+
+    try {
+      await _aircraftService.deleteUserAircraftType(userId, _aircraftType.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted "${_aircraftType.displayName}"'),
+            backgroundColor: AppColors.nightRiderLight,
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _addRegistration() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddRegistrationScreen(
+          availableTypes: widget.allTypes,
+          preSelectedType: _aircraftType,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      _hasChanges = true;
+      // Reload registrations
+      final userId = _userId;
+      if (userId != null) {
+        try {
+          final regs = await _aircraftService.getUserAircraftRegistrations(userId);
+          final filteredRegs = regs.where((r) => r.userAircraftTypeId == _aircraftType.id).toList();
+          if (mounted) {
+            setState(() => _registrations = filteredRegs);
+          }
+        } catch (_) {}
+      }
+    }
+  }
+
+  Future<void> _deleteRegistration(UserAircraftRegistration reg) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.nightRiderDark,
+        title: Text(
+          'Delete Registration?',
+          style: AppTypography.h4.copyWith(color: AppColors.white),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${reg.registration}"?',
+          style: AppTypography.body.copyWith(color: AppColors.whiteDark),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancel',
+              style: AppTypography.button.copyWith(color: AppColors.whiteDarker),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Delete',
+              style: AppTypography.button.copyWith(color: AppColors.errorRed),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return;
+
+    try {
+      await _aircraftService.deleteUserAircraftRegistration(userId, reg.id);
+      _hasChanges = true;
+      if (mounted) {
+        setState(() {
+          _registrations.removeWhere((r) => r.id == reg.id);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted "${reg.registration}"'),
+            backgroundColor: AppColors.nightRiderLight,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          Navigator.pop(context, _hasChanges);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.nightRider,
+        appBar: AppBar(
+          backgroundColor: AppColors.nightRider,
+          elevation: 0,
+          title: Text(_aircraftType.displayName, style: AppTypography.h3),
+          centerTitle: true,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context, _hasChanges),
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.delete_outline, color: AppColors.errorRed),
+              onPressed: _deleteType,
+              tooltip: 'Delete type',
+            ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _addRegistration,
+          backgroundColor: AppColors.denim,
+          child: const Icon(Icons.add, color: AppColors.white),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Type header card
+              SizedBox(
+                width: double.infinity,
+                child: GlassContainer(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _aircraftType.icaoDesignator,
+                              style: AppTypography.h2(context),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${_aircraftType.manufacturer} ${_aircraftType.model}',
+                              style: AppTypography.body.copyWith(color: AppColors.whiteDark),
+                            ),
+                            if (_aircraftType.variant != null && _aircraftType.variant!.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                _aircraftType.variant!,
+                                style: AppTypography.bodySmall.copyWith(color: AppColors.whiteDarker),
+                              ),
+                            ],
+                            const SizedBox(height: 12),
+                            _buildPropertyTags(),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: AppColors.denim, size: 20),
+                        onPressed: _editType,
+                        tooltip: 'Edit properties',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Registrations section header
+              Text(
+                'AIRCRAFT (${_registrations.length})',
+                style: AppTypography.label,
+              ),
+              const SizedBox(height: 12),
+
+              // Registrations list
+              if (_registrations.isEmpty)
+                _buildEmptyRegistrations()
+              else
+                ..._registrations.map((reg) => _RegistrationCard(
+                  registration: reg,
+                  onDelete: () => _deleteRegistration(reg),
+                )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPropertyTags() {
+    final tags = <String>[];
+    if (_aircraftType.multiEngine) tags.add('Multi-Engine');
+    if (_aircraftType.multiPilot) tags.add('Multi-Pilot');
+    if (_aircraftType.complex) tags.add('Complex');
+    if (_aircraftType.highPerformance) tags.add('High Perf');
+
+    if (tags.isEmpty) {
+      return Text(
+        'Single-engine, single-pilot',
+        style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
+      );
+    }
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: tags.map((tag) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.denim.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            tag,
+            style: AppTypography.caption.copyWith(
+              color: AppColors.denimLight,
+              fontSize: 11,
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildEmptyRegistrations() {
+    return GlassContainer(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.flight,
+              color: AppColors.whiteDarker,
+              size: 48,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No aircraft registered',
+              style: AppTypography.body.copyWith(color: AppColors.whiteDark),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Tap + to add a registration',
+              style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ===========================================================================
 // Add Registration Screen
 // ===========================================================================
 
 class AddRegistrationScreen extends StatefulWidget {
   final List<UserAircraftType> availableTypes;
+  final UserAircraftType? preSelectedType;
 
   const AddRegistrationScreen({
     super.key,
     required this.availableTypes,
+    this.preSelectedType,
   });
 
   @override
@@ -1001,10 +1164,14 @@ class _AddRegistrationScreenState extends State<AddRegistrationScreen> {
     return Provider.of<SessionState>(context, listen: false).userId;
   }
 
+  bool get _isPreSelected => widget.preSelectedType != null;
+
   @override
   void initState() {
     super.initState();
-    if (widget.availableTypes.isNotEmpty) {
+    if (widget.preSelectedType != null) {
+      _selectedType = widget.preSelectedType;
+    } else if (widget.availableTypes.isNotEmpty) {
       _selectedType = widget.availableTypes.first;
     }
   }
@@ -1154,45 +1321,93 @@ class _AddRegistrationScreenState extends State<AddRegistrationScreen> {
               style: AppTypography.label,
             ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<UserAircraftType>(
-              value: _selectedType,
-              dropdownColor: AppColors.nightRiderDark,
-              style: AppTypography.body.copyWith(color: AppColors.white),
-              icon: Icon(Icons.keyboard_arrow_down, color: AppColors.whiteDarker),
-              isExpanded: true,
-              decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                filled: true,
-                fillColor: AppColors.nightRiderDark,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
+            if (_isPreSelected)
+              // Show read-only type when pre-selected
+              GlassContainer(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.denim.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.flight,
+                        color: AppColors.denim,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _selectedType!.fullDisplayName,
+                            style: AppTypography.body.copyWith(
+                              color: AppColors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _selectedType!.icaoDesignator,
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.whiteDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.denim),
-                ),
-              ),
-              items: widget.availableTypes.map((type) {
-                return DropdownMenuItem(
-                  value: type,
-                  child: Text(
-                    type.fullDisplayName,
-                    overflow: TextOverflow.ellipsis,
+              )
+            else
+              // Show dropdown when not pre-selected
+              DropdownButtonFormField<UserAircraftType>(
+                value: _selectedType,
+                dropdownColor: AppColors.nightRiderDark,
+                style: AppTypography.body.copyWith(color: AppColors.white),
+                icon: Icon(Icons.keyboard_arrow_down, color: AppColors.whiteDarker),
+                isExpanded: true,
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  filled: true,
+                  fillColor: AppColors.nightRiderDark,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.borderSubtle),
                   ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() => _selectedType = value);
-              },
-            ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.borderSubtle),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.denim),
+                  ),
+                ),
+                items: widget.availableTypes.map((type) {
+                  return DropdownMenuItem(
+                    value: type,
+                    child: Text(
+                      type.fullDisplayName,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() => _selectedType = value);
+                },
+              ),
             const SizedBox(height: 16),
             Text(
-              'The registration will inherit properties from this aircraft type.',
+              _isPreSelected
+                  ? 'Adding registration to this aircraft type.'
+                  : 'The registration will inherit properties from this aircraft type.',
               style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
             ),
           ],
