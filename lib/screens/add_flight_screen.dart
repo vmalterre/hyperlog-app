@@ -16,6 +16,7 @@ import '../services/nighttime_service.dart';
 import '../services/pilot_service.dart';
 import '../services/preferences_service.dart';
 import '../session_state.dart';
+import '../constants/role_standards.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../widgets/app_button.dart';
@@ -125,6 +126,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   int _ifrMinutes = 0;
   int _soloMinutes = 0;
   int _crossCountryMinutes = 0;
+  int _roleTimeMinutes = 0;  // Editable primary role time (PIC/SIC/PICUS)
   Map<String, int> _customTimeFields = {};
 
   // Track changes for confirmation dialog
@@ -196,6 +198,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       _multiPilotMinutes = 0; // TODO: load from model when field is added
       _crossCountryMinutes = ft.crossCountry;
       _customTimeFields = Map.from(ft.customFields);
+      // Get role time from whichever primary role is selected
+      _roleTimeMinutes = ft.pic > 0 ? ft.pic : (ft.sic > 0 ? ft.sic : ft.picus);
 
       // Initialize approaches from existing entry
       final ap = entry.approaches;
@@ -253,6 +257,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       _nightTakeoffs = 0;
       _dayLandings = 1;
       _nightLandings = 0;
+
+      // Initialize role time to default total flight time (8:00 to 10:00 = 120 min)
+      final offMinutes = _blockOff.hour * 60 + _blockOff.minute;
+      final onMinutes = _blockOn.hour * 60 + _blockOn.minute;
+      _roleTimeMinutes = onMinutes - offMinutes;
 
       // Initialize pilot crew entry with default role (name set in didChangeDependencies)
       _pilotCrewEntry = CrewEntry(name: '', role: _role);
@@ -544,6 +553,14 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     });
   }
 
+  /// Update role time to match total flight time.
+  /// Called when block times change.
+  void _updateRoleTime() {
+    setState(() {
+      _roleTimeMinutes = _totalFlightMinutes;
+    });
+  }
+
   /// Perform the actual night time calculation
   Future<void> _calculateNightTime() async {
     // Check all required fields exist
@@ -656,14 +673,15 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
   }
 
-  /// Build FlightTime with role-based time auto-populated from primary role
+  /// Build FlightTime with role-based time from editable _roleTimeMinutes
   FlightTime get _calculatedFlightTime {
     final total = _totalFlightMinutes;
-    // Auto-populate time fields based on the selected primary role
-    // Detail times are clamped to not exceed total flight time
+    // Use the editable role time, clamped to not exceed total flight time
+    final roleTime = _roleTimeMinutes.clamp(0, total);
     return FlightTime.fromPrimaryRole(
       _role.toUpperCase(),
       total,
+      roleMinutes: roleTime,
       night: _nightMinutes.clamp(0, total),
       ifr: _ifrMinutes.clamp(0, total),
       solo: _soloMinutes.clamp(0, total),
@@ -1129,6 +1147,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                     });
                                     _triggerNightTimeCalculation();
                                     _calculateCrossCountryTime();
+                                    _updateRoleTime();
                                   },
                                 ),
                               ),
@@ -1144,6 +1163,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                     });
                                     _triggerNightTimeCalculation();
                                     _calculateCrossCountryTime();
+                                    _updateRoleTime();
                                   },
                                 ),
                               ),
@@ -1221,8 +1241,35 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                             ),
                           ),
                           if (_detailsExpanded) ...[
-                            // Automatic fields (calculated based on aircraft/times)
+                            // Primary role time (user-editable)
                             const SizedBox(height: 16),
+                            DurationQuickSet(
+                              label: RoleStandards.getLabel(
+                                PreferencesService.instance.getRoleStandard(),
+                                _role.toUpperCase(),
+                              ),
+                              minutes: _roleTimeMinutes,
+                              maxMinutes: _totalFlightMinutes,
+                              blockOff: _blockOff,
+                              blockOn: _blockOn,
+                              onChanged: (value) {
+                                setState(() {
+                                  _roleTimeMinutes = value;
+                                  _hasChanges = true;
+                                });
+                              },
+                            ),
+
+                            // Divider between role time and automatic fields
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              child: Divider(
+                                color: AppColors.borderSubtle,
+                                height: 1,
+                              ),
+                            ),
+
+                            // Automatic fields (calculated based on aircraft/times)
                             DurationDisplay(
                               label: 'Night',
                               minutes: _nightMinutes,
@@ -1325,6 +1372,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                               onChanged: (entry) {
                                 setState(() {
                                   _role = entry.role;
+                                  _roleTimeMinutes = _totalFlightMinutes;  // Reset to total on role change
                                   _hasChanges = true;
                                 });
                               },

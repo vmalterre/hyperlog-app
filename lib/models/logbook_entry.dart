@@ -472,10 +472,12 @@ class FlightTime {
   /// Create FlightTime from primary and optional secondary role
   /// Primary role determines seat position time (PIC, SIC, PICUS)
   /// Secondary role determines activity time (DUAL, INSTRUCTOR)
+  /// If roleMinutes is provided, use that for the role time instead of totalMinutes
   factory FlightTime.fromRoles({
     required String primaryRole,
     String? secondaryRole,
     required int totalMinutes,
+    int? roleMinutes,
     int night = 0,
     int ifr = 0,
     int solo = 0,
@@ -483,17 +485,18 @@ class FlightTime {
     int crossCountry = 0,
     Map<String, int>? customFields,
   }) {
+    final effectiveRoleTime = roleMinutes ?? totalMinutes;
     return FlightTime(
       total: totalMinutes,
       night: night,
       ifr: ifr,
       // Primary role (seat position)
-      pic: primaryRole == 'PIC' ? totalMinutes : 0,
-      picus: primaryRole == 'PICUS' ? totalMinutes : 0,
-      sic: primaryRole == 'SIC' ? totalMinutes : 0,
+      pic: primaryRole == 'PIC' ? effectiveRoleTime : 0,
+      picus: primaryRole == 'PICUS' ? effectiveRoleTime : 0,
+      sic: primaryRole == 'SIC' ? effectiveRoleTime : 0,
       // Secondary role (activity)
-      dual: secondaryRole == 'DUAL' ? totalMinutes : 0,
-      instructor: secondaryRole == 'INSTRUCTOR' ? totalMinutes : 0,
+      dual: secondaryRole == 'DUAL' ? effectiveRoleTime : 0,
+      instructor: secondaryRole == 'INSTRUCTOR' ? effectiveRoleTime : 0,
       // Detail fields
       solo: solo,
       multiEngine: multiEngine,
@@ -505,6 +508,7 @@ class FlightTime {
   /// Create FlightTime from primary role only
   /// @deprecated Use fromRoles instead for primary + secondary support
   factory FlightTime.fromPrimaryRole(String primaryRole, int totalMinutes, {
+    int? roleMinutes,
     int night = 0,
     int ifr = 0,
     int solo = 0,
@@ -515,6 +519,7 @@ class FlightTime {
     return FlightTime.fromRoles(
       primaryRole: primaryRole,
       totalMinutes: totalMinutes,
+      roleMinutes: roleMinutes,
       night: night,
       ifr: ifr,
       solo: solo,
