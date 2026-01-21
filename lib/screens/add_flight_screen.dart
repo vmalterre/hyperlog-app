@@ -80,6 +80,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   // Selection state
   late String _role;
   late bool _isPilotFlying;
+  late int _dayTakeoffs;
+  late int _nightTakeoffs;
   late int _dayLandings;
   late int _nightLandings;
 
@@ -165,6 +167,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
       _role = creatorCrew?.primaryRole ?? PreferencesService.instance.getDefaultRole();
       _isPilotFlying = entry.isPilotFlying;
+      _dayTakeoffs = entry.totalTakeoffs.day;
+      _nightTakeoffs = entry.totalTakeoffs.night;
       _dayLandings = entry.totalLandings.day;
       _nightLandings = entry.totalLandings.night;
 
@@ -230,6 +234,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
       _role = PreferencesService.instance.getDefaultRole();
       _isPilotFlying = true;
+      _dayTakeoffs = 1;
+      _nightTakeoffs = 0;
       _dayLandings = 1;
       _nightLandings = 0;
 
@@ -634,6 +640,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
             end: blockOnDateTime,
           ),
         ],
+        takeoffs: Takeoffs(day: _dayTakeoffs, night: _nightTakeoffs),
         landings: Landings(day: _dayLandings, night: _nightLandings),
         remarks: _remarksController.text,
         joinedAt: DateTime.now(),
@@ -652,7 +659,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                     end: blockOnDateTime,
                   ),
                 ],
-                landings: Landings(), // No landings for additional crew
+                takeoffs: const Takeoffs(), // No takeoffs for additional crew
+                landings: const Landings(), // No landings for additional crew
                 joinedAt: DateTime.now(),
               ))
           .toList();
@@ -1233,8 +1241,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Landings Section
-                    _SectionHeader(title: 'LANDINGS'),
+                    // Takeoffs and Landings Section
+                    _SectionHeader(title: 'TAKEOFFS AND LANDINGS'),
                     const SizedBox(height: 12),
                     Container(
                       key: _landingsKey,
@@ -1258,8 +1266,10 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                 setState(() {
                                   _isPilotFlying = value;
                                   _hasChanges = true;
-                                  // Reset landings to 0 when switching to PM
+                                  // Reset takeoffs and landings to 0 when switching to PM
                                   if (!value) {
+                                    _dayTakeoffs = 0;
+                                    _nightTakeoffs = 0;
                                     _dayLandings = 0;
                                     _nightLandings = 0;
                                   }
@@ -1267,9 +1277,35 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                 });
                               },
                             ),
-                            // Show landing steppers only for PF
+                            // Show takeoff and landing steppers only for PF
                             if (_isPilotFlying) ...[
                               const SizedBox(height: 16),
+                              NumberStepper(
+                                label: 'Day Takeoffs',
+                                value: _dayTakeoffs,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _dayTakeoffs = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              NumberStepper(
+                                label: 'Night Takeoffs',
+                                value: _nightTakeoffs,
+                                minValue: 0,
+                                maxValue: 99,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _nightTakeoffs = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
                               NumberStepper(
                                 label: 'Day Landings',
                                 value: _dayLandings,

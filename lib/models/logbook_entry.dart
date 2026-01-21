@@ -101,6 +101,28 @@ class Landings {
   int get total => day + night;
 }
 
+/// Takeoffs breakdown
+class Takeoffs {
+  final int day;
+  final int night;
+
+  const Takeoffs({this.day = 0, this.night = 0});
+
+  factory Takeoffs.fromJson(Map<String, dynamic> json) {
+    return Takeoffs(
+      day: json['day'] ?? 0,
+      night: json['night'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'day': day,
+        'night': night,
+      };
+
+  int get total => day + night;
+}
+
 /// Approaches breakdown by type
 class Approaches {
   final int visual;
@@ -194,6 +216,7 @@ class CrewMember {
   final String? pilotLicense; // Resolved from PostgreSQL for display
   final String? pilotName;    // Resolved from PostgreSQL for display
   final List<RoleSegment> roles;
+  final Takeoffs takeoffs;
   final Landings landings;
   final String remarks;
   final DateTime joinedAt;
@@ -203,6 +226,7 @@ class CrewMember {
     this.pilotLicense,
     this.pilotName,
     required this.roles,
+    this.takeoffs = const Takeoffs(),
     required this.landings,
     this.remarks = '',
     required this.joinedAt,
@@ -217,9 +241,12 @@ class CrewMember {
               ?.map((r) => RoleSegment.fromJson(r as Map<String, dynamic>))
               .toList() ??
           [],
+      takeoffs: json['takeoffs'] != null
+          ? Takeoffs.fromJson(json['takeoffs'])
+          : const Takeoffs(),
       landings: json['landings'] != null
           ? Landings.fromJson(json['landings'])
-          : Landings(),
+          : const Landings(),
       remarks: json['remarks'] ?? '',
       joinedAt: DateTime.parse(json['joinedAt']),
     );
@@ -230,6 +257,7 @@ class CrewMember {
         if (pilotLicense != null) 'pilotLicense': pilotLicense,
         if (pilotName != null) 'pilotName': pilotName,
         'roles': roles.map((r) => r.toJson()).toList(),
+        'takeoffs': takeoffs.toJson(),
         'landings': landings.toJson(),
         'remarks': remarks,
         'joinedAt': joinedAt.toUtc().toIso8601String(),
@@ -620,6 +648,17 @@ class LogbookEntry {
     }
   }
 
+  /// Get total takeoffs from all crew members (typically only PF logs takeoffs)
+  Takeoffs get totalTakeoffs {
+    int day = 0;
+    int night = 0;
+    for (final c in crew) {
+      day += c.takeoffs.day;
+      night += c.takeoffs.night;
+    }
+    return Takeoffs(day: day, night: night);
+  }
+
   /// Get total landings from all crew members (typically only PF logs landings)
   Landings get totalLandings {
     int day = 0;
@@ -684,6 +723,7 @@ class LogbookEntry {
       'isPilotFlying': isPilotFlying,
       'approaches': approaches.toJson(),
       'roles': creator?.roles.map((r) => r.toJson()).toList() ?? [],
+      'takeoffs': creator?.takeoffs.toJson() ?? const Takeoffs().toJson(),
       'landings': creator?.landings.toJson() ?? const Landings().toJson(),
       'remarks': creator?.remarks ?? '',
       if (standardCrew.isNotEmpty) 'crew': standardCrew,
