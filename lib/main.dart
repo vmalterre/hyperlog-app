@@ -1,6 +1,7 @@
 import 'package:hyperlog/config/app_config.dart';
 import 'package:hyperlog/session_state.dart';
 import 'package:hyperlog/services/preferences_service.dart';
+import 'package:hyperlog/services/screen_config_service.dart';
 import 'package:hyperlog/theme/app_theme.dart';
 import 'package:hyperlog/widgets/environment_banner.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -45,6 +46,9 @@ void main() async {
 
   // Initialize preferences for local storage
   await PreferencesService.instance.init();
+
+  // Initialize screen config service
+  await ScreenConfigService.instance.init();
 
   // Crashlytics is not supported on web
   if (!kIsWeb) {

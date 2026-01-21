@@ -4,9 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../utils/great_circle_arc.dart';
+import '../constants/flight_fields.dart';
 import '../models/airport.dart';
 import '../models/logbook_entry.dart';
 import '../models/saved_pilot.dart';
+import '../models/screen_config.dart';
 import '../models/user_aircraft_registration.dart';
 import '../models/user_aircraft_type.dart';
 import '../services/aircraft_service.dart';
@@ -16,12 +18,14 @@ import '../services/flight_service.dart';
 import '../services/nighttime_service.dart';
 import '../services/pilot_service.dart';
 import '../services/preferences_service.dart';
+import '../services/screen_config_service.dart';
 import '../session_state.dart';
 import '../constants/role_standards.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../widgets/app_button.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/screen_switcher_sheet.dart';
 import '../widgets/form/glass_text_field.dart';
 import '../widgets/form/glass_date_picker.dart';
 import '../widgets/form/glass_time_picker.dart';
@@ -133,6 +137,10 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   // Track changes for confirmation dialog
   bool _hasChanges = false;
 
+  // Screen configuration (for custom field visibility)
+  final ScreenConfigService _screenConfigService = ScreenConfigService.instance;
+  ScreenConfig? _activeScreenConfig;
+
   String? get _userId {
     return Provider.of<SessionState>(context, listen: false).userId;
   }
@@ -142,10 +150,38 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         .currentPilot?.subscriptionTier.name ?? 'standard';
   }
 
+  /// Check if a field should be visible based on the active screen config
+  bool _isFieldVisible(FlightField field) {
+    if (_activeScreenConfig == null) return true;
+    return _activeScreenConfig!.isFieldVisible(field);
+  }
+
+  /// Show the screen switcher bottom sheet
+  void _showScreenSwitcher() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => ScreenSwitcherSheet(
+        selectedScreenId: _activeScreenConfig?.id,
+        onScreenSelected: (screenId) {
+          setState(() {
+            _activeScreenConfig = screenId == null
+                ? null
+                : _screenConfigService.getById(screenId);
+          });
+        },
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     _initializeFields();
+
+    // Load the active screen configuration
+    _activeScreenConfig = _screenConfigService.getDefault();
 
     // Listen for changes on all text controllers
     _flightNumberController.addListener(_onFormChanged);
@@ -1113,6 +1149,13 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           ),
           title: Text(widget.isEditMode ? 'Amend Flight' : 'Log Flight', style: AppTypography.h3),
           centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, color: AppColors.whiteDark),
+              tooltip: 'Switch screen',
+              onPressed: _showScreenSwitcher,
+            ),
+          ],
         ),
         body: SafeArea(
           child: GestureDetector(
@@ -1143,15 +1186,17 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                               _triggerNightTimeCalculation();
                             },
                           ),
-                          const SizedBox(height: 16),
-                          GlassTextField(
-                            controller: _flightNumberController,
-                            label: 'Flight Number',
-                            hint: 'e.g. BA 123',
-                            prefixIcon: Icons.flight,
-                            textCapitalization: TextCapitalization.characters,
-                            maxLength: 10,
-                          ),
+                          if (_isFieldVisible(FlightField.flightNumber)) ...[
+                            const SizedBox(height: 16),
+                            GlassTextField(
+                              controller: _flightNumberController,
+                              label: 'Flight Number',
+                              hint: 'e.g. BA 123',
+                              prefixIcon: Icons.flight,
+                              textCapitalization: TextCapitalization.characters,
+                              maxLength: 10,
+                            ),
+                          ],
                           const SizedBox(height: 16),
                           AirportRouteFields(
                             depController: _depController,
@@ -1233,52 +1278,54 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                 });
                               },
                             ),
-                            if (_additionalCrewEntries.isNotEmpty) ...[
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Text(
-                                  'Additional crew members',
-                                  style: AppTypography.bodySmall.copyWith(
-                                    color: AppColors.whiteDarker,
+                            if (_isFieldVisible(FlightField.additionalCrew)) ...[
+                              if (_additionalCrewEntries.isNotEmpty) ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Text(
+                                    'Additional crew members',
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: AppColors.whiteDarker,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              // Additional crew entry cards
+                              ..._additionalCrewEntries.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final crewEntry = entry.value;
+                                return CrewEntryCard(
+                                  entry: crewEntry,
+                                  suggestions: _savedPilots,
+                                  onRemove: () {
+                                    setState(() {
+                                      _additionalCrewEntries.removeAt(index);
+                                      _hasChanges = true;
+                                    });
+                                  },
+                                );
+                              }),
+                              // Add crew button
+                              TextButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _additionalCrewEntries.add(CrewEntry());
+                                    _hasChanges = true;
+                                  });
+                                },
+                                icon: Icon(
+                                  Icons.add,
+                                  color: AppColors.denim,
+                                  size: 20,
+                                ),
+                                label: Text(
+                                  'Add Crew Member',
+                                  style: AppTypography.body.copyWith(
+                                    color: AppColors.denim,
                                   ),
                                 ),
                               ),
                             ],
-                            // Additional crew entry cards
-                            ..._additionalCrewEntries.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final crewEntry = entry.value;
-                              return CrewEntryCard(
-                                entry: crewEntry,
-                                suggestions: _savedPilots,
-                                onRemove: () {
-                                  setState(() {
-                                    _additionalCrewEntries.removeAt(index);
-                                    _hasChanges = true;
-                                  });
-                                },
-                              );
-                            }),
-                            // Add crew button
-                            TextButton.icon(
-                              onPressed: () {
-                                setState(() {
-                                  _additionalCrewEntries.add(CrewEntry());
-                                  _hasChanges = true;
-                                });
-                              },
-                              icon: Icon(
-                                Icons.add,
-                                color: AppColors.denim,
-                                size: 20,
-                              ),
-                              label: Text(
-                                'Add Crew Member',
-                                style: AppTypography.body.copyWith(
-                                  color: AppColors.denim,
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                       ),
@@ -1405,9 +1452,9 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                             },
                           ),
 
-                          // Manual fields (always visible, below role time)
+                          // Manual fields (below role time)
                           // IFR in manual section for "Both" aircraft only
-                          if (_showIfrInManualSection) ...[
+                          if (_isFieldVisible(FlightField.ifrTime) && _showIfrInManualSection) ...[
                             const SizedBox(height: 12),
                             DurationQuickSet(
                               label: 'IFR',
@@ -1423,39 +1470,42 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                               },
                             ),
                           ],
-                          const SizedBox(height: 12),
-                          DurationQuickSet(
-                            label: 'Solo',
-                            minutes: _soloMinutes,
-                            maxMinutes: _totalFlightMinutes,
-                            blockOff: _blockOff,
-                            blockOn: _blockOn,
-                            onChanged: (value) {
-                              setState(() {
-                                _soloMinutes = value;
-                                _hasChanges = true;
-                              });
-                            },
-                          ),
+                          if (_isFieldVisible(FlightField.soloTime)) ...[
+                            const SizedBox(height: 12),
+                            DurationQuickSet(
+                              label: 'Solo',
+                              minutes: _soloMinutes,
+                              maxMinutes: _totalFlightMinutes,
+                              blockOff: _blockOff,
+                              blockOn: _blockOn,
+                              onChanged: (value) {
+                                setState(() {
+                                  _soloMinutes = value;
+                                  _hasChanges = true;
+                                });
+                              },
+                            ),
+                          ],
                           // Custom time fields from preferences
-                          ...PreferencesService.instance.getCustomTimeFields().map((fieldName) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 12),
-                              child: DurationQuickSet(
-                                label: fieldName,
-                                minutes: _customTimeFields[fieldName] ?? 0,
-                                maxMinutes: _totalFlightMinutes,
-                                blockOff: _blockOff,
-                                blockOn: _blockOn,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _customTimeFields[fieldName] = value;
-                                    _hasChanges = true;
-                                  });
-                                },
-                              ),
-                            );
-                          }),
+                          if (_isFieldVisible(FlightField.customTimeFields))
+                            ...PreferencesService.instance.getCustomTimeFields().map((fieldName) {
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: DurationQuickSet(
+                                  label: fieldName,
+                                  minutes: _customTimeFields[fieldName] ?? 0,
+                                  maxMinutes: _totalFlightMinutes,
+                                  blockOff: _blockOff,
+                                  blockOn: _blockOn,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _customTimeFields[fieldName] = value;
+                                      _hasChanges = true;
+                                    });
+                                  },
+                                ),
+                              );
+                            }),
 
                           // Expandable Calculated section
                           const SizedBox(height: 16),
@@ -1492,12 +1542,13 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                           if (_detailsExpanded) ...[
                             const SizedBox(height: 16),
                             // Calculated fields (auto-populated based on aircraft/times)
-                            DurationDisplay(
-                              label: 'Night',
-                              minutes: _nightMinutes,
-                            ),
+                            if (_isFieldVisible(FlightField.nightTime))
+                              DurationDisplay(
+                                label: 'Night',
+                                minutes: _nightMinutes,
+                              ),
                             // Multi-Engine only shown for multi-engine aircraft
-                            if (_selectedAircraft?.isMultiEngine == true) ...[
+                            if (_isFieldVisible(FlightField.multiEngineTime) && _selectedAircraft?.isMultiEngine == true) ...[
                               const SizedBox(height: 12),
                               DurationDisplay(
                                 label: 'Multi-Engine',
@@ -1505,20 +1556,22 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                               ),
                             ],
                             // Multi-Pilot only shown for multi-pilot aircraft
-                            if (_selectedAircraft?.isMultiPilot == true) ...[
+                            if (_isFieldVisible(FlightField.multiPilotTime) && _selectedAircraft?.isMultiPilot == true) ...[
                               const SizedBox(height: 12),
                               DurationDisplay(
                                 label: 'Multi-Pilot',
                                 minutes: _multiPilotMinutes,
                               ),
                             ],
-                            const SizedBox(height: 12),
-                            DurationDisplay(
-                              label: 'Cross-Country',
-                              minutes: _crossCountryMinutes,
-                            ),
+                            if (_isFieldVisible(FlightField.crossCountryTime)) ...[
+                              const SizedBox(height: 12),
+                              DurationDisplay(
+                                label: 'Cross-Country',
+                                minutes: _crossCountryMinutes,
+                              ),
+                            ],
                             // IFR in calculated section for IFR-only aircraft
-                            if (_showIfrInCalculatedSection) ...[
+                            if (_isFieldVisible(FlightField.ifrTime) && _showIfrInCalculatedSection) ...[
                               const SizedBox(height: 12),
                               DurationDisplay(
                                 label: 'IFR',
@@ -1550,27 +1603,28 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                         padding: const EdgeInsets.all(20),
                         child: Column(
                           children: [
-                            // PF/PM Toggle
-                            _PfPmToggle(
-                              isPilotFlying: _isPilotFlying,
-                              onChanged: (value) {
-                                setState(() {
-                                  _isPilotFlying = value;
-                                  _hasChanges = true;
-                                  // Reset takeoffs and landings to 0 when switching to PM
-                                  if (!value) {
-                                    _dayTakeoffs = 0;
-                                    _nightTakeoffs = 0;
-                                    _dayLandings = 0;
-                                    _nightLandings = 0;
-                                  }
-                                  _landingsError = null;
-                                });
-                              },
-                            ),
-                            // Show takeoff and landing steppers only for PF
-                            if (_isPilotFlying) ...[
-                              const SizedBox(height: 16),
+                            // PF/PM Toggle (hidden defaults to PF)
+                            if (_isFieldVisible(FlightField.pfPmToggle))
+                              _PfPmToggle(
+                                isPilotFlying: _isPilotFlying,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _isPilotFlying = value;
+                                    _hasChanges = true;
+                                    // Reset takeoffs and landings to 0 when switching to PM
+                                    if (!value) {
+                                      _dayTakeoffs = 0;
+                                      _nightTakeoffs = 0;
+                                      _dayLandings = 0;
+                                      _nightLandings = 0;
+                                    }
+                                    _landingsError = null;
+                                  });
+                                },
+                              ),
+                            // Show takeoff and landing steppers only for PF and when visible
+                            if (_isPilotFlying && _isFieldVisible(FlightField.takeoffsLandings)) ...[
+                              if (_isFieldVisible(FlightField.pfPmToggle)) const SizedBox(height: 16),
                               NumberStepper(
                                 label: 'Day Takeoffs',
                                 value: _dayTakeoffs,
@@ -1640,8 +1694,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                         ),
                       ),
 
-                    // Approaches Section (only for PF)
-                    if (_isPilotFlying) ...[
+                    // Approaches Section (only for PF and when visible)
+                    if (_isPilotFlying && _isFieldVisible(FlightField.approaches)) ...[
                       const SizedBox(height: 24),
                       _SectionHeader(title: 'APPROACHES'),
                       const SizedBox(height: 12),
@@ -1810,21 +1864,22 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                       ),
                     ],
 
-                    const SizedBox(height: 24),
-
                     // Remarks Section
-                    _SectionHeader(title: 'REMARKS'),
-                    const SizedBox(height: 12),
-                    GlassContainer(
-                      padding: const EdgeInsets.all(20),
-                      child: GlassTextField(
-                        controller: _remarksController,
-                        label: 'Remarks',
-                        hint: 'Add any notes about this flight...',
-                        maxLines: 3,
-                        maxLength: 500,
+                    if (_isFieldVisible(FlightField.remarks)) ...[
+                      const SizedBox(height: 24),
+                      _SectionHeader(title: 'REMARKS'),
+                      const SizedBox(height: 12),
+                      GlassContainer(
+                        padding: const EdgeInsets.all(20),
+                        child: GlassTextField(
+                          controller: _remarksController,
+                          label: 'Remarks',
+                          hint: 'Add any notes about this flight...',
+                          maxLines: 3,
+                          maxLength: 500,
+                        ),
                       ),
-                    ),
+                    ],
 
                     const SizedBox(height: 32),
 

@@ -13,6 +13,7 @@ import 'display_options_screen.dart';
 import 'saved_pilots_screen.dart';
 import 'my_roles_screen.dart';
 import 'my_aircraft_screen.dart';
+import 'my_screens_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -173,6 +174,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => const MyAircraftScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _SettingsItem(
+                    icon: Icons.dashboard_customize_outlined,
+                    title: 'My Screens',
+                    subtitle: 'Customize flight entry layout',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MyScreensScreen(),
                         ),
                       );
                     },
