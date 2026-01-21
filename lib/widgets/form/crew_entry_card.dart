@@ -9,9 +9,10 @@ import 'role_dropdown.dart';
 /// Data class for crew member input
 class CrewEntry {
   String name;
-  String role;
+  String role;           // Primary role (PIC, SIC, PICUS)
+  String? secondaryRole; // Secondary role (DUAL, INSTRUCTOR) - optional
 
-  CrewEntry({this.name = '', String? role})
+  CrewEntry({this.name = '', String? role, this.secondaryRole})
       : role = role ?? TimeFieldCodes.sic; // Default to SIC for crew members
 
   bool get isValid => name.trim().isNotEmpty && role.isNotEmpty;
@@ -63,11 +64,16 @@ class _CrewEntryCardState extends State<CrewEntryCard> {
     }
   }
 
-  void _onRoleChanged(String? value) {
+  void _onPrimaryRoleChanged(String? value) {
     if (value != null) {
       widget.entry.role = value;
       widget.onChanged?.call(widget.entry);
     }
+  }
+
+  void _onSecondaryRoleChanged(String? value) {
+    widget.entry.secondaryRole = value;
+    widget.onChanged?.call(widget.entry);
   }
 
   Future<void> _openPilotSearch() async {
@@ -165,11 +171,19 @@ class _CrewEntryCardState extends State<CrewEntryCard> {
           ),
           const SizedBox(height: 12),
 
-          // Role dropdown
+          // Primary role dropdown
           RoleDropdown(
             value: widget.entry.role,
-            onChanged: _onRoleChanged,
-            label: 'Role',
+            onChanged: _onPrimaryRoleChanged,
+            label: 'Primary Role',
+          ),
+          const SizedBox(height: 12),
+
+          // Secondary role dropdown
+          SecondaryRoleDropdown(
+            value: widget.entry.secondaryRole,
+            onChanged: _onSecondaryRoleChanged,
+            label: 'Secondary Role',
           ),
         ],
       ),

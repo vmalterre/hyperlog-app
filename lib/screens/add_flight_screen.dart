@@ -227,8 +227,12 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         _approachesExpanded = true;
       }
 
-      // Initialize pilot crew entry
-      _pilotCrewEntry = CrewEntry(name: '', role: _role);
+      // Initialize pilot crew entry with secondary role from existing entry
+      _pilotCrewEntry = CrewEntry(
+        name: '',
+        role: _role,
+        secondaryRole: creatorCrew?.secondaryRole,
+      );
 
       // Initialize additional crew from existing entry (excluding creator)
       for (final crew in entry.crew) {
@@ -236,6 +240,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           _additionalCrewEntries.add(CrewEntry(
             name: crew.pilotName!,
             role: crew.primaryRole,
+            secondaryRole: crew.secondaryRole,
           ));
         }
       }
@@ -397,13 +402,29 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       _hasChanges = true;
     });
 
-    // Auto-set multi-engine time if aircraft is multi-engine
-    if (aircraft.isMultiEngine && _multiEngineMinutes == 0) {
+    // Auto-set multi-engine time based on aircraft type
+    if (aircraft.isMultiEngine) {
+      // Multi-engine aircraft: set ME time to total flight time
       setState(() {
         _multiEngineMinutes = _totalFlightMinutes;
-        if (!_detailsExpanded) {
-          _detailsExpanded = true;
-        }
+      });
+    } else {
+      // Single-engine aircraft: reset ME time to 0
+      setState(() {
+        _multiEngineMinutes = 0;
+      });
+    }
+
+    // Auto-set multi-pilot time based on aircraft type
+    if (aircraft.isMultiPilot) {
+      // Multi-pilot aircraft: set MP time to total flight time
+      setState(() {
+        _multiPilotMinutes = _totalFlightMinutes;
+      });
+    } else {
+      // Single-pilot aircraft: reset MP time to 0
+      setState(() {
+        _multiPilotMinutes = 0;
       });
     }
 
@@ -594,6 +615,24 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     if (_selectedAircraft?.flightRules == FlightRulesCapability.ifr) {
       setState(() {
         _ifrMinutes = _totalFlightMinutes;
+      });
+    }
+  }
+
+  /// Update multi-engine time for multi-engine aircraft when block times change.
+  void _updateMultiEngineTimeForMeAircraft() {
+    if (_selectedAircraft?.isMultiEngine == true) {
+      setState(() {
+        _multiEngineMinutes = _totalFlightMinutes;
+      });
+    }
+  }
+
+  /// Update multi-pilot time for multi-pilot aircraft when block times change.
+  void _updateMultiPilotTimeForMpAircraft() {
+    if (_selectedAircraft?.isMultiPilot == true) {
+      setState(() {
+        _multiPilotMinutes = _totalFlightMinutes;
       });
     }
   }
@@ -826,16 +865,29 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         blockOnDateTime = blockOnDateTime.add(const Duration(days: 1));
       }
 
-      // Build the creator's crew entry
-      final creatorCrew = CrewMember(
-        pilotUUID: userId, // UUID for API
-        roles: [
+      // Helper to build roles list with optional secondary role
+      List<RoleSegment> buildRoles(String primaryRole, String? secondaryRole) {
+        final roles = [
           RoleSegment(
-            role: _pilotCrewEntry.role.toUpperCase(),
+            role: primaryRole.toUpperCase(),
             start: blockOffDateTime,
             end: blockOnDateTime,
           ),
-        ],
+        ];
+        if (secondaryRole != null && secondaryRole.isNotEmpty) {
+          roles.add(RoleSegment(
+            role: secondaryRole.toUpperCase(),
+            start: blockOffDateTime,
+            end: blockOnDateTime,
+          ));
+        }
+        return roles;
+      }
+
+      // Build the creator's crew entry
+      final creatorCrew = CrewMember(
+        pilotUUID: userId, // UUID for API
+        roles: buildRoles(_pilotCrewEntry.role, _pilotCrewEntry.secondaryRole),
         takeoffs: Takeoffs(day: _dayTakeoffs, night: _nightTakeoffs),
         landings: Landings(day: _dayLandings, night: _nightLandings),
         remarks: _remarksController.text,
@@ -848,13 +900,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           .map((e) => CrewMember(
                 pilotUUID: 'standard-crew', // Marker for non-registered crew
                 pilotName: e.name.trim(),
-                roles: [
-                  RoleSegment(
-                    role: e.role.toUpperCase(),
-                    start: blockOffDateTime,
-                    end: blockOnDateTime,
-                  ),
-                ],
+                roles: buildRoles(e.role, e.secondaryRole),
                 takeoffs: const Takeoffs(), // No takeoffs for additional crew
                 landings: const Landings(), // No landings for additional crew
                 joinedAt: DateTime.now(),
@@ -1163,246 +1209,6 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Times Section
-                    _SectionHeader(title: 'TIMES'),
-                    const SizedBox(height: 12),
-                    GlassContainer(
-                      key: _timesKey,
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: GlassTimePicker(
-                                  label: 'BLOCK OFF',
-                                  selectedTime: _blockOff,
-                                  onTimeSelected: (time) {
-                                    setState(() {
-                                      _blockOff = time;
-                                      _hasChanges = true;
-                                    });
-                                    _triggerNightTimeCalculation();
-                                    _calculateCrossCountryTime();
-                                    _updateRoleTime();
-                                    _updateIfrTimeForIfrOnlyAircraft();
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: GlassTimePicker(
-                                  label: 'BLOCK ON',
-                                  selectedTime: _blockOn,
-                                  onTimeSelected: (time) {
-                                    setState(() {
-                                      _blockOn = time;
-                                      _hasChanges = true;
-                                    });
-                                    _triggerNightTimeCalculation();
-                                    _calculateCrossCountryTime();
-                                    _updateRoleTime();
-                                    _updateIfrTimeForIfrOnlyAircraft();
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.denim.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: AppColors.denim.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.timer_outlined,
-                                  color: AppColors.denimLight,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Block Time: ',
-                                  style: AppTypography.body.copyWith(
-                                    color: AppColors.whiteDark,
-                                  ),
-                                ),
-                                Text(
-                                  _formattedFlightTime,
-                                  style: GoogleFonts.jetBrainsMono(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.denimLight,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Expandable Details section
-                          const SizedBox(height: 16),
-                          Divider(
-                            color: AppColors.borderSubtle,
-                            height: 1,
-                          ),
-                          const SizedBox(height: 12),
-                          // Tappable header to expand/collapse
-                          GestureDetector(
-                            onTap: () => setState(() => _detailsExpanded = !_detailsExpanded),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Details',
-                                  style: AppTypography.body.copyWith(
-                                    color: AppColors.whiteDarker,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                AnimatedRotation(
-                                  turns: _detailsExpanded ? 0.5 : 0,
-                                  duration: const Duration(milliseconds: 200),
-                                  child: Icon(
-                                    Icons.expand_more,
-                                    color: AppColors.whiteDarker,
-                                    size: 20,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (_detailsExpanded) ...[
-                            // Primary role time (user-editable)
-                            const SizedBox(height: 16),
-                            DurationQuickSet(
-                              label: RoleStandards.getLabel(
-                                PreferencesService.instance.getRoleStandard(),
-                                _role.toUpperCase(),
-                              ),
-                              minutes: _roleTimeMinutes,
-                              maxMinutes: _totalFlightMinutes,
-                              blockOff: _blockOff,
-                              blockOn: _blockOn,
-                              onChanged: (value) {
-                                setState(() {
-                                  _roleTimeMinutes = value;
-                                  _hasChanges = true;
-                                });
-                              },
-                            ),
-
-                            // Divider between role time and automatic fields
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              child: Divider(
-                                color: AppColors.borderSubtle,
-                                height: 1,
-                              ),
-                            ),
-
-                            // Automatic fields (calculated based on aircraft/times)
-                            DurationDisplay(
-                              label: 'Night',
-                              minutes: _nightMinutes,
-                            ),
-                            const SizedBox(height: 12),
-                            DurationDisplay(
-                              label: 'Multi-Engine',
-                              minutes: _multiEngineMinutes,
-                            ),
-                            const SizedBox(height: 12),
-                            DurationDisplay(
-                              label: 'Multi-Pilot',
-                              minutes: _multiPilotMinutes,
-                            ),
-                            const SizedBox(height: 12),
-                            DurationDisplay(
-                              label: 'Cross-Country',
-                              minutes: _crossCountryMinutes,
-                            ),
-                            // IFR in calculated section for IFR-only aircraft
-                            if (_showIfrInCalculatedSection) ...[
-                              const SizedBox(height: 12),
-                              DurationDisplay(
-                                label: 'IFR',
-                                minutes: _ifrMinutes,
-                              ),
-                            ],
-
-                            // Divider between automatic and manual fields
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              child: Divider(
-                                color: AppColors.borderSubtle,
-                                height: 1,
-                              ),
-                            ),
-
-                            // Manual fields (user-entered)
-                            // IFR in manual section for "Both" aircraft only
-                            if (_showIfrInManualSection) ...[
-                              DurationQuickSet(
-                                label: 'IFR',
-                                minutes: _ifrMinutes,
-                                maxMinutes: _totalFlightMinutes,
-                                blockOff: _blockOff,
-                                blockOn: _blockOn,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _ifrMinutes = value;
-                                    _hasChanges = true;
-                                  });
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                            DurationQuickSet(
-                              label: 'Solo',
-                              minutes: _soloMinutes,
-                              maxMinutes: _totalFlightMinutes,
-                              blockOff: _blockOff,
-                              blockOn: _blockOn,
-                              onChanged: (value) {
-                                setState(() {
-                                  _soloMinutes = value;
-                                  _hasChanges = true;
-                                });
-                              },
-                            ),
-                            // Custom time fields from preferences
-                            ...PreferencesService.instance.getCustomTimeFields().map((fieldName) {
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 12),
-                                child: DurationQuickSet(
-                                  label: fieldName,
-                                  minutes: _customTimeFields[fieldName] ?? 0,
-                                  maxMinutes: _totalFlightMinutes,
-                                  blockOff: _blockOff,
-                                  blockOn: _blockOn,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _customTimeFields[fieldName] = value;
-                                      _hasChanges = true;
-                                    });
-                                  },
-                                ),
-                              );
-                            }),
-                          ],
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
                     // Crew Section
                     _SectionHeader(title: 'CREW'),
                     const SizedBox(height: 12),
@@ -1475,6 +1281,252 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                             ),
                           ],
                         ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Blocks Section
+                    _SectionHeader(title: 'BLOCKS'),
+                    const SizedBox(height: 12),
+                    GlassContainer(
+                      key: _timesKey,
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GlassTimePicker(
+                                  label: 'BLOCK OFF',
+                                  selectedTime: _blockOff,
+                                  onTimeSelected: (time) {
+                                    setState(() {
+                                      _blockOff = time;
+                                      _hasChanges = true;
+                                    });
+                                    _triggerNightTimeCalculation();
+                                    _calculateCrossCountryTime();
+                                    _updateRoleTime();
+                                    _updateIfrTimeForIfrOnlyAircraft();
+                                    _updateMultiEngineTimeForMeAircraft();
+                                    _updateMultiPilotTimeForMpAircraft();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: GlassTimePicker(
+                                  label: 'BLOCK ON',
+                                  selectedTime: _blockOn,
+                                  onTimeSelected: (time) {
+                                    setState(() {
+                                      _blockOn = time;
+                                      _hasChanges = true;
+                                    });
+                                    _triggerNightTimeCalculation();
+                                    _calculateCrossCountryTime();
+                                    _updateRoleTime();
+                                    _updateIfrTimeForIfrOnlyAircraft();
+                                    _updateMultiEngineTimeForMeAircraft();
+                                    _updateMultiPilotTimeForMpAircraft();
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.denim.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: AppColors.denim.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.timer_outlined,
+                                  color: AppColors.denimLight,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Block Time: ',
+                                  style: AppTypography.body.copyWith(
+                                    color: AppColors.whiteDark,
+                                  ),
+                                ),
+                                Text(
+                                  _formattedFlightTime,
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.denimLight,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Times Section
+                    _SectionHeader(title: 'TIMES'),
+                    const SizedBox(height: 12),
+                    GlassContainer(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          // Primary role time (always visible)
+                          DurationQuickSet(
+                            label: RoleStandards.getLabel(
+                              PreferencesService.instance.getRoleStandard(),
+                              _role.toUpperCase(),
+                            ),
+                            minutes: _roleTimeMinutes,
+                            maxMinutes: _totalFlightMinutes,
+                            blockOff: _blockOff,
+                            blockOn: _blockOn,
+                            onChanged: (value) {
+                              setState(() {
+                                _roleTimeMinutes = value;
+                                _hasChanges = true;
+                              });
+                            },
+                          ),
+
+                          // Manual fields (always visible, below role time)
+                          // IFR in manual section for "Both" aircraft only
+                          if (_showIfrInManualSection) ...[
+                            const SizedBox(height: 12),
+                            DurationQuickSet(
+                              label: 'IFR',
+                              minutes: _ifrMinutes,
+                              maxMinutes: _totalFlightMinutes,
+                              blockOff: _blockOff,
+                              blockOn: _blockOn,
+                              onChanged: (value) {
+                                setState(() {
+                                  _ifrMinutes = value;
+                                  _hasChanges = true;
+                                });
+                              },
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          DurationQuickSet(
+                            label: 'Solo',
+                            minutes: _soloMinutes,
+                            maxMinutes: _totalFlightMinutes,
+                            blockOff: _blockOff,
+                            blockOn: _blockOn,
+                            onChanged: (value) {
+                              setState(() {
+                                _soloMinutes = value;
+                                _hasChanges = true;
+                              });
+                            },
+                          ),
+                          // Custom time fields from preferences
+                          ...PreferencesService.instance.getCustomTimeFields().map((fieldName) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: DurationQuickSet(
+                                label: fieldName,
+                                minutes: _customTimeFields[fieldName] ?? 0,
+                                maxMinutes: _totalFlightMinutes,
+                                blockOff: _blockOff,
+                                blockOn: _blockOn,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _customTimeFields[fieldName] = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                            );
+                          }),
+
+                          // Expandable Calculated section
+                          const SizedBox(height: 16),
+                          Divider(
+                            color: AppColors.borderSubtle,
+                            height: 1,
+                          ),
+                          const SizedBox(height: 12),
+                          // Tappable header to expand/collapse
+                          GestureDetector(
+                            onTap: () => setState(() => _detailsExpanded = !_detailsExpanded),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Calculated',
+                                  style: AppTypography.body.copyWith(
+                                    color: AppColors.whiteDarker,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                AnimatedRotation(
+                                  turns: _detailsExpanded ? 0.5 : 0,
+                                  duration: const Duration(milliseconds: 200),
+                                  child: Icon(
+                                    Icons.expand_more,
+                                    color: AppColors.whiteDarker,
+                                    size: 20,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_detailsExpanded) ...[
+                            const SizedBox(height: 16),
+                            // Calculated fields (auto-populated based on aircraft/times)
+                            DurationDisplay(
+                              label: 'Night',
+                              minutes: _nightMinutes,
+                            ),
+                            // Multi-Engine only shown for multi-engine aircraft
+                            if (_selectedAircraft?.isMultiEngine == true) ...[
+                              const SizedBox(height: 12),
+                              DurationDisplay(
+                                label: 'Multi-Engine',
+                                minutes: _multiEngineMinutes,
+                              ),
+                            ],
+                            // Multi-Pilot only shown for multi-pilot aircraft
+                            if (_selectedAircraft?.isMultiPilot == true) ...[
+                              const SizedBox(height: 12),
+                              DurationDisplay(
+                                label: 'Multi-Pilot',
+                                minutes: _multiPilotMinutes,
+                              ),
+                            ],
+                            const SizedBox(height: 12),
+                            DurationDisplay(
+                              label: 'Cross-Country',
+                              minutes: _crossCountryMinutes,
+                            ),
+                            // IFR in calculated section for IFR-only aircraft
+                            if (_showIfrInCalculatedSection) ...[
+                              const SizedBox(height: 12),
+                              DurationDisplay(
+                                label: 'IFR',
+                                minutes: _ifrMinutes,
+                              ),
+                            ],
+                          ],
+                        ],
                       ),
                     ),
 

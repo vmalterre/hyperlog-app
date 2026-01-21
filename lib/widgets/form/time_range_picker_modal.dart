@@ -408,7 +408,8 @@ class _TimeRangeSliderState extends State<_TimeRangeSlider> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final trackWidth = constraints.maxWidth - widget.thumbSize;
+        // Account for full thumb size on each side to prevent overflow
+        final trackWidth = constraints.maxWidth - widget.thumbSize * 2;
 
         // Use local drag position if dragging, otherwise use widget values
         final startPosition = _dragStartPosition ??
@@ -436,7 +437,7 @@ class _TimeRangeSliderState extends State<_TimeRangeSlider> {
           },
           child: Container(
             height: widget.thumbSize + 24,
-            padding: EdgeInsets.symmetric(horizontal: widget.thumbSize / 2),
+            padding: EdgeInsets.symmetric(horizontal: widget.thumbSize),
             child: Stack(
               alignment: Alignment.centerLeft,
               children: [

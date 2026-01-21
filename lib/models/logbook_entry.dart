@@ -270,6 +270,18 @@ class CrewMember {
         a.durationMinutes >= b.durationMinutes ? a : b).role;
   }
 
+  /// Get the secondary role (DUAL or INSTRUCTOR) if present
+  /// Returns null if no secondary role is set
+  String? get secondaryRole {
+    const secondaryRoles = ['DUAL', 'INSTRUCTOR'];
+    for (final segment in roles) {
+      if (secondaryRoles.contains(segment.role.toUpperCase())) {
+        return segment.role;
+      }
+    }
+    return null;
+  }
+
   /// Calculate total time in a specific role across all segments
   int roleTimeMinutes(String role) {
     return roles

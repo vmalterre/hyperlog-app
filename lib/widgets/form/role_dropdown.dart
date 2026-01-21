@@ -94,3 +94,70 @@ class RoleDropdown extends StatelessWidget {
     );
   }
 }
+
+/// Glass-styled dropdown for selecting secondary pilot roles (optional)
+/// Includes a "None" option since secondary roles are optional
+class SecondaryRoleDropdown extends StatelessWidget {
+  final String? value;
+  final ValueChanged<String?> onChanged;
+  final String label;
+  final bool enabled;
+
+  const SecondaryRoleDropdown({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.label = 'Secondary Role',
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final standard = PreferencesService.instance.getRoleStandard();
+    final secondaryRoles = RoleStandards.getSecondaryRolesWithLabels(standard);
+
+    // Build list with "None" option at the start
+    final displayRoles = [
+      (code: '', label: 'None'),
+      ...secondaryRoles,
+    ];
+
+    // Normalize empty string to null and vice versa for display
+    final effectiveValue = (value == null || value!.isEmpty) ? '' : value;
+
+    return DropdownButtonFormField<String>(
+      value: effectiveValue,
+      onChanged: enabled
+          ? (newValue) {
+              // Convert empty string back to null
+              onChanged(newValue == '' ? null : newValue);
+            }
+          : null,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(
+          Icons.person_add_outlined,
+          color: AppColors.whiteDarker,
+          size: 20,
+        ),
+      ),
+      dropdownColor: AppColors.nightRiderDark,
+      style: AppTypography.body.copyWith(color: AppColors.white),
+      icon: Icon(
+        Icons.expand_more,
+        color: AppColors.whiteDarker,
+      ),
+      items: displayRoles.map((role) {
+        return DropdownMenuItem<String>(
+          value: role.code,
+          child: Text(
+            role.label,
+            style: AppTypography.body.copyWith(
+              color: role.code.isEmpty ? AppColors.whiteDarker : AppColors.white,
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
