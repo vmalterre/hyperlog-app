@@ -180,7 +180,7 @@ void main() {
 
       test('formats to one decimal place', () {
         expect(PdfFormatUtils.formatMinutesAsDecimal(45), '0.8'); // 0.75 rounds to 0.8
-        expect(PdfFormatUtils.formatMinutesAsDecimal(75), '1.2'); // 1.25 rounds to 1.2 or 1.3
+        expect(PdfFormatUtils.formatMinutesAsDecimal(75), '1.3'); // 1.25 rounds to 1.3
       });
     });
 
