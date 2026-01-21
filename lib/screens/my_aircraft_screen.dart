@@ -361,6 +361,20 @@ class _AircraftTypeCard extends StatelessWidget {
 
   Widget _buildTags() {
     final tags = <String>[];
+
+    // Flight rules tag
+    switch (type.flightRules) {
+      case FlightRulesCapability.vfr:
+        tags.add('VFR');
+        break;
+      case FlightRulesCapability.ifr:
+        tags.add('IFR');
+        break;
+      case FlightRulesCapability.both:
+        tags.add('IFR/VFR');
+        break;
+    }
+
     if (type.multiEngine) tags.add('Multi-Engine');
     if (type.multiPilot) tags.add('Multi-Pilot');
     if (type.complex) tags.add('Complex');
@@ -467,6 +481,7 @@ class _EditAircraftTypeScreenState extends State<EditAircraftTypeScreen> {
   late bool _multiPilot;
   late bool _complex;
   late bool _highPerformance;
+  late FlightRulesCapability _flightRules;
   bool _isSaving = false;
 
   String? get _userId {
@@ -480,6 +495,7 @@ class _EditAircraftTypeScreenState extends State<EditAircraftTypeScreen> {
     _multiPilot = widget.aircraftType.multiPilot;
     _complex = widget.aircraftType.complex;
     _highPerformance = widget.aircraftType.highPerformance;
+    _flightRules = widget.aircraftType.flightRules;
     _variantController.text = widget.aircraftType.variant ?? '';
   }
 
@@ -504,6 +520,7 @@ class _EditAircraftTypeScreenState extends State<EditAircraftTypeScreen> {
         multiPilot: _multiPilot,
         complex: _complex,
         highPerformance: _highPerformance,
+        flightRules: _flightRules,
         variant: variant.isEmpty ? null : variant,
       );
       if (mounted) {
@@ -605,6 +622,27 @@ class _EditAircraftTypeScreenState extends State<EditAircraftTypeScreen> {
             const SizedBox(height: 8),
             Text(
               'Specify the exact variant for your logbook (e.g., different horsepower versions)',
+              style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
+            ),
+            const SizedBox(height: 24),
+
+            // Flight Rules section
+            Text(
+              'FLIGHT RULES',
+              style: AppTypography.label,
+            ),
+            const SizedBox(height: 12),
+            _FlightRulesSelector(
+              value: _flightRules,
+              onChanged: (value) => setState(() => _flightRules = value),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _flightRules == FlightRulesCapability.ifr
+                  ? 'IFR time will auto-populate to total flight time'
+                  : _flightRules == FlightRulesCapability.vfr
+                      ? 'IFR field will be disabled when logging flights'
+                      : 'IFR time can be entered manually',
               style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
             ),
             const SizedBox(height: 24),
@@ -1404,6 +1442,97 @@ class _AddRegistrationScreenState extends State<AddRegistrationScreen> {
               style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// Flight Rules Selector Widget
+// ===========================================================================
+
+class _FlightRulesSelector extends StatelessWidget {
+  final FlightRulesCapability value;
+  final ValueChanged<FlightRulesCapability> onChanged;
+
+  const _FlightRulesSelector({
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _FlightRulesButton(
+            label: 'VFR',
+            isSelected: value == FlightRulesCapability.vfr,
+            onTap: () => onChanged(FlightRulesCapability.vfr),
+            isFirst: true,
+          ),
+        ),
+        Expanded(
+          child: _FlightRulesButton(
+            label: 'IFR',
+            isSelected: value == FlightRulesCapability.ifr,
+            onTap: () => onChanged(FlightRulesCapability.ifr),
+          ),
+        ),
+        Expanded(
+          child: _FlightRulesButton(
+            label: 'Both',
+            isSelected: value == FlightRulesCapability.both,
+            onTap: () => onChanged(FlightRulesCapability.both),
+            isLast: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FlightRulesButton extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final bool isFirst;
+  final bool isLast;
+
+  const _FlightRulesButton({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    this.isFirst = false,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 44,
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.denim : AppColors.nightRiderDark,
+          borderRadius: BorderRadius.horizontal(
+            left: isFirst ? const Radius.circular(12) : Radius.zero,
+            right: isLast ? const Radius.circular(12) : Radius.zero,
+          ),
+          border: Border.all(
+            color: isSelected ? AppColors.denim : AppColors.borderSubtle,
+            width: 1,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: AppTypography.button.copyWith(
+            color: isSelected ? AppColors.white : AppColors.whiteDark,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          ),
         ),
       ),
     );

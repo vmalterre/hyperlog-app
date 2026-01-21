@@ -1,5 +1,11 @@
 import 'aircraft_type.dart';
 
+/// Flight rules capability for an aircraft type
+/// - vfr: Aircraft is only equipped for VFR operations
+/// - ifr: Aircraft is equipped for IFR operations (auto-populate IFR time)
+/// - both: Aircraft can operate under both VFR and IFR (manual entry)
+enum FlightRulesCapability { vfr, ifr, both }
+
 /// User's personal aircraft type with editable properties
 class UserAircraftType {
   final String id;
@@ -11,6 +17,7 @@ class UserAircraftType {
   final bool complex;
   final bool highPerformance;
   final String category;
+  final FlightRulesCapability flightRules;
   final String? variant;
   final String? notes;
   final DateTime createdAt;
@@ -27,6 +34,7 @@ class UserAircraftType {
     required this.complex,
     required this.highPerformance,
     required this.category,
+    this.flightRules = FlightRulesCapability.both,
     this.variant,
     this.notes,
     required this.createdAt,
@@ -45,6 +53,7 @@ class UserAircraftType {
       complex: json['complex'] as bool? ?? false,
       highPerformance: json['highPerformance'] as bool? ?? false,
       category: json['category'] as String? ?? 'LANDPLANE',
+      flightRules: _parseFlightRules(json['flightRules'] as String?),
       variant: json['variant'] as String?,
       notes: json['notes'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
@@ -53,6 +62,30 @@ class UserAircraftType {
           ? AircraftType.fromJson(json['aircraftType'] as Map<String, dynamic>)
           : null,
     );
+  }
+
+  /// Parse flight rules from API response
+  static FlightRulesCapability _parseFlightRules(String? value) {
+    switch (value?.toUpperCase()) {
+      case 'VFR':
+        return FlightRulesCapability.vfr;
+      case 'IFR':
+        return FlightRulesCapability.ifr;
+      default:
+        return FlightRulesCapability.both;
+    }
+  }
+
+  /// Convert flight rules enum to API string
+  static String flightRulesToString(FlightRulesCapability rules) {
+    switch (rules) {
+      case FlightRulesCapability.vfr:
+        return 'VFR';
+      case FlightRulesCapability.ifr:
+        return 'IFR';
+      case FlightRulesCapability.both:
+        return 'BOTH';
+    }
   }
 
   Map<String, dynamic> toJson() => {
@@ -65,6 +98,7 @@ class UserAircraftType {
         'complex': complex,
         'highPerformance': highPerformance,
         'category': category,
+        'flightRules': flightRulesToString(flightRules),
         if (variant != null) 'variant': variant,
         if (notes != null) 'notes': notes,
         'createdAt': createdAt.toIso8601String(),
@@ -125,6 +159,7 @@ class UserAircraftType {
     bool? complex,
     bool? highPerformance,
     String? category,
+    FlightRulesCapability? flightRules,
     String? variant,
     String? notes,
   }) {
@@ -138,6 +173,7 @@ class UserAircraftType {
       complex: complex ?? this.complex,
       highPerformance: highPerformance ?? this.highPerformance,
       category: category ?? this.category,
+      flightRules: flightRules ?? this.flightRules,
       variant: variant ?? this.variant,
       notes: notes ?? this.notes,
       createdAt: createdAt,

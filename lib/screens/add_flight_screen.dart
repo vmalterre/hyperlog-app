@@ -8,6 +8,7 @@ import '../models/airport.dart';
 import '../models/logbook_entry.dart';
 import '../models/saved_pilot.dart';
 import '../models/user_aircraft_registration.dart';
+import '../models/user_aircraft_type.dart';
 import '../services/aircraft_service.dart';
 import '../services/airport_service.dart';
 import '../services/api_exception.dart';
@@ -405,7 +406,34 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         }
       });
     }
+
+    // Auto-set IFR based on flight rules capability
+    final flightRules = aircraft.flightRules;
+    if (flightRules == FlightRulesCapability.ifr) {
+      // IFR-only aircraft: auto-populate IFR time to total flight time
+      setState(() {
+        _ifrMinutes = _totalFlightMinutes;
+        if (!_detailsExpanded) {
+          _detailsExpanded = true;
+        }
+      });
+    } else {
+      // VFR or Both: reset IFR to 0 (user enters manually for Both)
+      setState(() {
+        _ifrMinutes = 0;
+      });
+    }
   }
+
+  /// Check if IFR field should be shown in calculated section (IFR-only aircraft)
+  bool get _showIfrInCalculatedSection =>
+      _selectedAircraft != null &&
+      _selectedAircraft!.flightRules == FlightRulesCapability.ifr;
+
+  /// Check if IFR field should be shown in manual section (Both aircraft)
+  bool get _showIfrInManualSection =>
+      _selectedAircraft != null &&
+      _selectedAircraft!.flightRules == FlightRulesCapability.both;
 
   /// Build empty state when user has no saved aircraft
   Widget _buildNoAircraftState() {
@@ -559,6 +587,15 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     setState(() {
       _roleTimeMinutes = _totalFlightMinutes;
     });
+  }
+
+  /// Update IFR time for IFR-only aircraft when block times change.
+  void _updateIfrTimeForIfrOnlyAircraft() {
+    if (_selectedAircraft?.flightRules == FlightRulesCapability.ifr) {
+      setState(() {
+        _ifrMinutes = _totalFlightMinutes;
+      });
+    }
   }
 
   /// Perform the actual night time calculation
@@ -1148,6 +1185,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                     _triggerNightTimeCalculation();
                                     _calculateCrossCountryTime();
                                     _updateRoleTime();
+                                    _updateIfrTimeForIfrOnlyAircraft();
                                   },
                                 ),
                               ),
@@ -1164,6 +1202,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                     _triggerNightTimeCalculation();
                                     _calculateCrossCountryTime();
                                     _updateRoleTime();
+                                    _updateIfrTimeForIfrOnlyAircraft();
                                   },
                                 ),
                               ),
@@ -1289,6 +1328,14 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                               label: 'Cross-Country',
                               minutes: _crossCountryMinutes,
                             ),
+                            // IFR in calculated section for IFR-only aircraft
+                            if (_showIfrInCalculatedSection) ...[
+                              const SizedBox(height: 12),
+                              DurationDisplay(
+                                label: 'IFR',
+                                minutes: _ifrMinutes,
+                              ),
+                            ],
 
                             // Divider between automatic and manual fields
                             Padding(
@@ -1300,20 +1347,23 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                             ),
 
                             // Manual fields (user-entered)
-                            DurationQuickSet(
-                              label: 'IFR',
-                              minutes: _ifrMinutes,
-                              maxMinutes: _totalFlightMinutes,
-                              blockOff: _blockOff,
-                              blockOn: _blockOn,
-                              onChanged: (value) {
-                                setState(() {
-                                  _ifrMinutes = value;
-                                  _hasChanges = true;
-                                });
-                              },
-                            ),
-                            const SizedBox(height: 12),
+                            // IFR in manual section for "Both" aircraft only
+                            if (_showIfrInManualSection) ...[
+                              DurationQuickSet(
+                                label: 'IFR',
+                                minutes: _ifrMinutes,
+                                maxMinutes: _totalFlightMinutes,
+                                blockOff: _blockOff,
+                                blockOn: _blockOn,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _ifrMinutes = value;
+                                    _hasChanges = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                            ],
                             DurationQuickSet(
                               label: 'Solo',
                               minutes: _soloMinutes,

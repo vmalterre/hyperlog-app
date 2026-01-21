@@ -79,6 +79,10 @@ class UserAircraftRegistration {
   /// Get category
   String get category => userAircraftType?.category ?? 'LANDPLANE';
 
+  /// Get flight rules capability
+  FlightRulesCapability get flightRules =>
+      userAircraftType?.flightRules ?? FlightRulesCapability.both;
+
   @override
   String toString() => '$registration ($icaoDesignator)';
 }

@@ -108,6 +108,7 @@ class AircraftService {
     bool? complex,
     bool? highPerformance,
     String? category,
+    FlightRulesCapability? flightRules,
     String? notes,
   }) async {
     try {
@@ -119,6 +120,8 @@ class AircraftService {
         if (complex != null) 'complex': complex,
         if (highPerformance != null) 'highPerformance': highPerformance,
         if (category != null) 'category': category,
+        if (flightRules != null)
+          'flightRules': UserAircraftType.flightRulesToString(flightRules),
         if (notes != null) 'notes': notes,
       };
 
@@ -151,6 +154,7 @@ class AircraftService {
     bool? complex,
     bool? highPerformance,
     String? category,
+    FlightRulesCapability? flightRules,
     String? variant,
     String? notes,
   }) async {
@@ -162,6 +166,8 @@ class AircraftService {
         if (complex != null) 'complex': complex,
         if (highPerformance != null) 'highPerformance': highPerformance,
         if (category != null) 'category': category,
+        if (flightRules != null)
+          'flightRules': UserAircraftType.flightRulesToString(flightRules),
         if (variant != null) 'variant': variant,
         if (notes != null) 'notes': notes,
       };
