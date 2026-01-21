@@ -75,6 +75,11 @@ class GreatCircleArc {
     return earthRadiusKm * c;
   }
 
+  /// Calculate the great circle distance between two points in nautical miles.
+  static double distanceNm(LatLng start, LatLng end) {
+    return distanceKm(start, end) / 1.852;
+  }
+
   static double _toRadians(double degrees) => degrees * pi / 180;
   static double _toDegrees(double radians) => radians * 180 / pi;
 }

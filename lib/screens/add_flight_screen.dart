@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import '../utils/great_circle_arc.dart';
 import '../models/airport.dart';
 import '../models/logbook_entry.dart';
 import '../models/saved_pilot.dart';
 import '../models/user_aircraft_registration.dart';
 import '../services/aircraft_service.dart';
+import '../services/airport_service.dart';
 import '../services/api_exception.dart';
 import '../services/flight_service.dart';
 import '../services/nighttime_service.dart';
@@ -44,6 +47,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   final FlightService _flightService = FlightService();
   final PilotService _pilotService = PilotService();
   final AircraftService _aircraftService = AircraftService();
+  final AirportService _airportService = AirportService();
   final NighttimeService _nighttimeService = NighttimeService();
 
   // Debounce timer for nighttime calculation
@@ -151,6 +155,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
     // Load user's saved aircraft
     _loadUserAircraft();
+
+    // In edit mode, look up airports to get coordinates for cross-country calculation
+    if (widget.isEditMode) {
+      _loadAirportsForEdit();
+    }
   }
 
   void _initializeFields() {
@@ -325,6 +334,35 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     }
   }
 
+  /// In edit mode, look up airports by code to get coordinates for cross-country calculation
+  Future<void> _loadAirportsForEdit() async {
+    final entry = widget.entry;
+    if (entry == null) return;
+
+    // Look up departure airport (prefer ICAO, fall back to dep field)
+    final depCode = entry.depIcao ?? entry.dep;
+    final destCode = entry.destIcao ?? entry.dest;
+
+    try {
+      // Look up both airports in parallel
+      final results = await Future.wait([
+        _airportService.lookup(depCode),
+        _airportService.lookup(destCode),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _selectedDepAirport = results[0];
+          _selectedDestAirport = results[1];
+        });
+        // Recalculate cross-country time now that we have coordinates
+        _calculateCrossCountryTime();
+      }
+    } catch (e) {
+      // Silently fail - cross-country won't auto-calculate but user can still edit
+    }
+  }
+
   /// Shows the aircraft picker bottom sheet
   void _showAircraftPicker() {
     showModalBottomSheet(
@@ -475,6 +513,34 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     _nighttimeDebounceTimer?.cancel();
     _nighttimeDebounceTimer = Timer(const Duration(milliseconds: 300), () {
       _calculateNightTime();
+    });
+  }
+
+  /// Calculate cross-country time based on airport distance.
+  /// If destination is 50+ nautical miles from departure, XC time = total flight time.
+  void _calculateCrossCountryTime() {
+    // Need both airports with coordinates
+    if (_selectedDepAirport?.latitude == null ||
+        _selectedDepAirport?.longitude == null ||
+        _selectedDestAirport?.latitude == null ||
+        _selectedDestAirport?.longitude == null) {
+      setState(() => _crossCountryMinutes = 0);
+      return;
+    }
+
+    final depCoords = LatLng(
+      _selectedDepAirport!.latitude!,
+      _selectedDepAirport!.longitude!,
+    );
+    final destCoords = LatLng(
+      _selectedDestAirport!.latitude!,
+      _selectedDestAirport!.longitude!,
+    );
+
+    final distanceNm = GreatCircleArc.distanceNm(depCoords, destCoords);
+
+    setState(() {
+      _crossCountryMinutes = distanceNm >= 50 ? _totalFlightMinutes : 0;
     });
   }
 
@@ -1001,6 +1067,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                 _hasChanges = true;
                               });
                               _triggerNightTimeCalculation();
+                              _calculateCrossCountryTime();
                             },
                             onDestAirportSelected: (airport) {
                               setState(() {
@@ -1008,6 +1075,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                 _hasChanges = true;
                               });
                               _triggerNightTimeCalculation();
+                              _calculateCrossCountryTime();
                             },
                           ),
                         ],
@@ -1060,6 +1128,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                       _hasChanges = true;
                                     });
                                     _triggerNightTimeCalculation();
+                                    _calculateCrossCountryTime();
                                   },
                                 ),
                               ),
@@ -1074,6 +1143,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                       _hasChanges = true;
                                     });
                                     _triggerNightTimeCalculation();
+                                    _calculateCrossCountryTime();
                                   },
                                 ),
                               ),
@@ -1167,6 +1237,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                               label: 'Multi-Pilot',
                               minutes: _multiPilotMinutes,
                             ),
+                            const SizedBox(height: 12),
+                            DurationDisplay(
+                              label: 'Cross-Country',
+                              minutes: _crossCountryMinutes,
+                            ),
 
                             // Divider between automatic and manual fields
                             Padding(
@@ -1201,20 +1276,6 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                               onChanged: (value) {
                                 setState(() {
                                   _soloMinutes = value;
-                                  _hasChanges = true;
-                                });
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            DurationQuickSet(
-                              label: 'Cross-Country',
-                              minutes: _crossCountryMinutes,
-                              maxMinutes: _totalFlightMinutes,
-                              blockOff: _blockOff,
-                              blockOn: _blockOn,
-                              onChanged: (value) {
-                                setState(() {
-                                  _crossCountryMinutes = value;
                                   _hasChanges = true;
                                 });
                               },
