@@ -7,6 +7,8 @@ class Airport {
   final String name;
   final String? municipality;
   final String? isoCountry;
+  final double? latitude;
+  final double? longitude;
 
   Airport({
     required this.id,
@@ -16,6 +18,8 @@ class Airport {
     required this.name,
     this.municipality,
     this.isoCountry,
+    this.latitude,
+    this.longitude,
   });
 
   factory Airport.fromJson(Map<String, dynamic> json) {
@@ -27,6 +31,8 @@ class Airport {
       name: json['name'] ?? '',
       municipality: json['municipality'],
       isoCountry: json['isoCountry'],
+      latitude: json['latitude']?.toDouble(),
+      longitude: json['longitude']?.toDouble(),
     );
   }
 

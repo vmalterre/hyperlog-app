@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +9,7 @@ import '../models/user_aircraft_registration.dart';
 import '../services/aircraft_service.dart';
 import '../services/api_exception.dart';
 import '../services/flight_service.dart';
+import '../services/nighttime_service.dart';
 import '../services/pilot_service.dart';
 import '../services/preferences_service.dart';
 import '../session_state.dart';
@@ -42,6 +44,10 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   final FlightService _flightService = FlightService();
   final PilotService _pilotService = PilotService();
   final AircraftService _aircraftService = AircraftService();
+  final NighttimeService _nighttimeService = NighttimeService();
+
+  // Debounce timer for nighttime calculation
+  Timer? _nighttimeDebounceTimer;
 
   // Crew members - first entry is always the current pilot
   late CrewEntry _pilotCrewEntry;
@@ -447,6 +453,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
   @override
   void dispose() {
+    _nighttimeDebounceTimer?.cancel();
     _flightNumberController.dispose();
     _depController.dispose();
     _destController.dispose();
@@ -459,6 +466,74 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   void _onFormChanged() {
     if (!_hasChanges) {
       setState(() => _hasChanges = true);
+    }
+  }
+
+  /// Calculate night time based on airports, date, and block times
+  /// Uses debouncing to avoid excessive API calls during rapid field changes
+  void _triggerNightTimeCalculation() {
+    _nighttimeDebounceTimer?.cancel();
+    _nighttimeDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _calculateNightTime();
+    });
+  }
+
+  /// Perform the actual night time calculation
+  Future<void> _calculateNightTime() async {
+    // Check all required fields exist
+    if (_selectedDepAirport == null ||
+        _selectedDestAirport == null) {
+      return;
+    }
+
+    // Get the airport codes
+    final depCode = _selectedDepAirport!.icaoCode ?? _selectedDepAirport!.iataCode;
+    final destCode = _selectedDestAirport!.icaoCode ?? _selectedDestAirport!.iataCode;
+
+    if (depCode == null || destCode == null) {
+      return;
+    }
+
+    // Build DateTime for block off/on
+    final blockOffDateTime = DateTime(
+      _flightDate.year,
+      _flightDate.month,
+      _flightDate.day,
+      _blockOff.hour,
+      _blockOff.minute,
+    );
+
+    var blockOnDateTime = DateTime(
+      _flightDate.year,
+      _flightDate.month,
+      _flightDate.day,
+      _blockOn.hour,
+      _blockOn.minute,
+    );
+
+    // Handle overnight flights
+    if (blockOnDateTime.isBefore(blockOffDateTime) ||
+        blockOnDateTime.isAtSameMomentAs(blockOffDateTime)) {
+      blockOnDateTime = blockOnDateTime.add(const Duration(days: 1));
+    }
+
+    // Call the service
+    final result = await _nighttimeService.calculate(
+      depCode: depCode,
+      destCode: destCode,
+      blockOffUtc: blockOffDateTime,
+      blockOnUtc: blockOnDateTime,
+    );
+
+    // Update the state if we got a result and widget is still mounted
+    if (result != null && mounted) {
+      setState(() {
+        _nightMinutes = result.nightMinutes;
+        // Auto-expand details section if night time is significant
+        if (result.nightMinutes > 0 && !_detailsExpanded) {
+          _detailsExpanded = true;
+        }
+      });
     }
   }
 
@@ -898,6 +973,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                 _flightDate = date;
                                 _hasChanges = true;
                               });
+                              _triggerNightTimeCalculation();
                             },
                           ),
                           const SizedBox(height: 16),
@@ -924,12 +1000,14 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                 _selectedDepAirport = airport;
                                 _hasChanges = true;
                               });
+                              _triggerNightTimeCalculation();
                             },
                             onDestAirportSelected: (airport) {
                               setState(() {
                                 _selectedDestAirport = airport;
                                 _hasChanges = true;
                               });
+                              _triggerNightTimeCalculation();
                             },
                           ),
                         ],
@@ -981,6 +1059,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                       _blockOff = time;
                                       _hasChanges = true;
                                     });
+                                    _triggerNightTimeCalculation();
                                   },
                                 ),
                               ),
@@ -994,6 +1073,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                                       _blockOn = time;
                                       _hasChanges = true;
                                     });
+                                    _triggerNightTimeCalculation();
                                   },
                                 ),
                               ),
