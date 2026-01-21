@@ -91,7 +91,7 @@ class _ExportLogbookScreenState extends State<ExportLogbookScreen> {
       await _pdfService.exportAndShare(
         flights: _flights!,
         format: _selectedFormat,
-        pilotName: pilot.displayName ?? 'Pilot',
+        pilotName: pilot.displayName,
         licenseNumber: pilot.licenseNumber,
         startDate: _startDate,
         endDate: _endDate,
