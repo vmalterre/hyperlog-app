@@ -238,16 +238,6 @@ class _MyScreensScreenState extends State<MyScreensScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        title,
-        style: AppTypography.label,
-      ),
-    );
-  }
-
   Widget _buildEmptyState() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32),

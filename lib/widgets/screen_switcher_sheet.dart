@@ -4,7 +4,6 @@ import '../screens/my_screens_screen.dart';
 import '../services/screen_config_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
-import 'glass_card.dart';
 
 /// Bottom sheet for switching between screen configurations in the log flight screen
 class ScreenSwitcherSheet extends StatefulWidget {

@@ -10,6 +10,7 @@ import 'package:hyperlog/widgets/app_button.dart';
 import '../constants/airport_format.dart';
 import '../services/preferences_service.dart';
 import 'display_options_screen.dart';
+import 'export_logbook_screen.dart';
 import 'saved_pilots_screen.dart';
 import 'my_roles_screen.dart';
 import 'my_aircraft_screen.dart';
@@ -202,8 +203,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _SettingsItem(
                     icon: Icons.download_outlined,
                     title: 'Export Logbook',
-                    subtitle: 'PDF, CSV, or EASA format',
-                    onTap: () {},
+                    subtitle: 'PDF export with multiple formats',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ExportLogbookScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _SettingsItem(
                     icon: Icons.sync_outlined,
