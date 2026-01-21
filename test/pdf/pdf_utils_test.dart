@@ -247,7 +247,7 @@ void main() {
 
     group('getPicName', () {
       test('returns dash for empty crew', () {
-        final entry = _createTestEntryWithCrew([]);
+        final entry = _createTestEntryWithCrew([], creatorUUID: 'no-crew');
         expect(PdfFormatUtils.getPicName(entry), '—');
       });
 
