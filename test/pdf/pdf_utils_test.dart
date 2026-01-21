@@ -233,6 +233,19 @@ void main() {
       });
     });
 
+    group('formatDateLong', () {
+      test('formats date in long format', () {
+        expect(PdfFormatUtils.formatDateLong(DateTime(2024, 1, 15)), '15 January 2024');
+        expect(PdfFormatUtils.formatDateLong(DateTime(2024, 12, 31)), '31 December 2024');
+      });
+
+      test('handles all months', () {
+        expect(PdfFormatUtils.formatDateLong(DateTime(2024, 1, 1)), '1 January 2024');
+        expect(PdfFormatUtils.formatDateLong(DateTime(2024, 6, 15)), '15 June 2024');
+        expect(PdfFormatUtils.formatDateLong(DateTime(2024, 12, 25)), '25 December 2024');
+      });
+    });
+
     group('formatInt', () {
       test('returns empty string for zero', () {
         expect(PdfFormatUtils.formatInt(0), '');

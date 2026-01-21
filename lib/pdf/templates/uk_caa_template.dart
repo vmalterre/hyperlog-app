@@ -11,7 +11,10 @@ import '../pdf_utils.dart';
 class UkCaaTemplate extends PdfBaseTemplate {
   UkCaaTemplate({
     required super.pilotName,
+    required super.logoBytes,
     super.licenseNumber,
+    super.exportStartDate,
+    super.exportEndDate,
   });
 
   @override

@@ -10,7 +10,10 @@ import '../pdf_utils.dart';
 class InternationalTemplate extends PdfBaseTemplate {
   InternationalTemplate({
     required super.pilotName,
+    required super.logoBytes,
     super.licenseNumber,
+    super.exportStartDate,
+    super.exportEndDate,
   });
 
   @override

@@ -148,6 +148,15 @@ class PdfFormatUtils {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  /// Format date as "15 January 2024" (long format for cover page)
+  static String formatDateLong(DateTime date) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
   /// Format integer, empty string if zero
   static String formatInt(int value) {
     return value == 0 ? '' : value.toString();

@@ -122,6 +122,7 @@ class SecondaryButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final IconData? icon;
   final bool fullWidth;
+  final bool isLoading;
   final Color? borderColor;
   final Color? textColor;
 
@@ -131,6 +132,7 @@ class SecondaryButton extends StatelessWidget {
     this.onPressed,
     this.icon,
     this.fullWidth = false,
+    this.isLoading = false,
     this.borderColor,
     this.textColor,
   });
@@ -140,7 +142,7 @@ class SecondaryButton extends StatelessWidget {
     return SizedBox(
       width: fullWidth ? double.infinity : null,
       child: OutlinedButton(
-        onPressed: onPressed,
+        onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
           foregroundColor: textColor ?? AppColors.white,
           padding: EdgeInsets.symmetric(
@@ -155,23 +157,32 @@ class SecondaryButton extends StatelessWidget {
             width: 2,
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 18),
-              const SizedBox(width: 6),
-            ],
-            Flexible(
-              child: Text(
-                label,
-                style: AppTypography.button.copyWith(color: textColor),
-                overflow: TextOverflow.ellipsis,
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.white,
+                ),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 18),
+                    const SizedBox(width: 6),
+                  ],
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: AppTypography.button.copyWith(color: textColor),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

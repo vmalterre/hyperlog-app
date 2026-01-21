@@ -11,7 +11,10 @@ import '../pdf_utils.dart';
 class EasaTemplate extends PdfBaseTemplate {
   EasaTemplate({
     required super.pilotName,
+    required super.logoBytes,
     super.licenseNumber,
+    super.exportStartDate,
+    super.exportEndDate,
   });
 
   @override
@@ -29,7 +32,7 @@ class EasaTemplate extends PdfBaseTemplate {
     // Page A (left side) - Flight details
     pdf.addPage(
       pw.Page(
-        pageFormat: formatInfo.pageFormat,
+        pageFormat: formatInfo.pageFormat.landscape,
         margin: const pw.EdgeInsets.all(15),
         build: (context) {
           return pw.Column(
@@ -51,7 +54,7 @@ class EasaTemplate extends PdfBaseTemplate {
     // Page B (right side) - Conditions and function time
     pdf.addPage(
       pw.Page(
-        pageFormat: formatInfo.pageFormat,
+        pageFormat: formatInfo.pageFormat.landscape,
         margin: const pw.EdgeInsets.all(15),
         build: (context) {
           return pw.Column(

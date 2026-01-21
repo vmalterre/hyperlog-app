@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:open_filex/open_filex.dart';
 import '../constants/export_format.dart';
 import '../models/logbook_entry.dart';
 import '../services/flight_service.dart';
@@ -26,6 +27,7 @@ class _ExportLogbookScreenState extends State<ExportLogbookScreen> {
   List<LogbookEntry>? _flights;
   bool _isLoading = true;
   bool _isExporting = false;
+  bool _isViewing = false;
   String? _error;
 
   final _flightService = FlightService();
@@ -109,6 +111,45 @@ class _ExportLogbookScreenState extends State<ExportLogbookScreen> {
       if (mounted) {
         setState(() {
           _isExporting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _viewPdf() async {
+    if (_flights == null || _flights!.isEmpty) return;
+
+    final session = Provider.of<SessionState>(context, listen: false);
+    final pilot = session.currentPilot;
+    if (pilot == null) return;
+
+    setState(() {
+      _isViewing = true;
+    });
+
+    try {
+      final filePath = await _pdfService.generatePdf(
+        flights: _flights!,
+        format: _selectedFormat,
+        pilotName: pilot.displayName,
+        licenseNumber: pilot.licenseNumber,
+        startDate: _startDate,
+        endDate: _endDate,
+      );
+      await OpenFilex.open(filePath);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('View failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isViewing = false;
         });
       }
     }
@@ -298,6 +339,16 @@ class _ExportLogbookScreenState extends State<ExportLogbookScreen> {
                         ),
                       ),
                       const SizedBox(height: 32),
+
+                      // View PDF button (dev)
+                      SecondaryButton(
+                        label: 'View PDF',
+                        icon: Icons.visibility,
+                        fullWidth: true,
+                        isLoading: _isViewing,
+                        onPressed: _filteredFlightCount > 0 ? _viewPdf : null,
+                      ),
+                      const SizedBox(height: 12),
 
                       // Export button
                       PrimaryButton(

@@ -44,14 +44,14 @@ class ExportFormats {
       case LogbookExportFormat.international:
         return const ExportFormatInfo(
           displayName: 'International',
-          description: 'Universal balanced format (Coradine style)',
+          description: 'Universal balanced format',
           pageFormat: PdfPageFormat.a4,
           rowsPerPage: 20,
         );
       case LogbookExportFormat.easa:
         return const ExportFormatInfo(
           displayName: 'EASA',
-          description: 'European standard (A4, two-page spread)',
+          description: 'European standard, two-page spread',
           pageFormat: PdfPageFormat.a4,
           rowsPerPage: 16,
           isTwoPageSpread: true,
@@ -59,7 +59,7 @@ class ExportFormats {
       case LogbookExportFormat.faa:
         return const ExportFormatInfo(
           displayName: 'FAA',
-          description: 'US Jeppesen Pro format (27 rows)',
+          description: 'US Jeppesen Pro format',
           pageFormat: PdfPageFormat.letter,
           rowsPerPage: 27,
           isTwoPageSpread: true,
@@ -75,7 +75,7 @@ class ExportFormats {
       case LogbookExportFormat.dgac:
         return const ExportFormatInfo(
           displayName: 'French DGAC',
-          description: 'Bilingual French/English (A5)',
+          description: 'Bilingual French/English',
           pageFormat: PdfPageFormat.a5,
           rowsPerPage: 12,
         );
