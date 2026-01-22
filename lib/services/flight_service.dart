@@ -156,9 +156,12 @@ class FlightService {
       final createdEntry = LogbookEntry.fromJson(response['data']);
 
       // Save to local database so it appears in the list immediately
-      final db = DatabaseProvider.instance.database;
-      final companion = flightToCompanion(createdEntry, syncStatus: 'synced');
-      await db.upsertFlight(companion);
+      // (only if database is initialized - may not be in tests)
+      if (DatabaseProvider.instance.isInitialized) {
+        final db = DatabaseProvider.instance.database;
+        final companion = flightToCompanion(createdEntry, syncStatus: 'synced');
+        await db.upsertFlight(companion);
+      }
 
       return createdEntry;
     } on ApiException catch (e) {
@@ -200,9 +203,12 @@ class FlightService {
       final updatedEntry = LogbookEntry.fromJson(response['data']);
 
       // Update local database so changes appear immediately
-      final db = DatabaseProvider.instance.database;
-      final companion = flightToCompanion(updatedEntry, syncStatus: 'synced');
-      await db.upsertFlight(companion);
+      // (only if database is initialized - may not be in tests)
+      if (DatabaseProvider.instance.isInitialized) {
+        final db = DatabaseProvider.instance.database;
+        final companion = flightToCompanion(updatedEntry, syncStatus: 'synced');
+        await db.upsertFlight(companion);
+      }
 
       return updatedEntry;
     } on ApiException catch (e) {
@@ -225,8 +231,11 @@ class FlightService {
       await _api.delete('${AppConfig.flights}/$id');
 
       // Remove from local database so it disappears from list immediately
-      final db = DatabaseProvider.instance.database;
-      await db.deleteFlightLocal(id);
+      // (only if database is initialized - may not be in tests)
+      if (DatabaseProvider.instance.isInitialized) {
+        final db = DatabaseProvider.instance.database;
+        await db.deleteFlightLocal(id);
+      }
     } on ApiException catch (e) {
       if (e.isServerError) {
         _errorService.reporter.reportError(

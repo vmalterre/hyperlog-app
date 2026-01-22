@@ -60,7 +60,7 @@ class SessionState extends ChangeNotifier {
         await _loadPilotData(user.email);
 
         // Start sync service for returning users (offline-first)
-        if (_currentPilot?.id != null) {
+        if (_currentPilot?.id != null && DatabaseProvider.instance.isInitialized) {
           await DatabaseProvider.instance.startSyncForUser(_currentPilot!.id);
         }
       }
@@ -82,7 +82,7 @@ class SessionState extends ChangeNotifier {
     await _loadPilotData(email);
 
     // Start sync service for offline-first support
-    if (_currentPilot?.id != null) {
+    if (_currentPilot?.id != null && DatabaseProvider.instance.isInitialized) {
       await DatabaseProvider.instance.startSyncForUser(_currentPilot!.id);
     }
 
@@ -91,8 +91,10 @@ class SessionState extends ChangeNotifier {
 
   /// Log out the user and clear session data
   Future<void> logOut() async {
-    // Stop sync service
-    DatabaseProvider.instance.stopSync();
+    // Stop sync service (only if database is initialized)
+    if (DatabaseProvider.instance.isInitialized) {
+      DatabaseProvider.instance.stopSync();
+    }
 
     try {
       await _authService.signOut();
