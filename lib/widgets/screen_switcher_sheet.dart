@@ -47,11 +47,9 @@ class _ScreenSwitcherSheetState extends State<ScreenSwitcherSheet> {
   }
 
   void _navigateToManageScreens() {
-    Navigator.pop(context);
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const MyScreensScreen()),
-    );
+    // Pop with result indicating "manage screens" was requested
+    // The parent will handle navigation and re-opening the sheet
+    Navigator.pop(context, true);
   }
 
   @override

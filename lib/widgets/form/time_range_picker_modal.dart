@@ -439,6 +439,7 @@ class _TimeRangeSliderState extends State<_TimeRangeSlider> {
             height: widget.thumbSize + 24,
             padding: EdgeInsets.symmetric(horizontal: widget.thumbSize),
             child: Stack(
+              clipBehavior: Clip.none,
               alignment: Alignment.centerLeft,
               children: [
                 // Background track

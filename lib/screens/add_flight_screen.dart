@@ -22,6 +22,7 @@ import '../services/pilot_service.dart';
 import '../services/preferences_service.dart';
 import '../services/screen_config_service.dart';
 import '../session_state.dart';
+import 'my_screens_screen.dart';
 import '../constants/role_standards.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
@@ -130,13 +131,13 @@ class _AddFlightScreenState extends State<AddFlightScreen>
 
   // Details section state
   bool _detailsExpanded = false;
-  // Automatic fields (calculated based on aircraft/times)
+  // Automatic fields (calculated based on aircraft/times/crew)
   int _nightMinutes = 0;
   int _multiEngineMinutes = 0;
   int _multiPilotMinutes = 0;
+  int _soloMinutes = 0;
   // Manual fields (user-entered)
   int _ifrMinutes = 0;
-  int _soloMinutes = 0;
   int _crossCountryMinutes = 0;
   int _roleTimeMinutes = 0;  // Editable primary role time (PIC/SIC/PICUS)
   Map<String, int> _customTimeFields = {};
@@ -164,8 +165,8 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   }
 
   /// Show the screen switcher bottom sheet
-  void _showScreenSwitcher() {
-    showModalBottomSheet(
+  void _showScreenSwitcher() async {
+    final goToManageScreens = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
@@ -180,6 +181,22 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         },
       ),
     );
+
+    // If user selected "Manage Screens", navigate there and re-open sheet when returning
+    if (goToManageScreens == true && mounted) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MyScreensScreen()),
+      );
+      // Re-open the screen switcher after returning from manage screens
+      if (mounted) {
+        // Refresh to current default screen (user may have changed it)
+        setState(() {
+          _activeScreenConfig = _screenConfigService.getDefault();
+        });
+        _showScreenSwitcher();
+      }
+    }
   }
 
   @override
@@ -714,6 +731,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       });
     }
 
+    // Auto-set solo time based on aircraft type and crew roles
+    _updateSoloTime();
+
     // Auto-set IFR based on flight rules capability
     final flightRules = aircraft.flightRules;
     if (flightRules == FlightRulesCapability.ifr) {
@@ -925,6 +945,44 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         _multiPilotMinutes = _totalFlightMinutes;
       });
     }
+  }
+
+  /// Check if this qualifies as a solo flight.
+  /// Solo requires: single-pilot aircraft, no instructor, no dual (student) role.
+  bool get _isSoloFlight {
+    // Require an aircraft to be selected
+    if (_selectedAircraft == null) return false;
+
+    // Condition 1: Not a multi-pilot aircraft
+    if (_selectedAircraft!.isMultiPilot) return false;
+
+    // Condition 2 & 3: No INSTRUCTOR or DUAL role on any crew member
+    // Check pilot's secondary role
+    final pilotSecondary = _pilotCrewEntry.secondaryRole?.toUpperCase();
+    if (pilotSecondary == 'INSTRUCTOR' || pilotSecondary == 'DUAL') return false;
+
+    // Check additional crew members for INSTRUCTOR or DUAL roles
+    for (final crew in _additionalCrewEntries) {
+      final secondary = crew.secondaryRole?.toUpperCase();
+      if (secondary == 'INSTRUCTOR' || secondary == 'DUAL') return false;
+      // Also check if any crew member has INSTRUCTOR or DUAL as primary role
+      final primary = crew.role.toUpperCase();
+      if (primary == 'INSTRUCTOR' || primary == 'DUAL') return false;
+    }
+
+    return true;
+  }
+
+  /// Update solo time - equals total flight time when solo conditions are met.
+  void _updateSoloTime() {
+    final isSolo = _isSoloFlight;
+    setState(() {
+      _soloMinutes = isSolo ? _totalFlightMinutes : 0;
+      // Auto-expand details section when solo time becomes non-zero
+      if (_soloMinutes > 0 && !_detailsExpanded) {
+        _detailsExpanded = true;
+      }
+    });
   }
 
   /// Perform the actual night time calculation
@@ -1535,6 +1593,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                                   _roleTimeMinutes = _totalFlightMinutes;  // Reset to total on role change
                                   _hasChanges = true;
                                 });
+                                _updateSoloTime();
                               },
                             ),
                             if (_isFieldVisible(FlightField.additionalCrew)) ...[
@@ -1561,6 +1620,11 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                                       _additionalCrewEntries.removeAt(index);
                                       _hasChanges = true;
                                     });
+                                    _updateSoloTime();
+                                  },
+                                  onChanged: (entry) {
+                                    setState(() => _hasChanges = true);
+                                    _updateSoloTime();
                                   },
                                 );
                               }),
@@ -1617,6 +1681,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                                     _updateIfrTimeForIfrOnlyAircraft();
                                     _updateMultiEngineTimeForMeAircraft();
                                     _updateMultiPilotTimeForMpAircraft();
+                                    _updateSoloTime();
                                   },
                                 ),
                               ),
@@ -1636,6 +1701,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                                     _updateIfrTimeForIfrOnlyAircraft();
                                     _updateMultiEngineTimeForMeAircraft();
                                     _updateMultiPilotTimeForMpAircraft();
+                                    _updateSoloTime();
                                   },
                                 ),
                               ),
@@ -1729,22 +1795,6 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                               },
                             ),
                           ],
-                          if (_isFieldVisible(FlightField.soloTime)) ...[
-                            const SizedBox(height: 12),
-                            DurationQuickSet(
-                              label: 'Solo',
-                              minutes: _soloMinutes,
-                              maxMinutes: _totalFlightMinutes,
-                              blockOff: _blockOff,
-                              blockOn: _blockOn,
-                              onChanged: (value) {
-                                setState(() {
-                                  _soloMinutes = value;
-                                  _hasChanges = true;
-                                });
-                              },
-                            ),
-                          ],
                           // Custom time fields from preferences
                           if (_isFieldVisible(FlightField.customTimeFields))
                             ...PreferencesService.instance.getCustomTimeFields().map((fieldName) {
@@ -1820,6 +1870,14 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                               DurationDisplay(
                                 label: 'Multi-Pilot',
                                 minutes: _multiPilotMinutes,
+                              ),
+                            ],
+                            // Solo only shown when conditions met (single-pilot, no instructor, no dual)
+                            if (_isFieldVisible(FlightField.soloTime) && _isSoloFlight) ...[
+                              const SizedBox(height: 12),
+                              DurationDisplay(
+                                label: 'Solo',
+                                minutes: _soloMinutes,
                               ),
                             ],
                             if (_isFieldVisible(FlightField.crossCountryTime)) ...[

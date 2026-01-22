@@ -237,8 +237,8 @@ class _AirportSearchModalState extends State<AirportSearchModal> {
             child: _buildContent(),
           ),
 
-          // Manual entry option
-          if (_searchController.text.isNotEmpty && !_isLoading)
+          // Manual entry option - only show when no results found
+          if (_searchController.text.isNotEmpty && !_isLoading && _results.isEmpty)
             Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
               decoration: BoxDecoration(
