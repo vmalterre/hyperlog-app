@@ -256,31 +256,7 @@ class _ScreenEditorScreenState extends State<ScreenEditorScreen> {
                 );
               }),
 
-              // Required fields notice
-              _buildSectionHeader('REQUIRED FIELDS'),
-              const SizedBox(height: 12),
-              GlassContainer(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'The following fields cannot be hidden:',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.whiteDarker,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _RequiredFieldRow(icon: Icons.calendar_today, label: 'Date'),
-                    _RequiredFieldRow(icon: Icons.flight_takeoff, label: 'From (departure)'),
-                    _RequiredFieldRow(icon: Icons.flight_land, label: 'To (destination)'),
-                    _RequiredFieldRow(icon: Icons.flight, label: 'Aircraft'),
-                    _RequiredFieldRow(icon: Icons.timer, label: 'Block Off / Block On'),
-                    _RequiredFieldRow(icon: Icons.person, label: 'Your role'),
-                    _RequiredFieldRow(icon: Icons.schedule, label: 'Primary role time'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -398,42 +374,3 @@ class _FieldToggleRow extends StatelessWidget {
   }
 }
 
-/// A row showing a required field that cannot be hidden
-class _RequiredFieldRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _RequiredFieldRow({
-    required this.icon,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(
-            Icons.lock_outline,
-            color: AppColors.whiteDarker,
-            size: 16,
-          ),
-          const SizedBox(width: 12),
-          Icon(
-            icon,
-            color: AppColors.whiteDark,
-            size: 18,
-          ),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: AppTypography.body.copyWith(
-              color: AppColors.whiteDark,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

@@ -1,4 +1,6 @@
 import '../config/app_config.dart';
+import '../database/converters.dart';
+import '../database/database_provider.dart';
 import '../models/logbook_entry.dart';
 import '../models/logbook_entry_short.dart';
 import '../models/flight_history.dart';
@@ -147,10 +149,18 @@ class FlightService {
   }
 
   /// Create a new flight entry
+  /// Saves to server first, then to local database for offline access
   Future<LogbookEntry> createFlight(LogbookEntry entry) async {
     try {
       final response = await _api.post(AppConfig.flights, entry.toJson());
-      return LogbookEntry.fromJson(response['data']);
+      final createdEntry = LogbookEntry.fromJson(response['data']);
+
+      // Save to local database so it appears in the list immediately
+      final db = DatabaseProvider.instance.database;
+      final companion = flightToCompanion(createdEntry, syncStatus: 'synced');
+      await db.upsertFlight(companion);
+
+      return createdEntry;
     } on ApiException catch (e) {
       if (e.isServerError) {
         _errorService.reporter.reportError(
@@ -183,10 +193,18 @@ class FlightService {
 
   /// Update an existing flight entry
   /// Pass [tier] to route to correct storage (standard=PostgreSQL, official=blockchain)
+  /// Saves to server first, then updates local database
   Future<LogbookEntry> updateFlight(String id, LogbookEntry entry, {String tier = 'standard'}) async {
     try {
       final response = await _api.put('${AppConfig.flights}/$id?tier=$tier', entry.toJson());
-      return LogbookEntry.fromJson(response['data']);
+      final updatedEntry = LogbookEntry.fromJson(response['data']);
+
+      // Update local database so changes appear immediately
+      final db = DatabaseProvider.instance.database;
+      final companion = flightToCompanion(updatedEntry, syncStatus: 'synced');
+      await db.upsertFlight(companion);
+
+      return updatedEntry;
     } on ApiException catch (e) {
       if (e.isServerError) {
         _errorService.reporter.reportError(
@@ -201,9 +219,14 @@ class FlightService {
   }
 
   /// Delete a flight entry (Standard tier only - blockchain entries cannot be deleted)
+  /// Deletes from server first, then from local database
   Future<void> deleteFlight(String id) async {
     try {
       await _api.delete('${AppConfig.flights}/$id');
+
+      // Remove from local database so it disappears from list immediately
+      final db = DatabaseProvider.instance.database;
+      await db.deleteFlightLocal(id);
     } on ApiException catch (e) {
       if (e.isServerError) {
         _errorService.reporter.reportError(
@@ -211,6 +234,25 @@ class FlightService {
               StackTrace.current,
               message: 'Failed to delete flight',
               metadata: {'flightId': id},
+            );
+      }
+      rethrow;
+    }
+  }
+
+  /// Delete all flights for a user (Alpha testing only)
+  /// Deletes from both server and returns count for local deletion
+  Future<int> deleteAllFlightsForUser(String userId) async {
+    try {
+      final response = await _api.delete('${AppConfig.users}/$userId${AppConfig.flights}');
+      return response['data']?['deletedCount'] ?? 0;
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+              e,
+              StackTrace.current,
+              message: 'Failed to delete all flights',
+              metadata: {'userId': userId},
             );
       }
       rethrow;

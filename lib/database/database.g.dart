@@ -1220,6 +1220,18 @@ class $FlightsTable extends Flights with TableInfo<$FlightsTable, Flight> {
   late final GeneratedColumn<String> blockOn = GeneratedColumn<String>(
       'block_on', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _takeoffAtMeta =
+      const VerificationMeta('takeoffAt');
+  @override
+  late final GeneratedColumn<String> takeoffAt = GeneratedColumn<String>(
+      'takeoff_at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _landingAtMeta =
+      const VerificationMeta('landingAt');
+  @override
+  late final GeneratedColumn<String> landingAt = GeneratedColumn<String>(
+      'landing_at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _aircraftTypeMeta =
       const VerificationMeta('aircraftType');
   @override
@@ -1318,6 +1330,8 @@ class $FlightsTable extends Flights with TableInfo<$FlightsTable, Flight> {
         destIata,
         blockOff,
         blockOn,
+        takeoffAt,
+        landingAt,
         aircraftType,
         aircraftReg,
         flightTimeJson,
@@ -1408,6 +1422,14 @@ class $FlightsTable extends Flights with TableInfo<$FlightsTable, Flight> {
           blockOn.isAcceptableOrUnknown(data['block_on']!, _blockOnMeta));
     } else if (isInserting) {
       context.missing(_blockOnMeta);
+    }
+    if (data.containsKey('takeoff_at')) {
+      context.handle(_takeoffAtMeta,
+          takeoffAt.isAcceptableOrUnknown(data['takeoff_at']!, _takeoffAtMeta));
+    }
+    if (data.containsKey('landing_at')) {
+      context.handle(_landingAtMeta,
+          landingAt.isAcceptableOrUnknown(data['landing_at']!, _landingAtMeta));
     }
     if (data.containsKey('aircraft_type')) {
       context.handle(
@@ -1528,6 +1550,10 @@ class $FlightsTable extends Flights with TableInfo<$FlightsTable, Flight> {
           .read(DriftSqlType.string, data['${effectivePrefix}block_off'])!,
       blockOn: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}block_on'])!,
+      takeoffAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}takeoff_at']),
+      landingAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}landing_at']),
       aircraftType: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}aircraft_type'])!,
       aircraftReg: attachedDatabase.typeMapping
@@ -1576,6 +1602,8 @@ class Flight extends DataClass implements Insertable<Flight> {
   final String? destIata;
   final String blockOff;
   final String blockOn;
+  final String? takeoffAt;
+  final String? landingAt;
   final String aircraftType;
   final String aircraftReg;
   final String flightTimeJson;
@@ -1602,6 +1630,8 @@ class Flight extends DataClass implements Insertable<Flight> {
       this.destIata,
       required this.blockOff,
       required this.blockOn,
+      this.takeoffAt,
+      this.landingAt,
       required this.aircraftType,
       required this.aircraftReg,
       required this.flightTimeJson,
@@ -1640,6 +1670,12 @@ class Flight extends DataClass implements Insertable<Flight> {
     }
     map['block_off'] = Variable<String>(blockOff);
     map['block_on'] = Variable<String>(blockOn);
+    if (!nullToAbsent || takeoffAt != null) {
+      map['takeoff_at'] = Variable<String>(takeoffAt);
+    }
+    if (!nullToAbsent || landingAt != null) {
+      map['landing_at'] = Variable<String>(landingAt);
+    }
     map['aircraft_type'] = Variable<String>(aircraftType);
     map['aircraft_reg'] = Variable<String>(aircraftReg);
     map['flight_time_json'] = Variable<String>(flightTimeJson);
@@ -1688,6 +1724,12 @@ class Flight extends DataClass implements Insertable<Flight> {
           : Value(destIata),
       blockOff: Value(blockOff),
       blockOn: Value(blockOn),
+      takeoffAt: takeoffAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(takeoffAt),
+      landingAt: landingAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(landingAt),
       aircraftType: Value(aircraftType),
       aircraftReg: Value(aircraftReg),
       flightTimeJson: Value(flightTimeJson),
@@ -1728,6 +1770,8 @@ class Flight extends DataClass implements Insertable<Flight> {
       destIata: serializer.fromJson<String?>(json['destIata']),
       blockOff: serializer.fromJson<String>(json['blockOff']),
       blockOn: serializer.fromJson<String>(json['blockOn']),
+      takeoffAt: serializer.fromJson<String?>(json['takeoffAt']),
+      landingAt: serializer.fromJson<String?>(json['landingAt']),
       aircraftType: serializer.fromJson<String>(json['aircraftType']),
       aircraftReg: serializer.fromJson<String>(json['aircraftReg']),
       flightTimeJson: serializer.fromJson<String>(json['flightTimeJson']),
@@ -1760,6 +1804,8 @@ class Flight extends DataClass implements Insertable<Flight> {
       'destIata': serializer.toJson<String?>(destIata),
       'blockOff': serializer.toJson<String>(blockOff),
       'blockOn': serializer.toJson<String>(blockOn),
+      'takeoffAt': serializer.toJson<String?>(takeoffAt),
+      'landingAt': serializer.toJson<String?>(landingAt),
       'aircraftType': serializer.toJson<String>(aircraftType),
       'aircraftReg': serializer.toJson<String>(aircraftReg),
       'flightTimeJson': serializer.toJson<String>(flightTimeJson),
@@ -1789,6 +1835,8 @@ class Flight extends DataClass implements Insertable<Flight> {
           Value<String?> destIata = const Value.absent(),
           String? blockOff,
           String? blockOn,
+          Value<String?> takeoffAt = const Value.absent(),
+          Value<String?> landingAt = const Value.absent(),
           String? aircraftType,
           String? aircraftReg,
           String? flightTimeJson,
@@ -1816,6 +1864,8 @@ class Flight extends DataClass implements Insertable<Flight> {
         destIata: destIata.present ? destIata.value : this.destIata,
         blockOff: blockOff ?? this.blockOff,
         blockOn: blockOn ?? this.blockOn,
+        takeoffAt: takeoffAt.present ? takeoffAt.value : this.takeoffAt,
+        landingAt: landingAt.present ? landingAt.value : this.landingAt,
         aircraftType: aircraftType ?? this.aircraftType,
         aircraftReg: aircraftReg ?? this.aircraftReg,
         flightTimeJson: flightTimeJson ?? this.flightTimeJson,
@@ -1855,6 +1905,8 @@ class Flight extends DataClass implements Insertable<Flight> {
       destIata: data.destIata.present ? data.destIata.value : this.destIata,
       blockOff: data.blockOff.present ? data.blockOff.value : this.blockOff,
       blockOn: data.blockOn.present ? data.blockOn.value : this.blockOn,
+      takeoffAt: data.takeoffAt.present ? data.takeoffAt.value : this.takeoffAt,
+      landingAt: data.landingAt.present ? data.landingAt.value : this.landingAt,
       aircraftType: data.aircraftType.present
           ? data.aircraftType.value
           : this.aircraftType,
@@ -1904,6 +1956,8 @@ class Flight extends DataClass implements Insertable<Flight> {
           ..write('destIata: $destIata, ')
           ..write('blockOff: $blockOff, ')
           ..write('blockOn: $blockOn, ')
+          ..write('takeoffAt: $takeoffAt, ')
+          ..write('landingAt: $landingAt, ')
           ..write('aircraftType: $aircraftType, ')
           ..write('aircraftReg: $aircraftReg, ')
           ..write('flightTimeJson: $flightTimeJson, ')
@@ -1935,6 +1989,8 @@ class Flight extends DataClass implements Insertable<Flight> {
         destIata,
         blockOff,
         blockOn,
+        takeoffAt,
+        landingAt,
         aircraftType,
         aircraftReg,
         flightTimeJson,
@@ -1965,6 +2021,8 @@ class Flight extends DataClass implements Insertable<Flight> {
           other.destIata == this.destIata &&
           other.blockOff == this.blockOff &&
           other.blockOn == this.blockOn &&
+          other.takeoffAt == this.takeoffAt &&
+          other.landingAt == this.landingAt &&
           other.aircraftType == this.aircraftType &&
           other.aircraftReg == this.aircraftReg &&
           other.flightTimeJson == this.flightTimeJson &&
@@ -1993,6 +2051,8 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
   final Value<String?> destIata;
   final Value<String> blockOff;
   final Value<String> blockOn;
+  final Value<String?> takeoffAt;
+  final Value<String?> landingAt;
   final Value<String> aircraftType;
   final Value<String> aircraftReg;
   final Value<String> flightTimeJson;
@@ -2020,6 +2080,8 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
     this.destIata = const Value.absent(),
     this.blockOff = const Value.absent(),
     this.blockOn = const Value.absent(),
+    this.takeoffAt = const Value.absent(),
+    this.landingAt = const Value.absent(),
     this.aircraftType = const Value.absent(),
     this.aircraftReg = const Value.absent(),
     this.flightTimeJson = const Value.absent(),
@@ -2048,6 +2110,8 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
     this.destIata = const Value.absent(),
     required String blockOff,
     required String blockOn,
+    this.takeoffAt = const Value.absent(),
+    this.landingAt = const Value.absent(),
     required String aircraftType,
     required String aircraftReg,
     required String flightTimeJson,
@@ -2089,6 +2153,8 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
     Expression<String>? destIata,
     Expression<String>? blockOff,
     Expression<String>? blockOn,
+    Expression<String>? takeoffAt,
+    Expression<String>? landingAt,
     Expression<String>? aircraftType,
     Expression<String>? aircraftReg,
     Expression<String>? flightTimeJson,
@@ -2117,6 +2183,8 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
       if (destIata != null) 'dest_iata': destIata,
       if (blockOff != null) 'block_off': blockOff,
       if (blockOn != null) 'block_on': blockOn,
+      if (takeoffAt != null) 'takeoff_at': takeoffAt,
+      if (landingAt != null) 'landing_at': landingAt,
       if (aircraftType != null) 'aircraft_type': aircraftType,
       if (aircraftReg != null) 'aircraft_reg': aircraftReg,
       if (flightTimeJson != null) 'flight_time_json': flightTimeJson,
@@ -2147,6 +2215,8 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
       Value<String?>? destIata,
       Value<String>? blockOff,
       Value<String>? blockOn,
+      Value<String?>? takeoffAt,
+      Value<String?>? landingAt,
       Value<String>? aircraftType,
       Value<String>? aircraftReg,
       Value<String>? flightTimeJson,
@@ -2174,6 +2244,8 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
       destIata: destIata ?? this.destIata,
       blockOff: blockOff ?? this.blockOff,
       blockOn: blockOn ?? this.blockOn,
+      takeoffAt: takeoffAt ?? this.takeoffAt,
+      landingAt: landingAt ?? this.landingAt,
       aircraftType: aircraftType ?? this.aircraftType,
       aircraftReg: aircraftReg ?? this.aircraftReg,
       flightTimeJson: flightTimeJson ?? this.flightTimeJson,
@@ -2229,6 +2301,12 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
     }
     if (blockOn.present) {
       map['block_on'] = Variable<String>(blockOn.value);
+    }
+    if (takeoffAt.present) {
+      map['takeoff_at'] = Variable<String>(takeoffAt.value);
+    }
+    if (landingAt.present) {
+      map['landing_at'] = Variable<String>(landingAt.value);
     }
     if (aircraftType.present) {
       map['aircraft_type'] = Variable<String>(aircraftType.value);
@@ -2290,6 +2368,8 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
           ..write('destIata: $destIata, ')
           ..write('blockOff: $blockOff, ')
           ..write('blockOn: $blockOn, ')
+          ..write('takeoffAt: $takeoffAt, ')
+          ..write('landingAt: $landingAt, ')
           ..write('aircraftType: $aircraftType, ')
           ..write('aircraftReg: $aircraftReg, ')
           ..write('flightTimeJson: $flightTimeJson, ')
@@ -4174,6 +4254,8 @@ typedef $$FlightsTableCreateCompanionBuilder = FlightsCompanion Function({
   Value<String?> destIata,
   required String blockOff,
   required String blockOn,
+  Value<String?> takeoffAt,
+  Value<String?> landingAt,
   required String aircraftType,
   required String aircraftReg,
   required String flightTimeJson,
@@ -4202,6 +4284,8 @@ typedef $$FlightsTableUpdateCompanionBuilder = FlightsCompanion Function({
   Value<String?> destIata,
   Value<String> blockOff,
   Value<String> blockOn,
+  Value<String?> takeoffAt,
+  Value<String?> landingAt,
   Value<String> aircraftType,
   Value<String> aircraftReg,
   Value<String> flightTimeJson,
@@ -4262,6 +4346,12 @@ class $$FlightsTableFilterComposer
 
   ColumnFilters<String> get blockOn => $composableBuilder(
       column: $table.blockOn, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get takeoffAt => $composableBuilder(
+      column: $table.takeoffAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get landingAt => $composableBuilder(
+      column: $table.landingAt, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get aircraftType => $composableBuilder(
       column: $table.aircraftType, builder: (column) => ColumnFilters(column));
@@ -4354,6 +4444,12 @@ class $$FlightsTableOrderingComposer
 
   ColumnOrderings<String> get blockOn => $composableBuilder(
       column: $table.blockOn, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get takeoffAt => $composableBuilder(
+      column: $table.takeoffAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get landingAt => $composableBuilder(
+      column: $table.landingAt, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get aircraftType => $composableBuilder(
       column: $table.aircraftType,
@@ -4448,6 +4544,12 @@ class $$FlightsTableAnnotationComposer
   GeneratedColumn<String> get blockOn =>
       $composableBuilder(column: $table.blockOn, builder: (column) => column);
 
+  GeneratedColumn<String> get takeoffAt =>
+      $composableBuilder(column: $table.takeoffAt, builder: (column) => column);
+
+  GeneratedColumn<String> get landingAt =>
+      $composableBuilder(column: $table.landingAt, builder: (column) => column);
+
   GeneratedColumn<String> get aircraftType => $composableBuilder(
       column: $table.aircraftType, builder: (column) => column);
 
@@ -4523,6 +4625,8 @@ class $$FlightsTableTableManager extends RootTableManager<
             Value<String?> destIata = const Value.absent(),
             Value<String> blockOff = const Value.absent(),
             Value<String> blockOn = const Value.absent(),
+            Value<String?> takeoffAt = const Value.absent(),
+            Value<String?> landingAt = const Value.absent(),
             Value<String> aircraftType = const Value.absent(),
             Value<String> aircraftReg = const Value.absent(),
             Value<String> flightTimeJson = const Value.absent(),
@@ -4551,6 +4655,8 @@ class $$FlightsTableTableManager extends RootTableManager<
             destIata: destIata,
             blockOff: blockOff,
             blockOn: blockOn,
+            takeoffAt: takeoffAt,
+            landingAt: landingAt,
             aircraftType: aircraftType,
             aircraftReg: aircraftReg,
             flightTimeJson: flightTimeJson,
@@ -4579,6 +4685,8 @@ class $$FlightsTableTableManager extends RootTableManager<
             Value<String?> destIata = const Value.absent(),
             required String blockOff,
             required String blockOn,
+            Value<String?> takeoffAt = const Value.absent(),
+            Value<String?> landingAt = const Value.absent(),
             required String aircraftType,
             required String aircraftReg,
             required String flightTimeJson,
@@ -4607,6 +4715,8 @@ class $$FlightsTableTableManager extends RootTableManager<
             destIata: destIata,
             blockOff: blockOff,
             blockOn: blockOn,
+            takeoffAt: takeoffAt,
+            landingAt: landingAt,
             aircraftType: aircraftType,
             aircraftReg: aircraftReg,
             flightTimeJson: flightTimeJson,

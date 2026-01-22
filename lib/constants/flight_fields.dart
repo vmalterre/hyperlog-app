@@ -5,12 +5,17 @@ enum FlightField {
   // Flight Details
   flightNumber,
 
+  // Blocks
+  flightTime,
+
   // Manual time fields
   ifrTime,
-  soloTime,
+  ifrActual,
+  ifrSimulated,
   customTimeFields,
 
   // Calculated time fields (display only - still calculated if hidden)
+  soloTime,
   nightTime,
   crossCountryTime,
   multiEngineTime,
@@ -56,23 +61,42 @@ class FlightFieldsMeta {
       section: 'Flight Details',
       description: 'Commercial flight number (e.g. BA 123)',
     ),
+    FlightField.flightTime: FlightFieldMeta(
+      field: FlightField.flightTime,
+      label: 'Takeoff / Landing',
+      section: 'Blocks',
+      description: 'Actual takeoff and landing times (wheels up/down)',
+    ),
     FlightField.ifrTime: FlightFieldMeta(
       field: FlightField.ifrTime,
       label: 'IFR Time',
       section: 'Times',
-      description: 'Instrument flight rules time (manual entry)',
+      description: 'Auto-set for IFR-only aircraft, manual entry otherwise',
     ),
-    FlightField.soloTime: FlightFieldMeta(
-      field: FlightField.soloTime,
-      label: 'Solo Time',
+    FlightField.ifrActual: FlightFieldMeta(
+      field: FlightField.ifrActual,
+      label: 'Actual Instrument',
       section: 'Times',
-      description: 'Time flying as sole occupant',
+      description: 'Time in actual IMC conditions',
+    ),
+    FlightField.ifrSimulated: FlightFieldMeta(
+      field: FlightField.ifrSimulated,
+      label: 'Simulated Instrument',
+      section: 'Times',
+      description: 'Time under the hood',
     ),
     FlightField.customTimeFields: FlightFieldMeta(
       field: FlightField.customTimeFields,
       label: 'Custom Time Fields',
       section: 'Times',
       description: 'Your custom time fields from My Roles',
+    ),
+    FlightField.soloTime: FlightFieldMeta(
+      field: FlightField.soloTime,
+      label: 'Solo Time',
+      section: 'Times',
+      description: 'Time flying as sole occupant',
+      isCalculated: true,
     ),
     FlightField.nightTime: FlightFieldMeta(
       field: FlightField.nightTime,
@@ -152,6 +176,7 @@ class FlightFieldsMeta {
   /// Get the ordered list of sections
   static List<String> get sectionOrder => [
         'Flight Details',
+        'Blocks',
         'Times',
         'Crew',
         'Takeoffs & Landings',

@@ -100,6 +100,8 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   late DateTime _flightDate;
   late TimeOfDay _blockOff;
   late TimeOfDay _blockOn;
+  TimeOfDay? _takeoffAt;   // Wheels up (optional)
+  TimeOfDay? _landingAt;   // Wheels down (optional)
 
   // Selection state
   late String _role;
@@ -138,6 +140,8 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   int _soloMinutes = 0;
   // Manual fields (user-entered)
   int _ifrMinutes = 0;
+  int _ifrActualMinutes = 0;      // Actual IFR (in IMC)
+  int _ifrSimulatedMinutes = 0;   // Simulated IFR (under hood)
   int _crossCountryMinutes = 0;
   int _roleTimeMinutes = 0;  // Editable primary role time (PIC/SIC/PICUS)
   Map<String, int> _customTimeFields = {};
@@ -1097,6 +1101,27 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
   }
 
+  /// Calculate airborne (flight) time from takeoff/landing times
+  int get _airborneFlightMinutes {
+    if (_takeoffAt == null || _landingAt == null) return 0;
+    final takeoffMinutes = _takeoffAt!.hour * 60 + _takeoffAt!.minute;
+    final landingMinutes = _landingAt!.hour * 60 + _landingAt!.minute;
+
+    // Handle overnight flights
+    if (landingMinutes <= takeoffMinutes) {
+      return (24 * 60 - takeoffMinutes) + landingMinutes;
+    }
+    return landingMinutes - takeoffMinutes;
+  }
+
+  String get _formattedAirborneTime {
+    final minutes = _airborneFlightMinutes;
+    if (minutes == 0) return '--:--';
+    final hours = minutes ~/ 60;
+    final mins = minutes % 60;
+    return '${hours.toString().padLeft(2, '0')}:${mins.toString().padLeft(2, '0')}';
+  }
+
   /// Build FlightTime with role-based time from editable _roleTimeMinutes
   FlightTime get _calculatedFlightTime {
     final total = _totalFlightMinutes;
@@ -1108,9 +1133,13 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       roleMinutes: roleTime,
       night: _nightMinutes.clamp(0, total),
       ifr: _ifrMinutes.clamp(0, total),
+      ifrActual: _ifrActualMinutes.clamp(0, total),
+      ifrSimulated: _ifrSimulatedMinutes.clamp(0, total),
       solo: _soloMinutes.clamp(0, total),
       multiEngine: _multiEngineMinutes.clamp(0, total),
       crossCountry: _crossCountryMinutes.clamp(0, total),
+      multiPilot: _multiPilotMinutes.clamp(0, total),
+      flight: _airborneFlightMinutes.clamp(0, total),
       customFields: _customTimeFields,
     );
   }
@@ -1746,6 +1775,87 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                               ],
                             ),
                           ),
+                          // Flight Times (Takeoff/Landing) - Optional
+                          if (_isFieldVisible(FlightField.flightTime)) ...[
+                            const SizedBox(height: 16),
+                            Divider(
+                              color: AppColors.borderSubtle,
+                              height: 1,
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: GlassTimePicker(
+                                    label: 'TAKEOFF',
+                                    selectedTime: _takeoffAt,
+                                    placeholder: '--:--',
+                                    onTimeSelected: (time) {
+                                      setState(() {
+                                        _takeoffAt = time;
+                                        _hasChanges = true;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: GlassTimePicker(
+                                    label: 'LANDING',
+                                    selectedTime: _landingAt,
+                                    placeholder: '--:--',
+                                    onTimeSelected: (time) {
+                                      setState(() {
+                                        _landingAt = time;
+                                        _hasChanges = true;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.denim.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppColors.denim.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.flight_takeoff,
+                                    color: AppColors.denimLight,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Flight Time: ',
+                                    style: AppTypography.body.copyWith(
+                                      color: AppColors.whiteDark,
+                                    ),
+                                  ),
+                                  Text(
+                                    (_takeoffAt != null && _landingAt != null)
+                                        ? _formattedAirborneTime
+                                        : '--:--',
+                                    style: GoogleFonts.jetBrainsMono(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.denimLight,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -1790,6 +1900,40 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                               onChanged: (value) {
                                 setState(() {
                                   _ifrMinutes = value;
+                                  _hasChanges = true;
+                                });
+                              },
+                            ),
+                          ],
+                          // Actual IMC (standalone manual field)
+                          if (_isFieldVisible(FlightField.ifrActual)) ...[
+                            const SizedBox(height: 12),
+                            DurationQuickSet(
+                              label: 'Actual IMC',
+                              minutes: _ifrActualMinutes,
+                              maxMinutes: _totalFlightMinutes,
+                              blockOff: _blockOff,
+                              blockOn: _blockOn,
+                              onChanged: (value) {
+                                setState(() {
+                                  _ifrActualMinutes = value;
+                                  _hasChanges = true;
+                                });
+                              },
+                            ),
+                          ],
+                          // Simulated Instrument (standalone manual field)
+                          if (_isFieldVisible(FlightField.ifrSimulated)) ...[
+                            const SizedBox(height: 12),
+                            DurationQuickSet(
+                              label: 'Simulated (Hood)',
+                              minutes: _ifrSimulatedMinutes,
+                              maxMinutes: _totalFlightMinutes,
+                              blockOff: _blockOff,
+                              blockOn: _blockOn,
+                              onChanged: (value) {
+                                setState(() {
+                                  _ifrSimulatedMinutes = value;
                                   _hasChanges = true;
                                 });
                               },

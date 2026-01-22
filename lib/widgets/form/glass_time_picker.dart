@@ -5,22 +5,27 @@ import '../../theme/app_typography.dart';
 
 /// Time picker with glass styling (24-hour format)
 class GlassTimePicker extends StatelessWidget {
-  final TimeOfDay selectedTime;
+  final TimeOfDay? selectedTime;
   final String label;
   final void Function(TimeOfDay) onTimeSelected;
+  final String placeholder;
 
   const GlassTimePicker({
     super.key,
     required this.selectedTime,
     required this.label,
     required this.onTimeSelected,
+    this.placeholder = '--:--',
   });
 
   String get _formattedTime {
-    final hour = selectedTime.hour.toString().padLeft(2, '0');
-    final minute = selectedTime.minute.toString().padLeft(2, '0');
+    if (selectedTime == null) return placeholder;
+    final hour = selectedTime!.hour.toString().padLeft(2, '0');
+    final minute = selectedTime!.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
+
+  bool get _hasValue => selectedTime != null;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +63,7 @@ class GlassTimePicker extends StatelessWidget {
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.white,
+                    color: _hasValue ? AppColors.white : AppColors.whiteDarker,
                   ),
                 ),
               ],
@@ -72,7 +77,7 @@ class GlassTimePicker extends StatelessWidget {
   Future<void> _showTimePicker(BuildContext context) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: selectedTime,
+      initialTime: selectedTime ?? TimeOfDay.now(),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(

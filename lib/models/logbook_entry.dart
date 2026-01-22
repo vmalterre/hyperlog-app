@@ -341,10 +341,18 @@ class Endorsement {
 /// - solo: Time flown without instructor/crew
 /// - multiEngine: Time in multi-engine aircraft
 /// - crossCountry: Time on cross-country flights (>50nm)
+/// - multiPilot: Multi-pilot operations time
+/// - flight: Airborne time (takeoff to landing)
+/// - ifrActual: Actual IFR time (in IMC)
+/// - ifrSimulated: Simulated IFR time (under hood)
 class FlightTime {
   final int total;
   final int night;
   final int ifr;
+
+  // IFR breakdown
+  final int ifrActual;     // Actual IFR time in minutes (in IMC)
+  final int ifrSimulated;  // Simulated IFR time in minutes (under hood)
 
   // Primary role time fields (seat position - mutually exclusive)
   final int pic;        // PIC / P1 / Captain
@@ -359,6 +367,8 @@ class FlightTime {
   final int solo;        // Solo flight time (no instructor/crew)
   final int multiEngine; // Multi-engine aircraft time
   final int crossCountry; // Cross-country flight time (>50nm)
+  final int multiPilot;  // Multi-pilot operations time
+  final int flight;      // Airborne time (takeoff to landing)
 
   // Custom time fields (user-defined, name -> minutes)
   final Map<String, int> customFields;
@@ -367,6 +377,8 @@ class FlightTime {
     required this.total,
     this.night = 0,
     this.ifr = 0,
+    this.ifrActual = 0,
+    this.ifrSimulated = 0,
     this.pic = 0,
     this.picus = 0,
     this.sic = 0,
@@ -375,6 +387,8 @@ class FlightTime {
     this.solo = 0,
     this.multiEngine = 0,
     this.crossCountry = 0,
+    this.multiPilot = 0,
+    this.flight = 0,
     this.customFields = const {},
   });
 
@@ -383,6 +397,8 @@ class FlightTime {
       total: json['total'] ?? 0,
       night: json['night'] ?? 0,
       ifr: json['ifr'] ?? 0,
+      ifrActual: json['ifrActual'] ?? 0,
+      ifrSimulated: json['ifrSimulated'] ?? 0,
       pic: json['pic'] ?? 0,
       picus: json['picus'] ?? 0,
       sic: json['sic'] ?? 0,
@@ -390,7 +406,9 @@ class FlightTime {
       instructor: json['instructor'] ?? 0,
       solo: json['solo'] ?? 0,
       multiEngine: json['multiEngine'] ?? 0,
-      crossCountry: json['crossCountry'] ?? 0,
+      crossCountry: json['crossCountry'] ?? json['xc'] ?? 0,
+      multiPilot: json['multiPilot'] ?? 0,
+      flight: json['flight'] ?? 0,
       customFields: (json['customFields'] as Map<String, dynamic>?)
               ?.map((k, v) => MapEntry(k, v as int)) ??
           {},
@@ -401,6 +419,8 @@ class FlightTime {
         'total': total,
         'night': night,
         'ifr': ifr,
+        'ifrActual': ifrActual,
+        'ifrSimulated': ifrSimulated,
         'pic': pic,
         'picus': picus,
         'sic': sic,
@@ -409,6 +429,8 @@ class FlightTime {
         'solo': solo,
         'multiEngine': multiEngine,
         'crossCountry': crossCountry,
+        'multiPilot': multiPilot,
+        'flight': flight,
         if (customFields.isNotEmpty) 'customFields': customFields,
       };
 
@@ -445,6 +467,14 @@ class FlightTime {
         return multiEngine;
       case 'CROSS_COUNTRY':
         return crossCountry;
+      case 'MULTI_PILOT':
+        return multiPilot;
+      case 'FLIGHT':
+        return flight;
+      case 'IFR_ACTUAL':
+        return ifrActual;
+      case 'IFR_SIMULATED':
+        return ifrSimulated;
       default:
         return customFields[fieldCode] ?? 0;
     }
@@ -455,6 +485,8 @@ class FlightTime {
     int? total,
     int? night,
     int? ifr,
+    int? ifrActual,
+    int? ifrSimulated,
     int? pic,
     int? picus,
     int? sic,
@@ -463,12 +495,16 @@ class FlightTime {
     int? solo,
     int? multiEngine,
     int? crossCountry,
+    int? multiPilot,
+    int? flight,
     Map<String, int>? customFields,
   }) {
     return FlightTime(
       total: total ?? this.total,
       night: night ?? this.night,
       ifr: ifr ?? this.ifr,
+      ifrActual: ifrActual ?? this.ifrActual,
+      ifrSimulated: ifrSimulated ?? this.ifrSimulated,
       pic: pic ?? this.pic,
       picus: picus ?? this.picus,
       sic: sic ?? this.sic,
@@ -477,6 +513,8 @@ class FlightTime {
       solo: solo ?? this.solo,
       multiEngine: multiEngine ?? this.multiEngine,
       crossCountry: crossCountry ?? this.crossCountry,
+      multiPilot: multiPilot ?? this.multiPilot,
+      flight: flight ?? this.flight,
       customFields: customFields ?? this.customFields,
     );
   }
@@ -492,9 +530,13 @@ class FlightTime {
     int? roleMinutes,
     int night = 0,
     int ifr = 0,
+    int ifrActual = 0,
+    int ifrSimulated = 0,
     int solo = 0,
     int multiEngine = 0,
     int crossCountry = 0,
+    int multiPilot = 0,
+    int flight = 0,
     Map<String, int>? customFields,
   }) {
     final effectiveRoleTime = roleMinutes ?? totalMinutes;
@@ -502,6 +544,8 @@ class FlightTime {
       total: totalMinutes,
       night: night,
       ifr: ifr,
+      ifrActual: ifrActual,
+      ifrSimulated: ifrSimulated,
       // Primary role (seat position)
       pic: primaryRole == 'PIC' ? effectiveRoleTime : 0,
       picus: primaryRole == 'PICUS' ? effectiveRoleTime : 0,
@@ -513,6 +557,8 @@ class FlightTime {
       solo: solo,
       multiEngine: multiEngine,
       crossCountry: crossCountry,
+      multiPilot: multiPilot,
+      flight: flight,
       customFields: customFields ?? {},
     );
   }
@@ -523,9 +569,13 @@ class FlightTime {
     int? roleMinutes,
     int night = 0,
     int ifr = 0,
+    int ifrActual = 0,
+    int ifrSimulated = 0,
     int solo = 0,
     int multiEngine = 0,
     int crossCountry = 0,
+    int multiPilot = 0,
+    int flight = 0,
     Map<String, int>? customFields,
   }) {
     return FlightTime.fromRoles(
@@ -534,9 +584,13 @@ class FlightTime {
       roleMinutes: roleMinutes,
       night: night,
       ifr: ifr,
+      ifrActual: ifrActual,
+      ifrSimulated: ifrSimulated,
       solo: solo,
       multiEngine: multiEngine,
       crossCountry: crossCountry,
+      multiPilot: multiPilot,
+      flight: flight,
       customFields: customFields,
     );
   }
@@ -558,8 +612,10 @@ class LogbookEntry {
   final String? depIata;            // 3-letter IATA code (e.g., "LHR")
   final String? destIcao;           // 4-letter ICAO code (e.g., "KJFK")
   final String? destIata;           // 3-letter IATA code (e.g., "JFK")
-  final DateTime blockOff;
-  final DateTime blockOn;
+  final DateTime blockOff;          // Chocks off time
+  final DateTime blockOn;           // Chocks on time
+  final DateTime? takeoffAt;        // Wheels up time (optional)
+  final DateTime? landingAt;        // Wheels down time (optional)
   final String aircraftType;
   final String aircraftReg;
   final FlightTime flightTime;
@@ -585,6 +641,8 @@ class LogbookEntry {
     this.destIata,
     required this.blockOff,
     required this.blockOn,
+    this.takeoffAt,
+    this.landingAt,
     required this.aircraftType,
     required this.aircraftReg,
     required this.flightTime,
@@ -613,6 +671,8 @@ class LogbookEntry {
       destIata: json['destIata'],
       blockOff: DateTime.parse(json['blockOff']),
       blockOn: DateTime.parse(json['blockOn']),
+      takeoffAt: json['takeoffAt'] != null ? DateTime.parse(json['takeoffAt']) : null,
+      landingAt: json['landingAt'] != null ? DateTime.parse(json['landingAt']) : null,
       aircraftType: json['aircraftType'],
       aircraftReg: json['aircraftReg'],
       flightTime: json['flightTime'] != null
@@ -734,6 +794,8 @@ class LogbookEntry {
       if (destIata != null) 'destIata': destIata,
       'blockOff': blockOff.toUtc().toIso8601String(),
       'blockOn': blockOn.toUtc().toIso8601String(),
+      if (takeoffAt != null) 'takeoffAt': takeoffAt!.toUtc().toIso8601String(),
+      if (landingAt != null) 'landingAt': landingAt!.toUtc().toIso8601String(),
       'aircraftType': aircraftType,
       'aircraftReg': aircraftReg,
       'flightTime': flightTime.toJson(),

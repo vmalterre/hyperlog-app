@@ -53,8 +53,10 @@ class Flights extends Table {
   TextColumn get depIata => text().nullable()();
   TextColumn get destIcao => text().nullable()();
   TextColumn get destIata => text().nullable()();
-  TextColumn get blockOff => text()(); // ISO datetime
-  TextColumn get blockOn => text()(); // ISO datetime
+  TextColumn get blockOff => text()(); // ISO datetime (chocks off)
+  TextColumn get blockOn => text()(); // ISO datetime (chocks on)
+  TextColumn get takeoffAt => text().nullable()(); // ISO datetime (wheels up)
+  TextColumn get landingAt => text().nullable()(); // ISO datetime (wheels down)
   TextColumn get aircraftType => text()();
   TextColumn get aircraftReg => text()();
   TextColumn get flightTimeJson => text()(); // JSON-encoded FlightTime
@@ -144,7 +146,7 @@ class HyperlogDatabase extends _$HyperlogDatabase {
   HyperlogDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
@@ -170,7 +172,13 @@ class HyperlogDatabase extends _$HyperlogDatabase {
             'CREATE INDEX IF NOT EXISTS idx_saved_pilots_user ON saved_pilots(user_id)');
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        // Handle future schema migrations here
+        // Migration v1 -> v2: Add takeoff_at and landing_at columns to flights
+        if (from < 2) {
+          await customStatement(
+              'ALTER TABLE flights ADD COLUMN takeoff_at TEXT');
+          await customStatement(
+              'ALTER TABLE flights ADD COLUMN landing_at TEXT');
+        }
       },
     );
   }
@@ -317,6 +325,11 @@ class HyperlogDatabase extends _$HyperlogDatabase {
   /// Delete a flight locally
   Future<void> deleteFlightLocal(String id) async {
     await (delete(flights)..where((f) => f.id.equals(id))).go();
+  }
+
+  /// Delete all flights for a user locally
+  Future<int> deleteAllFlightsForUser(String userId) async {
+    return await (delete(flights)..where((f) => f.creatorUuid.equals(userId))).go();
   }
 
   /// Get flight count for user

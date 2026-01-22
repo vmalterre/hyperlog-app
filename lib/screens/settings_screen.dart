@@ -9,6 +9,7 @@ import 'package:hyperlog/widgets/glass_card.dart';
 import 'package:hyperlog/widgets/app_button.dart';
 import '../constants/airport_format.dart';
 import '../database/database_provider.dart';
+import '../services/flight_service.dart';
 import '../services/preferences_service.dart';
 import 'display_options_screen.dart';
 import 'export_logbook_screen.dart';
@@ -29,6 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   AirportCodeFormat _airportCodeFormat = AirportCodeFormat.iata;
   bool _isRefreshing = false;
   String _refreshProgress = '';
+  bool _isDeletingFlights = false;
 
   @override
   void initState() {
@@ -80,6 +82,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _isRefreshing = false;
           _refreshProgress = '';
         });
+      }
+    }
+  }
+
+  Future<void> _deleteAllFlights() async {
+    if (_isDeletingFlights) return;
+
+    final userId = Provider.of<SessionState>(context, listen: false).userId;
+    if (userId == null) return;
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.nightRiderDark,
+        title: Text(
+          'Delete All Flights?',
+          style: AppTypography.h4.copyWith(color: AppColors.white),
+        ),
+        content: Text(
+          'This will permanently delete all your flights from both the app and the server. This action cannot be undone.',
+          style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: AppColors.whiteDarker)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Delete', style: TextStyle(color: AppColors.errorRed)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isDeletingFlights = true);
+
+    try {
+      // Delete from server
+      final flightService = FlightService();
+      final serverCount = await flightService.deleteAllFlightsForUser(userId);
+
+      // Delete from local database
+      final db = DatabaseProvider.instance.database;
+      final localCount = await db.deleteAllFlightsForUser(userId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted $serverCount flights from server, $localCount from local'),
+            backgroundColor: AppColors.endorsedGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Delete failed: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDeletingFlights = false);
       }
     }
   }
@@ -278,8 +349,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onTap: () {},
                   ),
                   _SettingsItem(
+                    icon: Icons.backup_outlined,
+                    title: 'Backup & Restore',
+                    onTap: () {},
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Alpha Testing section
+              _SettingsSection(
+                title: 'ALPHA TESTING',
+                items: [
+                  _SettingsItem(
                     icon: Icons.refresh,
-                    title: 'Refresh Reference Data (dev)',
+                    title: 'Refresh Reference Data',
                     subtitle: _isRefreshing ? _refreshProgress : 'Airports & aircraft types',
                     trailing: _isRefreshing
                         ? const SizedBox(
@@ -294,9 +378,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onTap: _isRefreshing ? null : _refreshReferenceData,
                   ),
                   _SettingsItem(
-                    icon: Icons.backup_outlined,
-                    title: 'Backup & Restore',
-                    onTap: () {},
+                    icon: Icons.delete_forever,
+                    title: 'Delete All Flights',
+                    subtitle: _isDeletingFlights ? 'Deleting...' : 'Remove all flights (local & server)',
+                    trailing: _isDeletingFlights
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.errorRed,
+                            ),
+                          )
+                        : null,
+                    onTap: _isDeletingFlights ? null : _deleteAllFlights,
                   ),
                 ],
               ),
