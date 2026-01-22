@@ -8,6 +8,7 @@ import 'package:hyperlog/theme/app_typography.dart';
 import 'package:hyperlog/widgets/glass_card.dart';
 import 'package:hyperlog/widgets/app_button.dart';
 import '../constants/airport_format.dart';
+import '../database/database_provider.dart';
 import '../services/preferences_service.dart';
 import 'display_options_screen.dart';
 import 'export_logbook_screen.dart';
@@ -26,12 +27,61 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   String _appVersion = '';
   AirportCodeFormat _airportCodeFormat = AirportCodeFormat.iata;
+  bool _isRefreshing = false;
+  String _refreshProgress = '';
 
   @override
   void initState() {
     super.initState();
     _loadVersion();
     _loadPreferences();
+  }
+
+  Future<void> _refreshReferenceData() async {
+    if (_isRefreshing) return;
+
+    setState(() {
+      _isRefreshing = true;
+      _refreshProgress = 'Starting...';
+    });
+
+    try {
+      final syncService = DatabaseProvider.instance.syncService;
+      await syncService.refreshReferenceData(
+        onProgress: (progress, message) {
+          if (mounted) {
+            setState(() {
+              _refreshProgress = message;
+            });
+          }
+        },
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reference data refreshed'),
+            backgroundColor: AppColors.endorsedGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Refresh failed: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+          _refreshProgress = '';
+        });
+      }
+    }
   }
 
   Future<void> _loadVersion() async {
@@ -226,6 +276,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     onTap: () {},
+                  ),
+                  _SettingsItem(
+                    icon: Icons.refresh,
+                    title: 'Refresh Reference Data (dev)',
+                    subtitle: _isRefreshing ? _refreshProgress : 'Airports & aircraft types',
+                    trailing: _isRefreshing
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.denim,
+                            ),
+                          )
+                        : null,
+                    onTap: _isRefreshing ? null : _refreshReferenceData,
                   ),
                   _SettingsItem(
                     icon: Icons.backup_outlined,

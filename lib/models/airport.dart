@@ -9,6 +9,7 @@ class Airport {
   final String? isoCountry;
   final double? latitude;
   final double? longitude;
+  final String? timezone;  // IANA timezone (e.g., Europe/London)
 
   Airport({
     required this.id,
@@ -20,6 +21,7 @@ class Airport {
     this.isoCountry,
     this.latitude,
     this.longitude,
+    this.timezone,
   });
 
   factory Airport.fromJson(Map<String, dynamic> json) {
@@ -33,6 +35,7 @@ class Airport {
       isoCountry: json['isoCountry'],
       latitude: json['latitude']?.toDouble(),
       longitude: json['longitude']?.toDouble(),
+      timezone: json['timezone'],
     );
   }
 

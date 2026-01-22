@@ -1,12 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:hyperlog/constants/airport_format.dart';
+import 'package:hyperlog/database/database_provider.dart';
 import 'package:hyperlog/models/logbook_entry_short.dart';
 import 'package:hyperlog/screens/add_flight_screen.dart';
 import 'package:hyperlog/screens/flight_detail_screen.dart';
-import 'package:hyperlog/services/api_exception.dart';
-import 'package:hyperlog/services/flight_service.dart';
 import 'package:hyperlog/services/preferences_service.dart';
 import 'package:hyperlog/session_state.dart';
 import 'package:hyperlog/theme/app_colors.dart';
@@ -37,8 +38,8 @@ class LogbookScreenState extends State<LogbookScreen> {
   int _selectedFilter = 0;
   final List<String> _filters = ['All', 'This Month', 'This Year'];
 
-  // API integration
-  final FlightService _flightService = FlightService();
+  // Offline-first: reactive stream from local database
+  StreamSubscription<List<LogbookEntryShort>>? _flightsSubscription;
   List<LogbookEntryShort> _logbookEntries = [];
   bool _isLoading = true;
   bool _noPilotProfile = false;
@@ -51,7 +52,13 @@ class LogbookScreenState extends State<LogbookScreen> {
   void initState() {
     super.initState();
     _loadAirportFormat();
-    _loadFlights();
+    _subscribeToFlights();
+  }
+
+  @override
+  void dispose() {
+    _flightsSubscription?.cancel();
+    super.dispose();
   }
 
   void _loadAirportFormat() {
@@ -70,9 +77,8 @@ class LogbookScreenState extends State<LogbookScreen> {
     return Provider.of<SessionState>(context, listen: false).pilotLoadError;
   }
 
-  Future<void> _loadFlights() async {
-    if (!mounted) return;
-
+  /// Subscribe to reactive flight stream from local database
+  void _subscribeToFlights() {
     final userId = _userId;
     if (userId == null || userId.isEmpty) {
       final pilotError = _pilotLoadError;
@@ -90,22 +96,32 @@ class LogbookScreenState extends State<LogbookScreen> {
       _errorMessage = null;
     });
 
-    try {
-      final flights = await _flightService.getFlightsForUser(userId);
-      if (mounted) {
-        setState(() {
-          _logbookEntries = flights;
-          _isLoading = false;
-        });
-      }
-    } on ApiException catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.message;
-          _isLoading = false;
-        });
-      }
-    }
+    // Watch flights from local database (instant, works offline)
+    _flightsSubscription = flightRepo.watchFlightsForUser(userId).listen(
+      (flights) {
+        if (mounted) {
+          setState(() {
+            _logbookEntries = flights;
+            _isLoading = false;
+          });
+        }
+      },
+      onError: (e) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = e.toString();
+            _isLoading = false;
+          });
+        }
+      },
+    );
+  }
+
+  /// Pull-to-refresh: trigger sync and wait for update
+  Future<void> _loadFlights() async {
+    // Trigger a sync to fetch latest from server
+    await syncService.syncFlights(_userId ?? '');
+    // The stream subscription will automatically update the UI
   }
 
   // Calculate stats from loaded entries
@@ -179,15 +195,13 @@ class LogbookScreenState extends State<LogbookScreen> {
                       ),
                       _AddEntryButton(
                         onPressed: () async {
-                          final result = await Navigator.push<bool>(
+                          await Navigator.push<bool>(
                             context,
                             MaterialPageRoute(
                               builder: (context) => const AddFlightScreen(),
                             ),
                           );
-                          if (result == true) {
-                            _loadFlights();
-                          }
+                          // Reactive stream auto-updates, no manual reload needed
                         },
                       ),
                     ],
@@ -328,9 +342,9 @@ class LogbookScreenState extends State<LogbookScreen> {
                   ),
                 ),
               );
-              // Refresh list and format in case settings changed
+              // Reload format preference in case settings changed
+              // Reactive stream auto-updates flight list
               _loadAirportFormat();
-              _loadFlights();
             },
           );
         },

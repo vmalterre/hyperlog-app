@@ -1,4 +1,5 @@
 import 'package:hyperlog/config/app_config.dart';
+import 'package:hyperlog/database/database_provider.dart';
 import 'package:hyperlog/session_state.dart';
 import 'package:hyperlog/services/preferences_service.dart';
 import 'package:hyperlog/services/screen_config_service.dart';
@@ -49,6 +50,9 @@ void main() async {
 
   // Initialize screen config service
   await ScreenConfigService.instance.init();
+
+  // Initialize local database and repositories (for offline-first)
+  await DatabaseProvider.instance.initialize();
 
   // Crashlytics is not supported on web
   if (!kIsWeb) {

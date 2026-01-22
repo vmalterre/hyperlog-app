@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import '../database/database_provider.dart';
+import '../services/draft_service.dart';
 import '../utils/great_circle_arc.dart';
 import '../constants/flight_fields.dart';
 import '../models/airport.dart';
@@ -48,13 +50,18 @@ class AddFlightScreen extends StatefulWidget {
   State<AddFlightScreen> createState() => _AddFlightScreenState();
 }
 
-class _AddFlightScreenState extends State<AddFlightScreen> {
+class _AddFlightScreenState extends State<AddFlightScreen>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final FlightService _flightService = FlightService();
   final PilotService _pilotService = PilotService();
   final AircraftService _aircraftService = AircraftService();
   final AirportService _airportService = AirportService();
   final NighttimeService _nighttimeService = NighttimeService();
+
+  // Draft persistence for crash recovery (new flights only)
+  String? _draftId;
+  bool _hasDraftToRestore = false;
 
   // Debounce timer for nighttime calculation
   Timer? _nighttimeDebounceTimer;
@@ -178,6 +185,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeFields();
 
     // Load the active screen configuration
@@ -198,6 +206,248 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     // In edit mode, look up airports to get coordinates for cross-country calculation
     if (widget.isEditMode) {
       _loadAirportsForEdit();
+    } else {
+      // For new flights, check for draft to restore
+      _checkForDraft();
+    }
+  }
+
+  /// Check if there's a draft to restore from a previous session
+  Future<void> _checkForDraft() async {
+    final hasDraft = await draftService.hasDraft();
+    if (hasDraft && mounted) {
+      setState(() => _hasDraftToRestore = true);
+      _showDraftRestoreDialog();
+    } else {
+      // Start new draft session
+      _draftId = draftService.startDraftSession();
+    }
+  }
+
+  /// Show dialog offering to restore draft
+  Future<void> _showDraftRestoreDialog() async {
+    final restore = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.nightRiderLight,
+        title: const Text('Restore Draft?'),
+        content: const Text(
+          'You have an unsaved flight from a previous session. Would you like to restore it?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Discard'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+
+    if (restore == true) {
+      await _restoreDraft();
+    } else {
+      await draftService.deleteAllDrafts();
+      _draftId = draftService.startDraftSession();
+    }
+
+    if (mounted) {
+      setState(() => _hasDraftToRestore = false);
+    }
+  }
+
+  /// Restore draft data to form fields
+  Future<void> _restoreDraft() async {
+    final draft = await draftService.getLatestDraft();
+    if (draft == null) {
+      _draftId = draftService.startDraftSession();
+      return;
+    }
+
+    setState(() {
+      _flightNumberController.text = draft.flightNumber ?? '';
+      _depController.text = draft.depCode;
+      _destController.text = draft.destCode;
+      _aircraftTypeController.text = draft.aircraftType;
+      _aircraftRegController.text = draft.aircraftReg;
+      _remarksController.text = draft.remarks;
+      _flightDate = draft.flightDate;
+      _blockOff = draft.blockOff;
+      _blockOn = draft.blockOn;
+      _role = draft.role;
+      _pilotCrewEntry = CrewEntry(
+        name: '',
+        role: draft.role,
+        secondaryRole: draft.secondaryRole,
+      );
+      _isPilotFlying = draft.isPilotFlying;
+      _dayTakeoffs = draft.dayTakeoffs;
+      _nightTakeoffs = draft.nightTakeoffs;
+      _dayLandings = draft.dayLandings;
+      _nightLandings = draft.nightLandings;
+      _nightMinutes = draft.nightMinutes;
+      _ifrMinutes = draft.ifrMinutes;
+      _soloMinutes = draft.soloMinutes;
+      _multiEngineMinutes = draft.multiEngineMinutes;
+      _crossCountryMinutes = draft.crossCountryMinutes;
+      _roleTimeMinutes = draft.roleTimeMinutes;
+      _customTimeFields = Map.from(draft.customTimeFields);
+      _visualApproaches = draft.visualApproaches;
+      _ilsCatIApproaches = draft.ilsCatIApproaches;
+      _ilsCatIIApproaches = draft.ilsCatIIApproaches;
+      _ilsCatIIIApproaches = draft.ilsCatIIIApproaches;
+      _rnpApproaches = draft.rnpApproaches;
+      _rnpArApproaches = draft.rnpArApproaches;
+      _vorApproaches = draft.vorApproaches;
+      _ndbApproaches = draft.ndbApproaches;
+      _ilsBackCourseApproaches = draft.ilsBackCourseApproaches;
+      _localizerApproaches = draft.localizerApproaches;
+
+      // Restore additional crew
+      _additionalCrewEntries.clear();
+      for (final crew in draft.additionalCrew) {
+        _additionalCrewEntries.add(CrewEntry(
+          name: crew.name,
+          role: crew.role,
+          secondaryRole: crew.secondaryRole,
+        ));
+      }
+
+      // Auto-expand sections if they have data
+      if (draft.nightMinutes > 0 ||
+          draft.ifrMinutes > 0 ||
+          draft.soloMinutes > 0 ||
+          draft.multiEngineMinutes > 0 ||
+          draft.crossCountryMinutes > 0) {
+        _detailsExpanded = true;
+      }
+      if (draft.visualApproaches > 0 ||
+          draft.ilsCatIApproaches > 0 ||
+          draft.ilsCatIIApproaches > 0 ||
+          draft.ilsCatIIIApproaches > 0) {
+        _approachesExpanded = true;
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Save draft when app goes to background (for new flights only)
+    if (state == AppLifecycleState.paused && !widget.isEditMode && _hasChanges) {
+      _saveDraftNow();
+    }
+  }
+
+  /// Save draft immediately
+  Future<void> _saveDraftNow() async {
+    if (_draftId == null) return;
+
+    final draft = FlightDraftData.fromFormState(
+      flightNumberController: _flightNumberController,
+      depController: _depController,
+      destController: _destController,
+      aircraftTypeController: _aircraftTypeController,
+      aircraftRegController: _aircraftRegController,
+      remarksController: _remarksController,
+      depIcao: _selectedDepAirport?.icaoCode,
+      depIata: _selectedDepAirport?.iataCode,
+      destIcao: _selectedDestAirport?.icaoCode,
+      destIata: _selectedDestAirport?.iataCode,
+      flightDate: _flightDate,
+      blockOff: _blockOff,
+      blockOn: _blockOn,
+      role: _role,
+      secondaryRole: _pilotCrewEntry.secondaryRole,
+      isPilotFlying: _isPilotFlying,
+      dayTakeoffs: _dayTakeoffs,
+      nightTakeoffs: _nightTakeoffs,
+      dayLandings: _dayLandings,
+      nightLandings: _nightLandings,
+      nightMinutes: _nightMinutes,
+      ifrMinutes: _ifrMinutes,
+      soloMinutes: _soloMinutes,
+      multiEngineMinutes: _multiEngineMinutes,
+      crossCountryMinutes: _crossCountryMinutes,
+      roleTimeMinutes: _roleTimeMinutes,
+      customTimeFields: _customTimeFields,
+      visualApproaches: _visualApproaches,
+      ilsCatIApproaches: _ilsCatIApproaches,
+      ilsCatIIApproaches: _ilsCatIIApproaches,
+      ilsCatIIIApproaches: _ilsCatIIIApproaches,
+      rnpApproaches: _rnpApproaches,
+      rnpArApproaches: _rnpArApproaches,
+      vorApproaches: _vorApproaches,
+      ndbApproaches: _ndbApproaches,
+      ilsBackCourseApproaches: _ilsBackCourseApproaches,
+      localizerApproaches: _localizerApproaches,
+      additionalCrew: _additionalCrewEntries
+          .where((e) => e.isValid)
+          .map((e) => CrewEntryDraft(
+                name: e.name,
+                role: e.role,
+                secondaryRole: e.secondaryRole,
+              ))
+          .toList(),
+    );
+
+    await draftService.saveDraft(_draftId!, draft);
+  }
+
+  /// Schedule auto-save (debounced)
+  void _scheduleAutoSave() {
+    if (!widget.isEditMode && _hasChanges && _draftId != null) {
+      final draft = FlightDraftData.fromFormState(
+        flightNumberController: _flightNumberController,
+        depController: _depController,
+        destController: _destController,
+        aircraftTypeController: _aircraftTypeController,
+        aircraftRegController: _aircraftRegController,
+        remarksController: _remarksController,
+        depIcao: _selectedDepAirport?.icaoCode,
+        depIata: _selectedDepAirport?.iataCode,
+        destIcao: _selectedDestAirport?.icaoCode,
+        destIata: _selectedDestAirport?.iataCode,
+        flightDate: _flightDate,
+        blockOff: _blockOff,
+        blockOn: _blockOn,
+        role: _role,
+        secondaryRole: _pilotCrewEntry.secondaryRole,
+        isPilotFlying: _isPilotFlying,
+        dayTakeoffs: _dayTakeoffs,
+        nightTakeoffs: _nightTakeoffs,
+        dayLandings: _dayLandings,
+        nightLandings: _nightLandings,
+        nightMinutes: _nightMinutes,
+        ifrMinutes: _ifrMinutes,
+        soloMinutes: _soloMinutes,
+        multiEngineMinutes: _multiEngineMinutes,
+        crossCountryMinutes: _crossCountryMinutes,
+        roleTimeMinutes: _roleTimeMinutes,
+        customTimeFields: _customTimeFields,
+        visualApproaches: _visualApproaches,
+        ilsCatIApproaches: _ilsCatIApproaches,
+        ilsCatIIApproaches: _ilsCatIIApproaches,
+        ilsCatIIIApproaches: _ilsCatIIIApproaches,
+        rnpApproaches: _rnpApproaches,
+        rnpArApproaches: _rnpArApproaches,
+        vorApproaches: _vorApproaches,
+        ndbApproaches: _ndbApproaches,
+        ilsBackCourseApproaches: _ilsBackCourseApproaches,
+        localizerApproaches: _localizerApproaches,
+        additionalCrew: _additionalCrewEntries
+            .where((e) => e.isValid)
+            .map((e) => CrewEntryDraft(
+                  name: e.name,
+                  role: e.role,
+                  secondaryRole: e.secondaryRole,
+                ))
+            .toList(),
+      );
+      draftService.scheduleAutoSave(draft);
     }
   }
 
@@ -584,7 +834,9 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   }
 
   @override
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _nighttimeDebounceTimer?.cancel();
     _flightNumberController.dispose();
     _depController.dispose();
@@ -599,6 +851,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     if (!_hasChanges) {
       setState(() => _hasChanges = true);
     }
+    // Schedule auto-save for crash recovery
+    _scheduleAutoSave();
   }
 
   /// Calculate night time based on airports, date, and block times
@@ -996,6 +1250,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         await _saveNewCrewNames();
       } catch (_) {
         // Ignore errors - crew names not being saved is non-critical
+      }
+
+      // Delete draft after successful save
+      if (!widget.isEditMode) {
+        await draftService.deleteDraft();
       }
 
       if (mounted) {

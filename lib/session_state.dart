@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hyperlog/database/database_provider.dart';
 import 'package:hyperlog/models/pilot.dart';
 import 'package:hyperlog/services/auth_service.dart';
 import 'package:hyperlog/services/pilot_service.dart';
@@ -57,6 +58,11 @@ class SessionState extends ChangeNotifier {
         _isLoggedIn = true;
         // Try to load pilot data if user is logged in
         await _loadPilotData(user.email);
+
+        // Start sync service for returning users (offline-first)
+        if (_currentPilot?.id != null) {
+          await DatabaseProvider.instance.startSyncForUser(_currentPilot!.id);
+        }
       }
     } catch (e) {
       _error = 'Failed to initialize session: $e';
@@ -74,11 +80,20 @@ class SessionState extends ChangeNotifier {
     _isLoggedIn = true;
     _error = null;
     await _loadPilotData(email);
+
+    // Start sync service for offline-first support
+    if (_currentPilot?.id != null) {
+      await DatabaseProvider.instance.startSyncForUser(_currentPilot!.id);
+    }
+
     notifyListeners();
   }
 
   /// Log out the user and clear session data
   Future<void> logOut() async {
+    // Stop sync service
+    DatabaseProvider.instance.stopSync();
+
     try {
       await _authService.signOut();
     } catch (e) {
