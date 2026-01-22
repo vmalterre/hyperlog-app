@@ -33,7 +33,6 @@ enum SyncStatus {
 /// - Handle connectivity changes
 /// - Retry failed syncs with exponential backoff
 class SyncService {
-  final HyperlogDatabase _db;
   final FlightRepository _flightRepo;
   final AirportRepository _airportRepo;
   final AircraftRepository _aircraftRepo;
@@ -64,8 +63,7 @@ class SyncService {
     AircraftRepository? aircraftRepo,
     ConnectivityService? connectivity,
     ErrorService? errorService,
-  })  : _db = db,
-        _flightRepo = flightRepo ?? FlightRepository(db: db),
+  })  : _flightRepo = flightRepo ?? FlightRepository(db: db),
         _airportRepo = airportRepo ?? AirportRepository(db: db),
         _aircraftRepo = aircraftRepo ?? AircraftRepository(db: db),
         _connectivity = connectivity ?? connectivityService,

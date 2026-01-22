@@ -62,7 +62,6 @@ class _AddFlightScreenState extends State<AddFlightScreen>
 
   // Draft persistence for crash recovery (new flights only)
   String? _draftId;
-  bool _hasDraftToRestore = false;
 
   // Debounce timer for nighttime calculation
   Timer? _nighttimeDebounceTimer;
@@ -237,7 +236,6 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   Future<void> _checkForDraft() async {
     final hasDraft = await draftService.hasDraft();
     if (hasDraft && mounted) {
-      setState(() => _hasDraftToRestore = true);
       _showDraftRestoreDialog();
     } else {
       // Start new draft session
@@ -274,10 +272,6 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     } else {
       await draftService.deleteAllDrafts();
       _draftId = draftService.startDraftSession();
-    }
-
-    if (mounted) {
-      setState(() => _hasDraftToRestore = false);
     }
   }
 

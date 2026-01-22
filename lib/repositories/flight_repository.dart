@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../config/app_config.dart';
