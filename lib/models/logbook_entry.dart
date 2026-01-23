@@ -362,6 +362,7 @@ class FlightTime {
   // Secondary role time fields (activity - can combine with primary)
   final int dual;       // Dual instruction received
   final int instructor; // Instructor time given
+  final int examiner;   // Examiner time given
 
   // Detail time fields (flight conditions/characteristics)
   final int solo;        // Solo flight time (no instructor/crew)
@@ -384,6 +385,7 @@ class FlightTime {
     this.sic = 0,
     this.dual = 0,
     this.instructor = 0,
+    this.examiner = 0,
     this.solo = 0,
     this.multiEngine = 0,
     this.crossCountry = 0,
@@ -404,6 +406,7 @@ class FlightTime {
       sic: json['sic'] ?? 0,
       dual: json['dual'] ?? 0,
       instructor: json['instructor'] ?? 0,
+      examiner: json['examiner'] ?? 0,
       solo: json['solo'] ?? 0,
       multiEngine: json['multiEngine'] ?? 0,
       crossCountry: json['crossCountry'] ?? json['xc'] ?? 0,
@@ -426,6 +429,7 @@ class FlightTime {
         'sic': sic,
         'dual': dual,
         'instructor': instructor,
+        'examiner': examiner,
         'solo': solo,
         'multiEngine': multiEngine,
         'crossCountry': crossCountry,
@@ -461,6 +465,8 @@ class FlightTime {
         return dual;
       case 'INSTRUCTOR':
         return instructor;
+      case 'EXAMINER':
+        return examiner;
       case 'SOLO':
         return solo;
       case 'MULTI_ENGINE':
@@ -492,6 +498,7 @@ class FlightTime {
     int? sic,
     int? dual,
     int? instructor,
+    int? examiner,
     int? solo,
     int? multiEngine,
     int? crossCountry,
@@ -510,6 +517,7 @@ class FlightTime {
       sic: sic ?? this.sic,
       dual: dual ?? this.dual,
       instructor: instructor ?? this.instructor,
+      examiner: examiner ?? this.examiner,
       solo: solo ?? this.solo,
       multiEngine: multiEngine ?? this.multiEngine,
       crossCountry: crossCountry ?? this.crossCountry,
@@ -521,7 +529,7 @@ class FlightTime {
 
   /// Create FlightTime from primary and optional secondary role
   /// Primary role determines seat position time (PIC, SIC, PICUS)
-  /// Secondary role determines activity time (DUAL, INSTRUCTOR)
+  /// Secondary role determines activity time (DUAL, INSTRUCTOR, EXAMINER)
   /// If roleMinutes is provided, use that for the role time instead of totalMinutes
   factory FlightTime.fromRoles({
     required String primaryRole,
@@ -553,6 +561,7 @@ class FlightTime {
       // Secondary role (activity)
       dual: secondaryRole == 'DUAL' ? effectiveRoleTime : 0,
       instructor: secondaryRole == 'INSTRUCTOR' ? effectiveRoleTime : 0,
+      examiner: secondaryRole == 'EXAMINER' ? effectiveRoleTime : 0,
       // Detail fields
       solo: solo,
       multiEngine: multiEngine,

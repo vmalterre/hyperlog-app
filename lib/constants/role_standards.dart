@@ -20,15 +20,16 @@ class TimeFieldCodes {
   static const String sic = 'SIC';
   static const String dual = 'DUAL';
   static const String instructor = 'INSTRUCTOR';
+  static const String examiner = 'EXAMINER';
 
   /// All time field codes in display order
-  static const List<String> all = [pic, sic, picus, dual, instructor];
+  static const List<String> all = [pic, sic, picus, dual, instructor, examiner];
 
   /// Primary roles (seat position/authority) - mutually exclusive
   static const List<String> primary = [pic, sic, picus];
 
   /// Secondary roles (activity/function) - optional, can combine with primary
-  static const List<String> secondary = [dual, instructor];
+  static const List<String> secondary = [dual, instructor, examiner];
 
   /// Primary roles that can be selected for default role
   /// @deprecated Use primary instead
@@ -45,6 +46,7 @@ class RoleStandards {
       TimeFieldCodes.sic: 'Co-pilot',
       TimeFieldCodes.dual: 'Dual',
       TimeFieldCodes.instructor: 'Instructor',
+      TimeFieldCodes.examiner: 'Examiner',
     },
     RoleStandard.faa: {
       TimeFieldCodes.pic: 'Pilot in Command',
@@ -52,6 +54,7 @@ class RoleStandards {
       TimeFieldCodes.sic: 'Second in Command',
       TimeFieldCodes.dual: 'Dual Received',
       TimeFieldCodes.instructor: 'Flight Instructor',
+      TimeFieldCodes.examiner: 'Examiner',
     },
     RoleStandard.ukCaa: {
       TimeFieldCodes.pic: 'P1',
@@ -59,6 +62,7 @@ class RoleStandards {
       TimeFieldCodes.sic: 'P2',
       TimeFieldCodes.dual: 'Dual',
       TimeFieldCodes.instructor: 'Instructor',
+      TimeFieldCodes.examiner: 'Examiner',
     },
     RoleStandard.descriptive: {
       TimeFieldCodes.pic: 'Captain',
@@ -66,6 +70,7 @@ class RoleStandards {
       TimeFieldCodes.sic: 'Co-Pilot',
       TimeFieldCodes.dual: 'Student',
       TimeFieldCodes.instructor: 'Instructor',
+      TimeFieldCodes.examiner: 'Examiner',
     },
   };
 
@@ -76,6 +81,7 @@ class RoleStandards {
     TimeFieldCodes.sic: 'Second in Command time',
     TimeFieldCodes.dual: 'Dual instruction received time',
     TimeFieldCodes.instructor: 'Flight instruction given time',
+    TimeFieldCodes.examiner: 'Flight examination given time',
   };
 
   /// Get display name for a role standard
