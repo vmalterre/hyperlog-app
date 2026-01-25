@@ -509,13 +509,11 @@ class HyperlogDatabase extends _$HyperlogDatabase {
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    // Use standard databases directory so Android Studio Database Inspector can find it
+    // Use application documents directory for the database
+    // Note: On iOS, we must stay within the sandbox (Documents, Library, tmp)
+    // The app container root is not writable on iOS
     final dbFolder = await getApplicationDocumentsDirectory();
-    final dbPath = Directory(p.join(dbFolder.parent.path, 'databases'));
-    if (!await dbPath.exists()) {
-      await dbPath.create(recursive: true);
-    }
-    final file = File(p.join(dbPath.path, 'hyperlog.db'));
+    final file = File(p.join(dbFolder.path, 'hyperlog.db'));
     return NativeDatabase.createInBackground(
       file,
       setup: (database) {
