@@ -880,15 +880,6 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     }
   }
 
-  /// Clear simulator selection (return to aircraft mode)
-  void _clearSimulator() {
-    setState(() {
-      _selectedSimulator = null;
-      _aircraftTypeController.text = '';
-      _hasChanges = true;
-    });
-  }
-
   /// Build empty state when user has no saved aircraft
   Widget _buildNoAircraftState() {
     return Column(
