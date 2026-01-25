@@ -329,7 +329,9 @@ class HyperlogDatabase extends _$HyperlogDatabase {
 
   /// Delete all flights for a user locally
   Future<int> deleteAllFlightsForUser(String userId) async {
-    return await (delete(flights)..where((f) => f.creatorUuid.equals(userId))).go();
+    return await transaction(() async {
+      return await (delete(flights)..where((f) => f.creatorUuid.equals(userId))).go();
+    });
   }
 
   /// Get flight count for user
@@ -514,6 +516,12 @@ LazyDatabase _openConnection() {
       await dbPath.create(recursive: true);
     }
     final file = File(p.join(dbPath.path, 'hyperlog.db'));
-    return NativeDatabase.createInBackground(file);
+    return NativeDatabase.createInBackground(
+      file,
+      setup: (database) {
+        // Set busy timeout to 5 seconds - SQLite will retry instead of failing immediately
+        database.execute('PRAGMA busy_timeout = 5000;');
+      },
+    );
   });
 }

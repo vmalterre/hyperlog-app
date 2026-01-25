@@ -9,8 +9,11 @@ import 'package:hyperlog/widgets/glass_card.dart';
 import 'package:hyperlog/widgets/app_button.dart';
 import '../constants/airport_format.dart';
 import '../database/database_provider.dart';
+import '../services/aircraft_service.dart';
 import '../services/flight_service.dart';
+import '../services/pilot_service.dart';
 import '../services/preferences_service.dart';
+import '../services/simulator_service.dart';
 import 'display_options_screen.dart';
 import 'export_logbook_screen.dart';
 import 'saved_pilots_screen.dart';
@@ -33,6 +36,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isRefreshing = false;
   String _refreshProgress = '';
   bool _isDeletingFlights = false;
+  bool _isDeletingAircraft = false;
+  bool _isDeletingPilots = false;
+  bool _isDeletingSimulators = false;
+  bool _isResettingToFactory = false;
 
   @override
   void initState() {
@@ -100,7 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.nightRiderDark,
         title: Text(
-          'Delete All Flights?',
+          'Delete All My Flights?',
           style: AppTypography.h4.copyWith(color: AppColors.white),
         ),
         content: Text(
@@ -153,6 +160,345 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } finally {
       if (mounted) {
         setState(() => _isDeletingFlights = false);
+      }
+    }
+  }
+
+  Future<void> _deleteAllAircraft() async {
+    if (_isDeletingAircraft) return;
+
+    final userId = Provider.of<SessionState>(context, listen: false).userId;
+    if (userId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.nightRiderDark,
+        title: Text(
+          'Delete All My Aircraft?',
+          style: AppTypography.h4.copyWith(color: AppColors.white),
+        ),
+        content: Text(
+          'This will permanently delete all your saved aircraft types and registrations. This action cannot be undone.',
+          style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: AppColors.whiteDarker)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Delete', style: TextStyle(color: AppColors.errorRed)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isDeletingAircraft = true);
+
+    try {
+      final aircraftService = AircraftService();
+
+      // Delete all registrations first (they depend on types)
+      final registrations = await aircraftService.getUserAircraftRegistrations(userId);
+      for (final reg in registrations) {
+        await aircraftService.deleteUserAircraftRegistration(userId, reg.id);
+      }
+
+      // Then delete all types
+      final types = await aircraftService.getUserAircraftTypes(userId);
+      for (final type in types) {
+        await aircraftService.deleteUserAircraftType(userId, type.id);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted ${types.length} aircraft types and ${registrations.length} registrations'),
+            backgroundColor: AppColors.endorsedGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Delete failed: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDeletingAircraft = false);
+      }
+    }
+  }
+
+  Future<void> _deleteAllPilots() async {
+    if (_isDeletingPilots) return;
+
+    final userId = Provider.of<SessionState>(context, listen: false).userId;
+    if (userId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.nightRiderDark,
+        title: Text(
+          'Delete All My Pilots?',
+          style: AppTypography.h4.copyWith(color: AppColors.white),
+        ),
+        content: Text(
+          'This will permanently delete all your saved pilots. This action cannot be undone.',
+          style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: AppColors.whiteDarker)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Delete', style: TextStyle(color: AppColors.errorRed)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isDeletingPilots = true);
+
+    try {
+      final pilotService = PilotService();
+      final pilots = await pilotService.getSavedPilotsByUserId(userId);
+
+      for (final pilot in pilots) {
+        await pilotService.deleteSavedPilotByUserId(userId, pilot.name);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted ${pilots.length} saved pilots'),
+            backgroundColor: AppColors.endorsedGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Delete failed: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDeletingPilots = false);
+      }
+    }
+  }
+
+  Future<void> _deleteAllSimulators() async {
+    if (_isDeletingSimulators) return;
+
+    final userId = Provider.of<SessionState>(context, listen: false).userId;
+    if (userId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.nightRiderDark,
+        title: Text(
+          'Delete All My Simulators?',
+          style: AppTypography.h4.copyWith(color: AppColors.white),
+        ),
+        content: Text(
+          'This will permanently delete all your saved simulator types and registrations. This action cannot be undone.',
+          style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: AppColors.whiteDarker)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Delete', style: TextStyle(color: AppColors.errorRed)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isDeletingSimulators = true);
+
+    try {
+      final simulatorService = SimulatorService();
+
+      // Delete all registrations first (they depend on types)
+      final registrations = await simulatorService.getUserSimulatorRegistrations(userId);
+      for (final reg in registrations) {
+        await simulatorService.deleteUserSimulatorRegistration(userId, reg.id);
+      }
+
+      // Then delete all types
+      final types = await simulatorService.getUserSimulatorTypes(userId);
+      for (final type in types) {
+        await simulatorService.deleteUserSimulatorType(userId, type.id);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted ${types.length} simulator types and ${registrations.length} registrations'),
+            backgroundColor: AppColors.endorsedGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Delete failed: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDeletingSimulators = false);
+      }
+    }
+  }
+
+  Future<void> _resetToFactory() async {
+    if (_isResettingToFactory) return;
+
+    final userId = Provider.of<SessionState>(context, listen: false).userId;
+    if (userId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.nightRiderDark,
+        title: Text(
+          'Reset to Factory Settings?',
+          style: AppTypography.h4.copyWith(color: AppColors.white),
+        ),
+        content: Text(
+          'This will permanently delete ALL your data:\n\n'
+          '• All flights and simulator sessions\n'
+          '• All saved aircraft types and registrations\n'
+          '• All saved pilots\n'
+          '• All saved simulators\n\n'
+          'This action cannot be undone.',
+          style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: AppColors.whiteDarker)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Reset', style: TextStyle(color: AppColors.errorRed)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isResettingToFactory = true);
+
+    try {
+      final flightService = FlightService();
+      final aircraftService = AircraftService();
+      final pilotService = PilotService();
+      final simulatorService = SimulatorService();
+      final db = DatabaseProvider.instance.database;
+
+      int totalDeleted = 0;
+
+      // Small delay helper to prevent database locking
+      Future<void> briefPause() => Future.delayed(const Duration(milliseconds: 100));
+
+      // 1. Delete all flights from server first
+      final serverFlights = await flightService.deleteAllFlightsForUser(userId);
+      totalDeleted += serverFlights;
+      await briefPause();
+
+      // 2. Delete local flights with retry logic for database locking
+      try {
+        await db.deleteAllFlightsForUser(userId);
+      } catch (e) {
+        // Retry once after a longer delay if database was locked
+        await Future.delayed(const Duration(milliseconds: 500));
+        await db.deleteAllFlightsForUser(userId);
+      }
+      await briefPause();
+
+      // 3. Delete all aircraft registrations then types
+      final aircraftRegs = await aircraftService.getUserAircraftRegistrations(userId);
+      for (final reg in aircraftRegs) {
+        await aircraftService.deleteUserAircraftRegistration(userId, reg.id);
+      }
+      await briefPause();
+      final aircraftTypes = await aircraftService.getUserAircraftTypes(userId);
+      for (final type in aircraftTypes) {
+        await aircraftService.deleteUserAircraftType(userId, type.id);
+      }
+      totalDeleted += aircraftRegs.length + aircraftTypes.length;
+      await briefPause();
+
+      // 4. Delete all saved pilots
+      final pilots = await pilotService.getSavedPilotsByUserId(userId);
+      for (final pilot in pilots) {
+        await pilotService.deleteSavedPilotByUserId(userId, pilot.name);
+      }
+      totalDeleted += pilots.length;
+      await briefPause();
+
+      // 5. Delete all simulator registrations then types
+      final simRegs = await simulatorService.getUserSimulatorRegistrations(userId);
+      for (final reg in simRegs) {
+        await simulatorService.deleteUserSimulatorRegistration(userId, reg.id);
+      }
+      await briefPause();
+      final simTypes = await simulatorService.getUserSimulatorTypes(userId);
+      for (final type in simTypes) {
+        await simulatorService.deleteUserSimulatorType(userId, type.id);
+      }
+      totalDeleted += simRegs.length + simTypes.length;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Factory reset complete. Deleted $totalDeleted items.'),
+            backgroundColor: AppColors.endorsedGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Reset failed: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isResettingToFactory = false);
       }
     }
   }
@@ -337,7 +683,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'DATA',
                 items: [
                   _SettingsItem(
-                    icon: Icons.upload_outlined,
+                    icon: Icons.download_outlined,
                     title: 'Import Logbook',
                     subtitle: 'Import flights from FlyLog, LogTen, etc.',
                     onTap: () {
@@ -350,7 +696,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                   ),
                   _SettingsItem(
-                    icon: Icons.download_outlined,
+                    icon: Icons.upload_outlined,
                     title: 'Export Logbook',
                     subtitle: 'PDF export with multiple formats',
                     onTap: () {
@@ -406,8 +752,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onTap: _isRefreshing ? null : _refreshReferenceData,
                   ),
                   _SettingsItem(
+                    icon: Icons.restore,
+                    title: 'Reset to Factory Settings',
+                    subtitle: _isResettingToFactory ? 'Resetting...' : 'Remove all user data',
+                    trailing: _isResettingToFactory
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.errorRed,
+                            ),
+                          )
+                        : null,
+                    onTap: _isResettingToFactory ? null : _resetToFactory,
+                  ),
+                  _SettingsItem(
                     icon: Icons.delete_forever,
-                    title: 'Delete All Flights',
+                    title: 'Delete All My Flights',
                     subtitle: _isDeletingFlights ? 'Deleting...' : 'Remove all flights (local & server)',
                     trailing: _isDeletingFlights
                         ? const SizedBox(
@@ -420,6 +782,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           )
                         : null,
                     onTap: _isDeletingFlights ? null : _deleteAllFlights,
+                  ),
+                  _SettingsItem(
+                    icon: Icons.delete_outline,
+                    title: 'Delete All My Aircraft',
+                    subtitle: _isDeletingAircraft ? 'Deleting...' : 'Remove all saved aircraft',
+                    trailing: _isDeletingAircraft
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.errorRed,
+                            ),
+                          )
+                        : null,
+                    onTap: _isDeletingAircraft ? null : _deleteAllAircraft,
+                  ),
+                  _SettingsItem(
+                    icon: Icons.delete_outline,
+                    title: 'Delete All My Pilots',
+                    subtitle: _isDeletingPilots ? 'Deleting...' : 'Remove all saved pilots',
+                    trailing: _isDeletingPilots
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.errorRed,
+                            ),
+                          )
+                        : null,
+                    onTap: _isDeletingPilots ? null : _deleteAllPilots,
+                  ),
+                  _SettingsItem(
+                    icon: Icons.delete_outline,
+                    title: 'Delete All My Simulators',
+                    subtitle: _isDeletingSimulators ? 'Deleting...' : 'Remove all saved simulators',
+                    trailing: _isDeletingSimulators
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.errorRed,
+                            ),
+                          )
+                        : null,
+                    onTap: _isDeletingSimulators ? null : _deleteAllSimulators,
                   ),
                 ],
               ),

@@ -62,13 +62,10 @@ class ExperienceTotals {
       nightMinutes += ft.night;
       ifrMinutes += ft.ifr;
 
-      // Compute PIC/SIC/Dual time from crew roles
-      final creatorCrew = flight.creatorCrew;
-      if (creatorCrew != null) {
-        picMinutes += creatorCrew.roleTimeMinutes('PIC');
-        sicMinutes += creatorCrew.roleTimeMinutes('SIC');
-        dualMinutes += creatorCrew.roleTimeMinutes('DUAL');
-      }
+      // Use direct time fields from FlightTime (stored in database)
+      picMinutes += ft.pic;
+      sicMinutes += ft.sic;
+      dualMinutes += ft.dual;
 
       // Get landings from totalLandings (computed from all crew)
       final landings = flight.totalLandings;

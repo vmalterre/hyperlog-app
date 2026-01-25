@@ -111,7 +111,9 @@ class ImportFlightPreview {
   final String aircraftType;
   final String? aircraftReg;
   final String? simReg;        // Simulator registration (set for sim sessions)
+  final String? simDeviceRaw;  // Original device identifier from CSV (e.g., "B738SIM")
   final bool isSimulator;       // True if this is a simulator session
+  final String? fstdCategory;  // For simulators: FFS, FTD, FNPT, BITD
   final String role;
   final bool isPilotFlying;
   final int takeoffsDay;
@@ -148,7 +150,9 @@ class ImportFlightPreview {
     required this.aircraftType,
     this.aircraftReg,
     this.simReg,
+    this.simDeviceRaw,
     required this.isSimulator,
+    this.fstdCategory,
     required this.role,
     required this.isPilotFlying,
     required this.takeoffsDay,
@@ -186,7 +190,9 @@ class ImportFlightPreview {
       aircraftType: json['aircraftType'] ?? '',
       aircraftReg: json['aircraftReg'],
       simReg: json['simReg'],
+      simDeviceRaw: json['simDeviceRaw'],
       isSimulator: json['isSimulator'] ?? false,
+      fstdCategory: json['fstdCategory'],
       role: json['role'] ?? 'PIC',
       isPilotFlying: json['isPilotFlying'] ?? true,
       takeoffsDay: json['takeoffsDay'] ?? 0,
@@ -230,7 +236,9 @@ class ImportFlightPreview {
         'aircraftType': aircraftType,
         if (aircraftReg != null) 'aircraftReg': aircraftReg,
         if (simReg != null) 'simReg': simReg,
+        if (simDeviceRaw != null) 'simDeviceRaw': simDeviceRaw,
         'isSimulator': isSimulator,
+        if (fstdCategory != null) 'fstdCategory': fstdCategory,
         'role': role,
         'isPilotFlying': isPilotFlying,
         'takeoffsDay': takeoffsDay,
@@ -576,6 +584,14 @@ class ImportReport {
   final int totalFlightTime;
   final List<String> flightIds;
   final List<String> errors;
+  // Aircraft stats (derived from imported flights)
+  final int aircraftTypesCount;
+  final int aircraftRegistrationsCount;
+  // Simulator stats (derived from imported flights)
+  final int simulatorSessionsCount;
+  final int simulatorTypesCount;
+  final int simulatorRegistrationsCount;
+  final int simulatorTime;
 
   const ImportReport({
     required this.success,
@@ -585,6 +601,12 @@ class ImportReport {
     required this.totalFlightTime,
     required this.flightIds,
     required this.errors,
+    this.aircraftTypesCount = 0,
+    this.aircraftRegistrationsCount = 0,
+    this.simulatorSessionsCount = 0,
+    this.simulatorTypesCount = 0,
+    this.simulatorRegistrationsCount = 0,
+    this.simulatorTime = 0,
   });
 
   factory ImportReport.fromJson(Map<String, dynamic> json) {
@@ -596,6 +618,59 @@ class ImportReport {
       totalFlightTime: json['totalFlightTime'] ?? 0,
       flightIds: (json['flightIds'] as List<dynamic>?)?.cast<String>() ?? [],
       errors: (json['errors'] as List<dynamic>?)?.cast<String>() ?? [],
+      aircraftTypesCount: json['aircraftTypesCount'] ?? 0,
+      aircraftRegistrationsCount: json['aircraftRegistrationsCount'] ?? 0,
+      simulatorSessionsCount: json['simulatorSessionsCount'] ?? 0,
+      simulatorTypesCount: json['simulatorTypesCount'] ?? 0,
+      simulatorRegistrationsCount: json['simulatorRegistrationsCount'] ?? 0,
+      simulatorTime: json['simulatorTime'] ?? 0,
+    );
+  }
+
+  /// Create report with stats derived from the imported flights
+  factory ImportReport.fromJsonWithFlightStats(
+    Map<String, dynamic> json,
+    List<ImportFlightPreview> importedFlights,
+  ) {
+    // Calculate aircraft stats
+    final aircraftTypes = <String>{};
+    final aircraftRegs = <String>{};
+    final simTypes = <String>{};
+    final simRegs = <String>{};
+    int simSessions = 0;
+    int simTime = 0;
+
+    for (final flight in importedFlights) {
+      if (flight.isSimulator) {
+        simSessions++;
+        simTime += flight.timeTotal;
+        // Simulator type is the aircraftType field (e.g., "FNPT II", "FTD FRASCA141")
+        simTypes.add(flight.aircraftType);
+        if (flight.simReg != null && flight.simReg!.isNotEmpty) {
+          simRegs.add(flight.simReg!);
+        }
+      } else {
+        aircraftTypes.add(flight.aircraftType);
+        if (flight.aircraftReg != null && flight.aircraftReg!.isNotEmpty) {
+          aircraftRegs.add(flight.aircraftReg!);
+        }
+      }
+    }
+
+    return ImportReport(
+      success: json['success'] ?? false,
+      imported: json['imported'] ?? 0,
+      skipped: json['skipped'] ?? 0,
+      crewCreated: json['crewCreated'] ?? 0,
+      totalFlightTime: json['totalFlightTime'] ?? 0,
+      flightIds: (json['flightIds'] as List<dynamic>?)?.cast<String>() ?? [],
+      errors: (json['errors'] as List<dynamic>?)?.cast<String>() ?? [],
+      aircraftTypesCount: aircraftTypes.length,
+      aircraftRegistrationsCount: aircraftRegs.length,
+      simulatorSessionsCount: simSessions,
+      simulatorTypesCount: simTypes.length,
+      simulatorRegistrationsCount: simRegs.length,
+      simulatorTime: simTime,
     );
   }
 
@@ -605,4 +680,14 @@ class ImportReport {
     final minutes = totalFlightTime % 60;
     return '${hours}h ${minutes.toString().padLeft(2, '0')}m';
   }
+
+  /// Formatted simulator time
+  String get formattedSimulatorTime {
+    final hours = simulatorTime ~/ 60;
+    final minutes = simulatorTime % 60;
+    return '${hours}h ${minutes.toString().padLeft(2, '0')}m';
+  }
+
+  /// Number of actual flights (excluding simulators)
+  int get flightsCount => imported - simulatorSessionsCount;
 }

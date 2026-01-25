@@ -62,9 +62,12 @@ extension FstdCategoryExtension on FstdCategory {
 class UserSimulatorType {
   final String id;
   final String pilotId;
-  final int aircraftTypeId;
+  final int? aircraftTypeId; // Nullable for generic training devices (FNPT, BITD)
   final FstdCategory fstdCategory;
   final String? fstdLevel;
+  final String? deviceName; // Device identifier for training devices (e.g., FRASCA142, FNPT2)
+  final String? deviceManufacturer; // Device brand (e.g., FRASCA, Redbird, Alsim)
+  final String? deviceModel; // Device model (e.g., 141, 142, TD2)
   final String? notes;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -74,9 +77,12 @@ class UserSimulatorType {
   UserSimulatorType({
     required this.id,
     required this.pilotId,
-    required this.aircraftTypeId,
+    this.aircraftTypeId,
     required this.fstdCategory,
     this.fstdLevel,
+    this.deviceName,
+    this.deviceManufacturer,
+    this.deviceModel,
     this.notes,
     required this.createdAt,
     required this.updatedAt,
@@ -88,9 +94,12 @@ class UserSimulatorType {
     return UserSimulatorType(
       id: json['id'] as String,
       pilotId: json['pilotId'] as String,
-      aircraftTypeId: json['aircraftTypeId'] as int,
+      aircraftTypeId: json['aircraftTypeId'] as int?,
       fstdCategory: _parseCategory(json['fstdCategory'] as String),
       fstdLevel: json['fstdLevel'] as String?,
+      deviceName: json['deviceName'] as String?,
+      deviceManufacturer: json['deviceManufacturer'] as String?,
+      deviceModel: json['deviceModel'] as String?,
       notes: json['notes'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
@@ -123,9 +132,12 @@ class UserSimulatorType {
   Map<String, dynamic> toJson() => {
         'id': id,
         'pilotId': pilotId,
-        'aircraftTypeId': aircraftTypeId,
+        if (aircraftTypeId != null) 'aircraftTypeId': aircraftTypeId,
         'fstdCategory': categoryToString(fstdCategory),
         if (fstdLevel != null) 'fstdLevel': fstdLevel,
+        if (deviceName != null) 'deviceName': deviceName,
+        if (deviceManufacturer != null) 'deviceManufacturer': deviceManufacturer,
+        if (deviceModel != null) 'deviceModel': deviceModel,
         if (notes != null) 'notes': notes,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
@@ -141,10 +153,29 @@ class UserSimulatorType {
     return fstdCategory.displayName;
   }
 
-  /// Short display name: "FFS-D B738" or "FNPT-II C172"
+  /// Short display name: "<Category> <Level> <Brand> <Model>"
+  /// Examples: "FNPT II", "FTD FRASCA Mentor", "FFS D"
   String get displayName {
-    final icao = aircraftType?.icaoDesignator ?? '';
-    return icao.isNotEmpty ? '$categoryLevelDisplay $icao' : categoryLevelDisplay;
+    final parts = <String>[fstdCategory.displayName];
+
+    // Add qualification level if present
+    if (fstdLevel != null && fstdLevel!.isNotEmpty) {
+      parts.add(fstdLevel!);
+    }
+
+    // Add brand (device manufacturer) if present
+    if (deviceManufacturer != null && deviceManufacturer!.isNotEmpty) {
+      parts.add(deviceManufacturer!);
+    }
+
+    // Add model (device model) if present, but skip if it's the same as fstdLevel
+    if (deviceModel != null &&
+        deviceModel!.isNotEmpty &&
+        deviceModel != fstdLevel) {
+      parts.add(deviceModel!);
+    }
+
+    return parts.join(' ');
   }
 
   /// Full display name: "FFS-D Boeing 737-800"
@@ -160,7 +191,10 @@ class UserSimulatorType {
     if (aircraftType != null) {
       return '${aircraftType!.manufacturer} ${aircraftType!.model}';
     }
-    return 'Unknown Type ($aircraftTypeId)';
+    if (aircraftTypeId != null) {
+      return 'Unknown Type ($aircraftTypeId)';
+    }
+    return 'Generic Device';
   }
 
   /// ICAO designator from the joined aircraft type
@@ -171,6 +205,9 @@ class UserSimulatorType {
     int? aircraftTypeId,
     FstdCategory? fstdCategory,
     String? fstdLevel,
+    String? deviceName,
+    String? deviceManufacturer,
+    String? deviceModel,
     String? notes,
     AircraftType? aircraftType,
   }) {
@@ -180,6 +217,9 @@ class UserSimulatorType {
       aircraftTypeId: aircraftTypeId ?? this.aircraftTypeId,
       fstdCategory: fstdCategory ?? this.fstdCategory,
       fstdLevel: fstdLevel ?? this.fstdLevel,
+      deviceName: deviceName ?? this.deviceName,
+      deviceManufacturer: deviceManufacturer ?? this.deviceManufacturer,
+      deviceModel: deviceModel ?? this.deviceModel,
       notes: notes ?? this.notes,
       createdAt: createdAt,
       updatedAt: updatedAt,

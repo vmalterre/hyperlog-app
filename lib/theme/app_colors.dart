@@ -27,6 +27,9 @@ class AppColors {
   // Status Colors
   static const Color errorRed = Color(0xFFEF4444);
 
+  // Category Colors
+  static const Color simulatorPurple = Color(0xFF8B5CF6);
+
   // Common opacity variants for glass-morphism
   static Color glass50 = nightRider.withValues(alpha: 0.5);
   static Color glassDark50 = nightRiderDark.withValues(alpha: 0.5);
@@ -51,4 +54,8 @@ class AppColors {
   // Denim accents
   static Color denimBg = denim.withValues(alpha: 0.15);
   static Color denimBorder = denim.withValues(alpha: 0.3);
+
+  // Simulator accents
+  static Color simulatorBg = simulatorPurple.withValues(alpha: 0.15);
+  static Color simulatorBorder = simulatorPurple.withValues(alpha: 0.3);
 }

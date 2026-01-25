@@ -92,7 +92,7 @@ class _MySimulatorsScreenState extends State<MySimulatorsScreen> {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => const AddSimulatorTypeScreen(),
+        builder: (_) => const SimulatorTypeEditorScreen(),
       ),
     );
 
@@ -360,70 +360,70 @@ class _SimulatorTypeCard extends StatelessWidget {
 
 class _RegistrationCard extends StatelessWidget {
   final UserSimulatorRegistration registration;
-  final VoidCallback onDelete;
+  final VoidCallback onTap;
 
   const _RegistrationCard({
     required this.registration,
-    required this.onDelete,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GlassContainer(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          // Icon
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.denim.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Row(
+          children: [
+            // Icon
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.denim.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.desktop_windows_outlined,
+                color: AppColors.denim,
+                size: 24,
+              ),
             ),
-            child: const Icon(
-              Icons.desktop_windows_outlined,
-              color: AppColors.denim,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
+            const SizedBox(width: 16),
 
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  registration.registration,
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (registration.trainingFacility != null &&
-                    registration.trainingFacility!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    '@ ${registration.trainingFacility}',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.whiteDarker,
+                    registration.registration,
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.w600,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
+                  if (registration.trainingFacility != null &&
+                      registration.trainingFacility!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '@ ${registration.trainingFacility}',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.whiteDarker,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
 
-          // Delete button
-          IconButton(
-            icon: Icon(Icons.delete_outline, color: AppColors.errorRed, size: 20),
-            onPressed: onDelete,
-            tooltip: 'Delete',
-          ),
-        ],
+            // Edit icon
+            Icon(Icons.edit_outlined, color: AppColors.denim, size: 20),
+          ],
+        ),
       ),
     );
   }
@@ -470,7 +470,7 @@ class _SimulatorTypeDetailScreenState extends State<SimulatorTypeDetailScreen> {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => EditSimulatorTypeScreen(simulatorType: _simulatorType),
+        builder: (_) => SimulatorTypeEditorScreen(simulatorType: _simulatorType),
       ),
     );
 
@@ -619,65 +619,26 @@ class _SimulatorTypeDetailScreenState extends State<SimulatorTypeDetailScreen> {
     }
   }
 
-  Future<void> _deleteRegistration(UserSimulatorRegistration reg) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.nightRiderDark,
-        title: Text(
-          'Delete Simulator?',
-          style: AppTypography.h4.copyWith(color: AppColors.white),
-        ),
-        content: Text(
-          'Are you sure you want to delete "${reg.registration}"?',
-          style: AppTypography.body.copyWith(color: AppColors.whiteDark),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancel',
-              style: AppTypography.button.copyWith(color: AppColors.whiteDarker),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'Delete',
-              style: AppTypography.button.copyWith(color: AppColors.errorRed),
-            ),
-          ),
-        ],
+  Future<void> _editRegistration(UserSimulatorRegistration reg) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditSimulatorRegistrationScreen(registration: reg),
       ),
     );
 
-    if (confirmed != true) return;
-
-    final userId = _userId;
-    if (userId == null || userId.isEmpty) return;
-
-    try {
-      await _simulatorService.deleteUserSimulatorRegistration(userId, reg.id);
+    if (result == true) {
       _hasChanges = true;
-      if (mounted) {
-        setState(() {
-          _registrations.removeWhere((r) => r.id == reg.id);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Deleted "${reg.registration}"'),
-            backgroundColor: AppColors.nightRiderLight,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete: $e'),
-            backgroundColor: AppColors.errorRed,
-          ),
-        );
+      // Reload registrations
+      final userId = _userId;
+      if (userId != null) {
+        try {
+          final regs = await _simulatorService.getUserSimulatorRegistrations(userId);
+          final filteredRegs = regs.where((r) => r.userSimulatorTypeId == _simulatorType.id).toList();
+          if (mounted) {
+            setState(() => _registrations = filteredRegs);
+          }
+        } catch (_) {}
       }
     }
   }
@@ -778,7 +739,7 @@ class _SimulatorTypeDetailScreenState extends State<SimulatorTypeDetailScreen> {
               else
                 ..._registrations.map((reg) => _RegistrationCard(
                   registration: reg,
-                  onDelete: () => _deleteRegistration(reg),
+                  onTap: () => _editRegistration(reg),
                 )),
             ],
           ),
@@ -833,19 +794,27 @@ class _SimulatorTypeDetailScreenState extends State<SimulatorTypeDetailScreen> {
 }
 
 // ===========================================================================
-// Add Simulator Type Screen
+// Simulator Type Editor Screen (Add/Edit unified)
 // ===========================================================================
 
-class AddSimulatorTypeScreen extends StatefulWidget {
-  const AddSimulatorTypeScreen({super.key});
+class SimulatorTypeEditorScreen extends StatefulWidget {
+  /// If provided, we're editing an existing type. If null, we're adding a new one.
+  final UserSimulatorType? simulatorType;
+
+  const SimulatorTypeEditorScreen({
+    super.key,
+    this.simulatorType,
+  });
 
   @override
-  State<AddSimulatorTypeScreen> createState() => _AddSimulatorTypeScreenState();
+  State<SimulatorTypeEditorScreen> createState() => _SimulatorTypeEditorScreenState();
 }
 
-class _AddSimulatorTypeScreenState extends State<AddSimulatorTypeScreen> {
+class _SimulatorTypeEditorScreenState extends State<SimulatorTypeEditorScreen> {
   final SimulatorService _simulatorService = SimulatorService();
   final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _manufacturerController = TextEditingController();
+  final TextEditingController _modelController = TextEditingController();
 
   AircraftType? _selectedAircraftType;
   FstdCategory _selectedCategory = FstdCategory.ffs;
@@ -853,13 +822,31 @@ class _AddSimulatorTypeScreenState extends State<AddSimulatorTypeScreen> {
   bool _isSaving = false;
   String? _error;
 
+  bool get _isEditMode => widget.simulatorType != null;
+
   String? get _userId {
     return Provider.of<SessionState>(context, listen: false).userId;
   }
 
   @override
+  void initState() {
+    super.initState();
+    if (_isEditMode) {
+      final type = widget.simulatorType!;
+      _selectedCategory = type.fstdCategory;
+      _selectedLevel = type.fstdLevel;
+      _selectedAircraftType = type.aircraftType;
+      _notesController.text = type.notes ?? '';
+      _manufacturerController.text = type.deviceManufacturer ?? '';
+      _modelController.text = type.deviceModel ?? '';
+    }
+  }
+
+  @override
   void dispose() {
     _notesController.dispose();
+    _manufacturerController.dispose();
+    _modelController.dispose();
     super.dispose();
   }
 
@@ -874,26 +861,48 @@ class _AddSimulatorTypeScreenState extends State<AddSimulatorTypeScreen> {
     final userId = _userId;
     if (userId == null || userId.isEmpty) return;
 
-    if (_selectedAircraftType == null) {
-      setState(() => _error = 'Select an aircraft type');
-      return;
-    }
-
     setState(() {
       _isSaving = true;
       _error = null;
     });
 
     try {
-      await _simulatorService.addUserSimulatorType(
-        userId,
-        _selectedAircraftType!.id,
-        _selectedCategory,
-        fstdLevel: _selectedLevel,
-        notes: _notesController.text.trim().isEmpty
-            ? null
-            : _notesController.text.trim(),
-      );
+      if (_isEditMode) {
+        // Update existing
+        await _simulatorService.updateUserSimulatorType(
+          userId,
+          widget.simulatorType!.id,
+          aircraftTypeId: _selectedAircraftType?.id,
+          fstdCategory: _selectedCategory,
+          fstdLevel: _selectedLevel,
+          deviceManufacturer: _manufacturerController.text.trim().isEmpty
+              ? null
+              : _manufacturerController.text.trim(),
+          deviceModel: _modelController.text.trim().isEmpty
+              ? null
+              : _modelController.text.trim(),
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
+        );
+      } else {
+        // Create new
+        await _simulatorService.addUserSimulatorType(
+          userId,
+          _selectedAircraftType?.id,
+          _selectedCategory,
+          fstdLevel: _selectedLevel,
+          deviceManufacturer: _manufacturerController.text.trim().isEmpty
+              ? null
+              : _manufacturerController.text.trim(),
+          deviceModel: _modelController.text.trim().isEmpty
+              ? null
+              : _modelController.text.trim(),
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
+        );
+      }
       if (mounted) {
         Navigator.pop(context, true);
       }
@@ -914,7 +923,10 @@ class _AddSimulatorTypeScreenState extends State<AddSimulatorTypeScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.nightRider,
         elevation: 0,
-        title: Text('Add Simulator Type', style: AppTypography.h3),
+        title: Text(
+          _isEditMode ? 'Edit Simulator Type' : 'Add Simulator Type',
+          style: AppTypography.h3,
+        ),
         centerTitle: true,
         actions: [
           TextButton(
@@ -945,20 +957,6 @@ class _AddSimulatorTypeScreenState extends State<AddSimulatorTypeScreen> {
               const SizedBox(height: 16),
             ],
 
-            // Aircraft Type
-            Text(
-              'AIRCRAFT TYPE',
-              style: AppTypography.label,
-            ),
-            const SizedBox(height: 8),
-            _buildAircraftTypeSelector(),
-            const SizedBox(height: 8),
-            Text(
-              'Select the aircraft type this simulator represents',
-              style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
-            ),
-            const SizedBox(height: 24),
-
             // FSTD Category
             Text(
               'FSTD CATEGORY',
@@ -980,6 +978,20 @@ class _AddSimulatorTypeScreenState extends State<AddSimulatorTypeScreen> {
             ),
             const SizedBox(height: 24),
 
+            // Aircraft Type
+            Text(
+              'AIRCRAFT TYPE (OPTIONAL)',
+              style: AppTypography.label,
+            ),
+            const SizedBox(height: 8),
+            _buildAircraftTypeSelector(),
+            const SizedBox(height: 8),
+            Text(
+              'The aircraft type this simulator represents (optional for generic training devices)',
+              style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
+            ),
+            const SizedBox(height: 24),
+
             // FSTD Level (if applicable)
             if (_selectedCategory.hasLevels) ...[
               Text(
@@ -994,6 +1006,42 @@ class _AddSimulatorTypeScreenState extends State<AddSimulatorTypeScreen> {
               ),
               const SizedBox(height: 24),
             ],
+
+            // Device Manufacturer (Brand)
+            Text(
+              'DEVICE BRAND (OPTIONAL)',
+              style: AppTypography.label,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _manufacturerController,
+              style: AppTypography.body.copyWith(color: AppColors.white),
+              decoration: _inputDecoration(hintText: 'e.g. FRASCA, Redbird, Alsim'),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'The manufacturer or brand of the simulator device',
+              style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
+            ),
+            const SizedBox(height: 24),
+
+            // Device Model
+            Text(
+              'DEVICE MODEL (OPTIONAL)',
+              style: AppTypography.label,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _modelController,
+              style: AppTypography.body.copyWith(color: AppColors.white),
+              decoration: _inputDecoration(hintText: 'e.g. 141, 142, TD2, MCX'),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'The model number or name of the device',
+              style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
+            ),
+            const SizedBox(height: 24),
 
             // Notes
             Text(
@@ -1087,17 +1135,25 @@ class _AddSimulatorTypeScreenState extends State<AddSimulatorTypeScreen> {
                       ],
                     )
                   : Text(
-                      'Select aircraft type',
+                      'Select aircraft type (optional)',
                       style: AppTypography.body.copyWith(
                         color: AppColors.whiteDarker,
                       ),
                     ),
             ),
-            Icon(
-              Icons.search,
-              color: AppColors.whiteDarker,
-              size: 20,
-            ),
+            if (_selectedAircraftType != null)
+              IconButton(
+                icon: Icon(Icons.close, color: AppColors.whiteDarker, size: 20),
+                onPressed: () => setState(() => _selectedAircraftType = null),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              )
+            else
+              Icon(
+                Icons.search,
+                color: AppColors.whiteDarker,
+                size: 20,
+              ),
           ],
         ),
       ),
@@ -1126,206 +1182,6 @@ class _AddSimulatorTypeScreenState extends State<AddSimulatorTypeScreen> {
   }
 }
 
-// ===========================================================================
-// Edit Simulator Type Screen
-// ===========================================================================
-
-class EditSimulatorTypeScreen extends StatefulWidget {
-  final UserSimulatorType simulatorType;
-
-  const EditSimulatorTypeScreen({
-    super.key,
-    required this.simulatorType,
-  });
-
-  @override
-  State<EditSimulatorTypeScreen> createState() => _EditSimulatorTypeScreenState();
-}
-
-class _EditSimulatorTypeScreenState extends State<EditSimulatorTypeScreen> {
-  final SimulatorService _simulatorService = SimulatorService();
-  final TextEditingController _notesController = TextEditingController();
-
-  late FstdCategory _selectedCategory;
-  String? _selectedLevel;
-  bool _isSaving = false;
-
-  String? get _userId {
-    return Provider.of<SessionState>(context, listen: false).userId;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedCategory = widget.simulatorType.fstdCategory;
-    _selectedLevel = widget.simulatorType.fstdLevel;
-    _notesController.text = widget.simulatorType.notes ?? '';
-  }
-
-  @override
-  void dispose() {
-    _notesController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final userId = _userId;
-    if (userId == null || userId.isEmpty) return;
-
-    setState(() => _isSaving = true);
-
-    try {
-      await _simulatorService.updateUserSimulatorType(
-        userId,
-        widget.simulatorType.id,
-        fstdCategory: _selectedCategory,
-        fstdLevel: _selectedLevel,
-        notes: _notesController.text.trim().isEmpty
-            ? null
-            : _notesController.text.trim(),
-      );
-      if (mounted) {
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save: $e'),
-            backgroundColor: AppColors.errorRed,
-          ),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.nightRider,
-      appBar: AppBar(
-        backgroundColor: AppColors.nightRider,
-        elevation: 0,
-        title: Text('Edit Simulator Type', style: AppTypography.h3),
-        centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: _isSaving ? null : _save,
-            child: _isSaving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.denim,
-                    ),
-                  )
-                : Text(
-                    'Save',
-                    style: AppTypography.button.copyWith(color: AppColors.denim),
-                  ),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Aircraft info header (read-only)
-            GlassContainer(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.simulatorType.icaoDesignator,
-                    style: AppTypography.h2(context),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.simulatorType.aircraftTypeDisplay,
-                    style: AppTypography.body.copyWith(color: AppColors.whiteDark),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // FSTD Category
-            Text(
-              'FSTD CATEGORY',
-              style: AppTypography.label,
-            ),
-            const SizedBox(height: 12),
-            _FstdCategorySelector(
-              value: _selectedCategory,
-              onChanged: (value) {
-                setState(() {
-                  _selectedCategory = value;
-                  if (_selectedLevel != null &&
-                      !value.validLevels.contains(_selectedLevel)) {
-                    _selectedLevel = null;
-                  }
-                });
-              },
-            ),
-            const SizedBox(height: 24),
-
-            // FSTD Level (if applicable)
-            if (_selectedCategory.hasLevels) ...[
-              Text(
-                'QUALIFICATION LEVEL',
-                style: AppTypography.label,
-              ),
-              const SizedBox(height: 12),
-              _FstdLevelSelector(
-                category: _selectedCategory,
-                value: _selectedLevel,
-                onChanged: (value) => setState(() => _selectedLevel = value),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Notes
-            Text(
-              'NOTES (OPTIONAL)',
-              style: AppTypography.label,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _notesController,
-              style: AppTypography.body.copyWith(color: AppColors.white),
-              maxLines: 3,
-              decoration: _inputDecoration(hintText: 'Any additional notes'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration({required String hintText}) {
-    return InputDecoration(
-      hintText: hintText,
-      hintStyle: AppTypography.body.copyWith(color: AppColors.whiteDarker),
-      filled: true,
-      fillColor: AppColors.nightRiderDark,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppColors.borderSubtle),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppColors.borderSubtle),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.denim),
-      ),
-    );
-  }
-}
 
 // ===========================================================================
 // Add Simulator Registration Screen
@@ -1638,6 +1494,340 @@ class _AddSimulatorRegistrationScreenState extends State<AddSimulatorRegistratio
               style: AppTypography.caption.copyWith(color: AppColors.whiteDarker),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// Edit Simulator Registration Screen
+// ===========================================================================
+
+class EditSimulatorRegistrationScreen extends StatefulWidget {
+  final UserSimulatorRegistration registration;
+
+  const EditSimulatorRegistrationScreen({
+    super.key,
+    required this.registration,
+  });
+
+  @override
+  State<EditSimulatorRegistrationScreen> createState() => _EditSimulatorRegistrationScreenState();
+}
+
+class _EditSimulatorRegistrationScreenState extends State<EditSimulatorRegistrationScreen> {
+  final SimulatorService _simulatorService = SimulatorService();
+  final TextEditingController _regController = TextEditingController();
+  final TextEditingController _facilityController = TextEditingController();
+
+  bool _isSaving = false;
+  String? _error;
+
+  String? get _userId {
+    return Provider.of<SessionState>(context, listen: false).userId;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _regController.text = widget.registration.registration;
+    _facilityController.text = widget.registration.trainingFacility ?? '';
+  }
+
+  @override
+  void dispose() {
+    _regController.dispose();
+    _facilityController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return;
+
+    final reg = _regController.text.trim().toUpperCase();
+    if (reg.isEmpty) {
+      setState(() => _error = 'Device ID is required');
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _error = null;
+    });
+
+    try {
+      await _simulatorService.updateUserSimulatorRegistration(
+        userId,
+        widget.registration.id,
+        registration: reg,
+        trainingFacility: _facilityController.text.trim().isEmpty
+            ? null
+            : _facilityController.text.trim(),
+      );
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _error = e.toString();
+        });
+      }
+    }
+  }
+
+  Future<void> _delete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.nightRiderDark,
+        title: Text(
+          'Delete Simulator?',
+          style: AppTypography.h4.copyWith(color: AppColors.white),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${widget.registration.registration}"?',
+          style: AppTypography.body.copyWith(color: AppColors.whiteDark),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancel',
+              style: AppTypography.button.copyWith(color: AppColors.whiteDarker),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Delete',
+              style: AppTypography.button.copyWith(color: AppColors.errorRed),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return;
+
+    try {
+      await _simulatorService.deleteUserSimulatorRegistration(userId, widget.registration.id);
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.nightRider,
+      appBar: AppBar(
+        backgroundColor: AppColors.nightRider,
+        elevation: 0,
+        title: Text('Edit Simulator', style: AppTypography.h3),
+        centerTitle: true,
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : _save,
+            child: _isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.denim,
+                    ),
+                  )
+                : Text(
+                    'Save',
+                    style: AppTypography.button.copyWith(color: AppColors.denim),
+                  ),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_error != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.errorRed.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.errorRed.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      color: AppColors.errorRed,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _error!,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.errorRed,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Simulator type info (read-only)
+            if (widget.registration.simulatorType != null) ...[
+              Text(
+                'SIMULATOR TYPE',
+                style: AppTypography.label,
+              ),
+              const SizedBox(height: 8),
+              GlassContainer(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.denim.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.desktop_windows_outlined,
+                        color: AppColors.denim,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.registration.simulatorType!.displayName,
+                            style: AppTypography.body.copyWith(
+                              color: AppColors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.registration.simulatorType!.aircraftTypeDisplay,
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.whiteDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            Text(
+              'DEVICE ID',
+              style: AppTypography.label,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _regController,
+              textCapitalization: TextCapitalization.characters,
+              style: AppTypography.body.copyWith(color: AppColors.white),
+              decoration: InputDecoration(
+                hintText: 'e.g. FR-123, D-SIM01',
+                hintStyle: AppTypography.body.copyWith(color: AppColors.whiteDarker),
+                filled: true,
+                fillColor: AppColors.nightRiderDark,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.borderSubtle),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.borderSubtle),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.denim),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            Text(
+              'TRAINING FACILITY (OPTIONAL)',
+              style: AppTypography.label,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _facilityController,
+              style: AppTypography.body.copyWith(color: AppColors.white),
+              decoration: InputDecoration(
+                hintText: 'e.g. CAE London Gatwick, Sim Aero CDG',
+                hintStyle: AppTypography.body.copyWith(color: AppColors.whiteDarker),
+                filled: true,
+                fillColor: AppColors.nightRiderDark,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.borderSubtle),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.borderSubtle),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.denim),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: OutlinedButton.icon(
+            onPressed: _delete,
+            icon: Icon(Icons.delete_outline, color: AppColors.errorRed),
+            label: Text(
+              'Delete Simulator',
+              style: AppTypography.button.copyWith(color: AppColors.errorRed),
+            ),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              side: BorderSide(color: AppColors.errorRed.withValues(alpha: 0.5)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
         ),
       ),
     );

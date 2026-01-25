@@ -118,7 +118,7 @@ class ImportService {
       );
 
       final data = _handleResponse(response);
-      return ImportReport.fromJson(data['data']);
+      return ImportReport.fromJsonWithFlightStats(data['data'], flights);
     } on SocketException {
       throw ApiException(message: 'Network error. Please check your connection.');
     } on http.ClientException {

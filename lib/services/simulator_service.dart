@@ -70,16 +70,20 @@ class SimulatorService {
   /// Add a simulator type to user's list
   Future<UserSimulatorType> addUserSimulatorType(
     String userId,
-    int aircraftTypeId,
+    int? aircraftTypeId,
     FstdCategory fstdCategory, {
     String? fstdLevel,
+    String? deviceManufacturer,
+    String? deviceModel,
     String? notes,
   }) async {
     try {
       final body = <String, dynamic>{
-        'aircraftTypeId': aircraftTypeId,
+        if (aircraftTypeId != null) 'aircraftTypeId': aircraftTypeId,
         'fstdCategory': UserSimulatorType.categoryToString(fstdCategory),
         if (fstdLevel != null) 'fstdLevel': fstdLevel,
+        if (deviceManufacturer != null) 'deviceManufacturer': deviceManufacturer,
+        if (deviceModel != null) 'deviceModel': deviceModel,
         if (notes != null) 'notes': notes,
       };
 
@@ -106,21 +110,27 @@ class SimulatorService {
   }
 
   /// Update a user simulator type
+  ///
+  /// Pass explicit null values to clear optional fields.
+  /// Only fields included in the request will be updated.
   Future<UserSimulatorType> updateUserSimulatorType(
     String userId,
     String id, {
-    int? aircraftTypeId,
-    FstdCategory? fstdCategory,
-    String? fstdLevel,
-    String? notes,
+    required int? aircraftTypeId,
+    required FstdCategory fstdCategory,
+    required String? fstdLevel,
+    required String? deviceManufacturer,
+    required String? deviceModel,
+    required String? notes,
   }) async {
     try {
       final body = <String, dynamic>{
-        if (aircraftTypeId != null) 'aircraftTypeId': aircraftTypeId,
-        if (fstdCategory != null)
-          'fstdCategory': UserSimulatorType.categoryToString(fstdCategory),
-        if (fstdLevel != null) 'fstdLevel': fstdLevel,
-        if (notes != null) 'notes': notes,
+        'aircraftTypeId': aircraftTypeId,  // Send null to clear
+        'fstdCategory': UserSimulatorType.categoryToString(fstdCategory),
+        'fstdLevel': fstdLevel,  // Send null to clear
+        'deviceManufacturer': deviceManufacturer,  // Send null to clear
+        'deviceModel': deviceModel,  // Send null to clear
+        'notes': notes,  // Send null to clear
       };
 
       final response = await _api.put(

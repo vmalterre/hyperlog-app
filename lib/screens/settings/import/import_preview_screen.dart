@@ -23,6 +23,7 @@ class ImportPreviewScreen extends StatefulWidget {
 
 class _ImportPreviewScreenState extends State<ImportPreviewScreen> {
   bool _isImporting = false;
+  String _importStatus = '';
   String? _error;
   final _importService = ImportService();
 
@@ -120,18 +121,41 @@ class _ImportPreviewScreenState extends State<ImportPreviewScreen> {
 
     setState(() {
       _isImporting = true;
+      _importStatus = 'Preparing import...';
       _error = null;
     });
 
     try {
-      final report = await _importService.executeImport(
+      // Simulate phase progression while the API call runs
+      final phases = [
+        (delay: 800, status: 'Creating crew members...'),
+        (delay: 1200, status: 'Setting up aircraft...'),
+        (delay: 1000, status: 'Setting up simulators...'),
+        (delay: 1500, status: 'Importing flights...'),
+      ];
+
+      // Start the actual import
+      final importFuture = _importService.executeImport(
         userId: userId,
         provider: widget.analysis.provider,
         flights: widget.analysis.ready,
         createCrewMembers: _selectedNewCrew.toList(),
       );
 
+      // Run phase updates concurrently with the import
+      _runPhaseUpdates(phases);
+
+      // Wait for the actual import to complete
+      final report = await importFuture;
+
       if (mounted) {
+        setState(() {
+          _importStatus = 'Finalizing...';
+        });
+
+        // Brief pause to show finalizing message
+        await Future.delayed(const Duration(milliseconds: 300));
+
         // Replace current screen with report screen
         Navigator.pushReplacement(
           context,
@@ -150,7 +174,21 @@ class _ImportPreviewScreenState extends State<ImportPreviewScreen> {
       if (mounted) {
         setState(() {
           _isImporting = false;
+          _importStatus = '';
         });
+      }
+    }
+  }
+
+  Future<void> _runPhaseUpdates(List<({int delay, String status})> phases) async {
+    for (final phase in phases) {
+      await Future.delayed(Duration(milliseconds: phase.delay));
+      if (mounted && _isImporting) {
+        setState(() {
+          _importStatus = phase.status;
+        });
+      } else {
+        break;
       }
     }
   }
@@ -418,16 +456,20 @@ class _ImportPreviewScreenState extends State<ImportPreviewScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  PrimaryButton(
-                    label: 'Import ${analysis.ready.length} ${analysis.ready.length == 1 ? 'Entry' : 'Entries'}',
-                    icon: Icons.download,
-                    fullWidth: true,
-                    isLoading: _isImporting,
-                    onPressed: analysis.ready.isNotEmpty ? _executeImport : null,
-                  ),
+                  if (_isImporting)
+                    _ImportProgressIndicator(status: _importStatus)
+                  else
+                    PrimaryButton(
+                      label: 'Import ${analysis.ready.length} ${analysis.ready.length == 1 ? 'Entry' : 'Entries'}',
+                      icon: Icons.download,
+                      fullWidth: true,
+                      onPressed: analysis.ready.isNotEmpty ? _executeImport : null,
+                    ),
                   const SizedBox(height: 8),
                   Text(
-                    'Entries will be added to your Standard tier logbook.',
+                    _isImporting
+                        ? 'Please wait while we process your data...'
+                        : 'Entries will be added to your Standard tier logbook.',
                     style: AppTypography.caption.copyWith(
                       color: AppColors.whiteDarker,
                     ),
@@ -1184,6 +1226,54 @@ class _FlightPreviewTile extends StatelessWidget {
                 color: AppColors.denim,
               ),
               textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Import progress indicator with animated status text
+class _ImportProgressIndicator extends StatelessWidget {
+  final String status;
+
+  const _ImportProgressIndicator({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+      decoration: BoxDecoration(
+        color: AppColors.denim.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.denim.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.denim,
+            ),
+          ),
+          const SizedBox(width: 16),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: Text(
+              status,
+              key: ValueKey(status),
+              style: AppTypography.body.copyWith(
+                color: AppColors.white,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],

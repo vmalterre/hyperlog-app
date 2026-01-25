@@ -630,6 +630,11 @@ class LogbookEntry {
   final String? simReg;               // Simulator registration (mutually exclusive with aircraftReg)
   final FlightTime flightTime;
   final bool isPilotFlying;         // true = PF (can log landings), false = PM
+  // Direct landing/takeoff counts (standard tier - stored on entry, not crew)
+  final int landingsDay;
+  final int landingsNight;
+  final int takeoffsDay;
+  final int takeoffsNight;
   final Approaches approaches;      // Approaches by type (only for PF)
   final List<CrewMember> crew;
   final List<Verification> verifications;
@@ -658,6 +663,10 @@ class LogbookEntry {
     this.simReg,
     required this.flightTime,
     this.isPilotFlying = true,
+    this.landingsDay = 0,
+    this.landingsNight = 0,
+    this.takeoffsDay = 0,
+    this.takeoffsNight = 0,
     this.approaches = const Approaches(),
     this.crew = const [],
     this.verifications = const [],
@@ -691,6 +700,10 @@ class LogbookEntry {
           ? FlightTime.fromJson(json['flightTime'])
           : FlightTime(total: 0),
       isPilotFlying: json['isPilotFlying'] ?? true, // Default true for backward compatibility
+      landingsDay: json['landingsDay'] ?? 0,
+      landingsNight: json['landingsNight'] ?? 0,
+      takeoffsDay: json['takeoffsDay'] ?? 0,
+      takeoffsNight: json['takeoffsNight'] ?? 0,
       approaches: json['approaches'] != null
           ? Approaches.fromJson(json['approaches'])
           : const Approaches(),
@@ -743,8 +756,13 @@ class LogbookEntry {
     }
   }
 
-  /// Get total takeoffs from all crew members (typically only PF logs takeoffs)
+  /// Get total takeoffs - uses direct fields for standard tier, falls back to crew for blockchain
   Takeoffs get totalTakeoffs {
+    // Use direct fields if set (standard tier entries)
+    if (takeoffsDay > 0 || takeoffsNight > 0) {
+      return Takeoffs(day: takeoffsDay, night: takeoffsNight);
+    }
+    // Fall back to crew data (blockchain entries)
     int day = 0;
     int night = 0;
     for (final c in crew) {
@@ -754,8 +772,13 @@ class LogbookEntry {
     return Takeoffs(day: day, night: night);
   }
 
-  /// Get total landings from all crew members (typically only PF logs landings)
+  /// Get total landings - uses direct fields for standard tier, falls back to crew for blockchain
   Landings get totalLandings {
+    // Use direct fields if set (standard tier entries)
+    if (landingsDay > 0 || landingsNight > 0) {
+      return Landings(day: landingsDay, night: landingsNight);
+    }
+    // Fall back to crew data (blockchain entries)
     int day = 0;
     int night = 0;
     for (final c in crew) {
