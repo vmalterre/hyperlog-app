@@ -465,6 +465,108 @@ class ImportAnalysis {
       needsAttention.where((i) => i.severity == severity).length;
 }
 
+/// Aggregated totals from imported flights for verification
+class ImportTotals {
+  final int totalMinutes;
+  final int picMinutes;
+  final int picusMinutes;
+  final int sicMinutes;
+  final int multiPilotMinutes;
+  final int nightMinutes;
+  final int ifrMinutes;
+  final int ifrActualMinutes;
+  final int ifrSimulatedMinutes;
+  final int dualMinutes;
+  final int instructorMinutes;
+  final int xcMinutes;
+  final int totalLandings;
+
+  const ImportTotals({
+    required this.totalMinutes,
+    required this.picMinutes,
+    required this.picusMinutes,
+    required this.sicMinutes,
+    required this.multiPilotMinutes,
+    required this.nightMinutes,
+    required this.ifrMinutes,
+    required this.ifrActualMinutes,
+    required this.ifrSimulatedMinutes,
+    required this.dualMinutes,
+    required this.instructorMinutes,
+    required this.xcMinutes,
+    required this.totalLandings,
+  });
+
+  /// Create totals by aggregating from a list of flights
+  factory ImportTotals.fromFlights(List<ImportFlightPreview> flights) {
+    int total = 0;
+    int pic = 0;
+    int picus = 0;
+    int sic = 0;
+    int multiPilot = 0;
+    int night = 0;
+    int ifr = 0;
+    int ifrActual = 0;
+    int ifrSimulated = 0;
+    int dual = 0;
+    int instructor = 0;
+    int xc = 0;
+    int landings = 0;
+
+    for (final flight in flights) {
+      total += flight.timeTotal;
+      pic += flight.timePic;
+      picus += flight.timePicus;
+      sic += flight.timeSic;
+      multiPilot += flight.timeMultiPilot;
+      night += flight.timeNight;
+      ifr += flight.timeIfr;
+      ifrActual += flight.timeIfrActual;
+      ifrSimulated += flight.timeIfrSimulated;
+      dual += flight.timeDual;
+      instructor += flight.timeInstructor;
+      xc += flight.timeXc;
+      landings += flight.landingsDay + flight.landingsNight;
+    }
+
+    return ImportTotals(
+      totalMinutes: total,
+      picMinutes: pic,
+      picusMinutes: picus,
+      sicMinutes: sic,
+      multiPilotMinutes: multiPilot,
+      nightMinutes: night,
+      ifrMinutes: ifr,
+      ifrActualMinutes: ifrActual,
+      ifrSimulatedMinutes: ifrSimulated,
+      dualMinutes: dual,
+      instructorMinutes: instructor,
+      xcMinutes: xc,
+      totalLandings: landings,
+    );
+  }
+
+  static String _formatMinutes(int minutes) {
+    final hours = minutes ~/ 60;
+    final mins = minutes % 60;
+    return '${hours}h ${mins.toString().padLeft(2, '0')}m';
+  }
+
+  String get totalFormatted => _formatMinutes(totalMinutes);
+  String get picFormatted => _formatMinutes(picMinutes);
+  String get picusFormatted => _formatMinutes(picusMinutes);
+  String get sicFormatted => _formatMinutes(sicMinutes);
+  String get multiPilotFormatted => _formatMinutes(multiPilotMinutes);
+  String get nightFormatted => _formatMinutes(nightMinutes);
+  String get ifrFormatted => _formatMinutes(ifrMinutes);
+  String get ifrActualFormatted => _formatMinutes(ifrActualMinutes);
+  String get ifrSimulatedFormatted => _formatMinutes(ifrSimulatedMinutes);
+  String get dualFormatted => _formatMinutes(dualMinutes);
+  String get instructorFormatted => _formatMinutes(instructorMinutes);
+  String get xcFormatted => _formatMinutes(xcMinutes);
+  String get landingsFormatted => totalLandings.toString();
+}
+
 /// Result of executing an import
 class ImportReport {
   final bool success;
