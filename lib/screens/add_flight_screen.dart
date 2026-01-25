@@ -13,7 +13,9 @@ import '../models/saved_pilot.dart';
 import '../models/screen_config.dart';
 import '../models/user_aircraft_registration.dart';
 import '../models/user_aircraft_type.dart';
+import '../models/user_simulator.dart';
 import '../services/aircraft_service.dart';
+import '../services/simulator_service.dart';
 import '../services/airport_service.dart';
 import '../services/api_exception.dart';
 import '../services/flight_service.dart';
@@ -22,7 +24,9 @@ import '../services/pilot_service.dart';
 import '../services/preferences_service.dart';
 import '../services/screen_config_service.dart';
 import '../session_state.dart';
+import 'my_aircraft_screen.dart';
 import 'my_screens_screen.dart';
+import 'my_simulators_screen.dart';
 import '../constants/role_standards.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
@@ -57,6 +61,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   final FlightService _flightService = FlightService();
   final PilotService _pilotService = PilotService();
   final AircraftService _aircraftService = AircraftService();
+  final SimulatorService _simulatorService = SimulatorService();
   final AirportService _airportService = AirportService();
   final NighttimeService _nighttimeService = NighttimeService();
 
@@ -75,6 +80,11 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   List<UserAircraftRegistration> _userAircraft = [];
   UserAircraftRegistration? _selectedAircraft;
   bool _isLoadingAircraft = true;
+
+  // User simulator registrations
+  List<UserSimulatorRegistration> _userSimulators = [];
+  UserSimulatorRegistration? _selectedSimulator;
+  bool _isLoadingSimulators = true;
 
   // Selected airports (for ICAO/IATA extraction)
   Airport? _selectedDepAirport;
@@ -220,8 +230,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     // Load saved pilots for autocomplete
     _loadSavedPilots();
 
-    // Load user's saved aircraft
+    // Load user's saved aircraft and simulators
     _loadUserAircraft();
+    _loadUserSimulators();
 
     // In edit mode, look up airports to get coordinates for cross-country calculation
     if (widget.isEditMode) {
@@ -477,7 +488,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       _depController = TextEditingController(text: entry.dep);
       _destController = TextEditingController(text: entry.dest);
       _aircraftTypeController = TextEditingController(text: entry.aircraftType);
-      _aircraftRegController = TextEditingController(text: entry.aircraftReg);
+      _aircraftRegController = TextEditingController(text: entry.displayReg);
       _remarksController = TextEditingController(text: creatorCrew?.remarks ?? '');
 
       _flightDate = entry.flightDate;
@@ -633,7 +644,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     final entry = widget.entry;
     if (entry == null) return;
 
-    final existingReg = entry.aircraftReg.toUpperCase();
+    final existingReg = entry.displayReg.toUpperCase();
 
     // Find matching registration in user's aircraft list
     final match = _userAircraft.cast<UserAircraftRegistration?>().firstWhere(
@@ -646,6 +657,57 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         _selectedAircraft = match;
         _aircraftTypeController.text = match.icaoDesignator;
         _aircraftRegController.text = match.registration;
+      });
+    }
+  }
+
+  Future<void> _loadUserSimulators() async {
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) {
+      setState(() => _isLoadingSimulators = false);
+      return;
+    }
+
+    try {
+      final simulators = await _simulatorService.getUserSimulatorRegistrations(userId);
+      if (mounted) {
+        setState(() {
+          _userSimulators = simulators;
+          _isLoadingSimulators = false;
+        });
+
+        // In edit mode, try to match existing sim registration
+        if (widget.entry != null) {
+          _matchExistingSimulator();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingSimulators = false);
+      }
+    }
+  }
+
+  /// In edit mode, try to match the existing sim registration to user's saved simulators
+  void _matchExistingSimulator() {
+    final entry = widget.entry;
+    if (entry == null || entry.simReg == null) return;
+
+    final existingSimReg = entry.simReg!.toUpperCase();
+
+    // Find matching registration in user's simulator list
+    final match = _userSimulators.cast<UserSimulatorRegistration?>().firstWhere(
+      (s) => s?.registration.toUpperCase() == existingSimReg,
+      orElse: () => null,
+    );
+
+    if (match != null) {
+      setState(() {
+        _selectedSimulator = match;
+        // Clear aircraft since this is a sim session
+        _selectedAircraft = null;
+        _aircraftTypeController.text = match.icaoDesignator;
+        _aircraftRegController.text = '';
       });
     }
   }
@@ -697,6 +759,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   void _onAircraftSelected(UserAircraftRegistration aircraft) {
     setState(() {
       _selectedAircraft = aircraft;
+      _selectedSimulator = null;  // Mutual exclusion: clear simulator
       _aircraftTypeController.text = aircraft.icaoDesignator;
       _aircraftRegController.text = aircraft.registration;
       _aircraftError = null;
@@ -760,6 +823,58 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       _selectedAircraft != null &&
       _selectedAircraft!.flightRules == FlightRulesCapability.both;
 
+  /// Whether a simulator is selected (sim session)
+  bool get _isSimSession => _selectedSimulator != null;
+
+  /// Shows the simulator picker bottom sheet
+  void _showSimulatorPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _SimulatorPickerSheet(
+        simulators: _userSimulators,
+        selectedSimulator: _selectedSimulator,
+        onSelect: _onSimulatorSelected,
+      ),
+    );
+  }
+
+  /// Called when a simulator is selected from the picker
+  void _onSimulatorSelected(UserSimulatorRegistration? simulator) {
+    setState(() {
+      _selectedSimulator = simulator;
+      if (simulator != null) {
+        // Mutual exclusion: clear aircraft when simulator is selected
+        _selectedAircraft = null;
+        _aircraftRegController.text = '';
+        // Set aircraft type from simulator
+        _aircraftTypeController.text = simulator.icaoDesignator;
+      }
+      _aircraftError = null;
+      _hasChanges = true;
+    });
+
+    // Reset calculated fields for sim sessions
+    if (simulator != null) {
+      setState(() {
+        _multiEngineMinutes = 0;
+        _multiPilotMinutes = 0;
+        _soloMinutes = 0;
+        _ifrMinutes = 0;
+      });
+    }
+  }
+
+  /// Clear simulator selection (return to aircraft mode)
+  void _clearSimulator() {
+    setState(() {
+      _selectedSimulator = null;
+      _aircraftTypeController.text = '';
+      _hasChanges = true;
+    });
+  }
+
   /// Build empty state when user has no saved aircraft
   Widget _buildNoAircraftState() {
     return Column(
@@ -787,7 +902,10 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         const SizedBox(height: 16),
         TextButton.icon(
           onPressed: () {
-            Navigator.pushNamed(context, '/my-aircraft');
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MyAircraftScreen()),
+            );
           },
           icon: const Icon(Icons.add, size: 18),
           label: const Text('Add Aircraft'),
@@ -825,6 +943,52 @@ class _AddFlightScreenState extends State<AddFlightScreen>
             suffixIcon: Icon(
               Icons.search,
               color: AppColors.whiteDarker,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Build the simulator picker field
+  Widget _buildSimulatorPicker() {
+    // Display text: "REG - Type @ Facility" or empty for hint
+    final displayText = _selectedSimulator != null
+        ? _selectedSimulator!.fullDisplayName
+        : '';
+
+    return GestureDetector(
+      onTap: _showSimulatorPicker,
+      child: AbsorbPointer(
+        child: TextFormField(
+          readOnly: true,
+          controller: TextEditingController(text: displayText),
+          style: GoogleFonts.jetBrainsMono(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: AppColors.white,
+          ),
+          decoration: InputDecoration(
+            labelText: 'Simulator',
+            hintText: 'Select for sim session',
+            counterText: '',
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_selectedSimulator != null)
+                  IconButton(
+                    onPressed: _clearSimulator,
+                    icon: Icon(Icons.close, color: AppColors.whiteDarker, size: 20),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.search,
+                  color: AppColors.whiteDarker,
+                ),
+                const SizedBox(width: 12),
+              ],
             ),
           ),
         ),
@@ -1161,9 +1325,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       return false;
     }
 
-    // Check aircraft selection
-    if (_selectedAircraft == null) {
-      setState(() => _aircraftError = 'Please select an aircraft');
+    // Check aircraft or simulator selection (one must be selected)
+    if (_selectedAircraft == null && _selectedSimulator == null) {
+      setState(() => _aircraftError = 'Please select an aircraft or simulator');
       _scrollToField(_aircraftRegKey);
       return false;
     } else {
@@ -1311,7 +1475,10 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         blockOff: blockOffDateTime,
         blockOn: blockOnDateTime,
         aircraftType: _aircraftTypeController.text.toUpperCase(),
-        aircraftReg: _aircraftRegController.text.toUpperCase(),
+        // Aircraft reg is empty for sim sessions
+        aircraftReg: _isSimSession ? null : _aircraftRegController.text.toUpperCase(),
+        // Simulator reg for sim sessions
+        simReg: _isSimSession ? _selectedSimulator!.registration.toUpperCase() : null,
         flightTime: _calculatedFlightTime,
         isPilotFlying: _isPilotFlying,
         approaches: approaches,
@@ -1570,26 +1737,136 @@ class _AddFlightScreenState extends State<AddFlightScreen>
 
                     const SizedBox(height: 24),
 
-                    // Aircraft Section
-                    _SectionHeader(title: 'AIRCRAFT'),
+                    // Aircraft / Simulator Section
+                    _SectionHeader(
+                      title: _isSimSession ? 'SIMULATOR' : 'AIRCRAFT',
+                    ),
                     const SizedBox(height: 12),
                     GlassContainer(
                       key: _aircraftRegKey,
                       padding: const EdgeInsets.all(20),
-                      child: _isLoadingAircraft
-                          ? const Center(
-                              child: SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.denim,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Aircraft picker (hidden when simulator is selected)
+                          if (!_isSimSession) ...[
+                            if (_isLoadingAircraft)
+                              const Center(
+                                child: SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.denim,
+                                  ),
+                                ),
+                              )
+                            else if (_userAircraft.isEmpty)
+                              _buildNoAircraftState()
+                            else
+                              _buildAircraftPicker(),
+                          ],
+
+                          // Simulator picker
+                          if (_isSimSession) ...[
+                            // Show selected simulator with highlight
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.denim.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppColors.denim.withValues(alpha: 0.3),
                                 ),
                               ),
-                            )
-                          : _userAircraft.isEmpty
-                              ? _buildNoAircraftState()
-                              : _buildAircraftPicker(),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.desktop_mac,
+                                    color: AppColors.denim,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Simulator Session',
+                                          style: AppTypography.caption.copyWith(
+                                            color: AppColors.denim,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          _selectedSimulator!.fullDisplayName,
+                                          style: GoogleFonts.jetBrainsMono(
+                                            fontSize: 14,
+                                            color: AppColors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: _clearSimulator,
+                                    icon: Icon(
+                                      Icons.close,
+                                      color: AppColors.whiteDarker,
+                                      size: 20,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    tooltip: 'Switch to aircraft',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else ...[
+                            // Divider and simulator option
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(child: Divider(color: AppColors.borderSubtle)),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text(
+                                    'or',
+                                    style: AppTypography.caption,
+                                  ),
+                                ),
+                                Expanded(child: Divider(color: AppColors.borderSubtle)),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            if (_isLoadingSimulators)
+                              const Center(
+                                child: SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.denim,
+                                  ),
+                                ),
+                              )
+                            else if (_userSimulators.isEmpty)
+                              Center(
+                                child: TextButton.icon(
+                                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MySimulatorsScreen())),
+                                  icon: Icon(Icons.desktop_mac_outlined, size: 18),
+                                  label: const Text('Add Simulator'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.whiteDarker,
+                                  ),
+                                ),
+                              )
+                            else
+                              _buildSimulatorPicker(),
+                          ],
+                        ],
+                      ),
                     ),
 
                     const SizedBox(height: 24),
@@ -2750,3 +3027,316 @@ class _AircraftListItem extends StatelessWidget {
   }
 }
 
+/// Bottom sheet for selecting simulator from user's saved registrations
+class _SimulatorPickerSheet extends StatefulWidget {
+  final List<UserSimulatorRegistration> simulators;
+  final UserSimulatorRegistration? selectedSimulator;
+  final ValueChanged<UserSimulatorRegistration> onSelect;
+
+  const _SimulatorPickerSheet({
+    required this.simulators,
+    required this.selectedSimulator,
+    required this.onSelect,
+  });
+
+  @override
+  State<_SimulatorPickerSheet> createState() => _SimulatorPickerSheetState();
+}
+
+class _SimulatorPickerSheetState extends State<_SimulatorPickerSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  List<UserSimulatorRegistration> _filteredSimulators = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredSimulators = widget.simulators;
+    _searchController.addListener(_onSearchChanged);
+    // Auto-focus the search field
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _searchFocusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.trim().toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _filteredSimulators = widget.simulators;
+      } else {
+        _filteredSimulators = widget.simulators.where((s) {
+          final reg = s.registration.toLowerCase();
+          final facility = (s.trainingFacility ?? '').toLowerCase();
+          final typeDisplay = s.simulatorTypeDisplay.toLowerCase();
+          final icao = s.icaoDesignator.toLowerCase();
+          return reg.contains(query) ||
+              facility.contains(query) ||
+              typeDisplay.contains(query) ||
+              icao.contains(query);
+        }).toList();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Container(
+      height: screenHeight * 0.85,
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      decoration: const BoxDecoration(
+        color: AppColors.nightRiderDark,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.whiteDarker,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Row(
+              children: [
+                Text(
+                  'Select Simulator',
+                  style: AppTypography.h4,
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: Icon(Icons.close, color: AppColors.whiteDarker),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+          // Search field
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: AppColors.white,
+              ),
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                hintText: 'Search registration, type or facility...',
+                hintStyle: AppTypography.body.copyWith(
+                  color: AppColors.whiteDarker,
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: AppColors.whiteDarker,
+                ),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        onPressed: () {
+                          _searchController.clear();
+                        },
+                        icon: Icon(Icons.clear, color: AppColors.whiteDarker),
+                      )
+                    : null,
+                filled: true,
+                fillColor: AppColors.nightRider,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.borderVisible),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.borderVisible),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.denim, width: 2),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Simulator list
+          Expanded(
+            child: _filteredSimulators.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _searchController.text.isEmpty
+                                ? Icons.desktop_mac
+                                : Icons.search_off,
+                            color: AppColors.whiteDarker,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _searchController.text.isEmpty
+                                ? 'Search for a simulator'
+                                : 'No simulators found',
+                            style: AppTypography.body.copyWith(
+                              color: AppColors.whiteDarker,
+                            ),
+                          ),
+                          Text(
+                            _searchController.text.isEmpty
+                                ? 'Enter registration or facility'
+                                : 'Try a different search',
+                            style: AppTypography.caption,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: _filteredSimulators.length,
+                    itemBuilder: (context, index) {
+                      final item = _filteredSimulators[index];
+                      final isSelected = widget.selectedSimulator?.id == item.id;
+                      return _SimulatorListItem(
+                        simulator: item,
+                        isSelected: isSelected,
+                        onTap: () {
+                          widget.onSelect(item);
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Individual simulator item in the picker list
+class _SimulatorListItem extends StatelessWidget {
+  final UserSimulatorRegistration simulator;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _SimulatorListItem({
+    required this.simulator,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.denim.withValues(alpha: 0.15)
+              : AppColors.glass50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.denim : AppColors.borderSubtle,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.desktop_mac,
+              color: isSelected ? AppColors.denim : AppColors.whiteDarker,
+              size: 24,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Registration and type
+                  Row(
+                    children: [
+                      Text(
+                        simulator.registration,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? AppColors.denim : AppColors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.denim.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          simulator.categoryLevelDisplay,
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.denim,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  // Aircraft type
+                  Text(
+                    simulator.aircraftTypeDisplay,
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.whiteDark,
+                    ),
+                  ),
+                  // Training facility (if present)
+                  if (simulator.trainingFacility != null &&
+                      simulator.trainingFacility!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '@ ${simulator.trainingFacility}',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.whiteDarker,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                color: AppColors.denim,
+                size: 24,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -15,6 +15,7 @@ class FlightEntryCard extends StatefulWidget {
   final String aircraftReg;
   final TrustLevel trustLevel;
   final bool showTrustBadge;
+  final bool isSimSession;
   final VoidCallback? onTap;
 
   const FlightEntryCard({
@@ -27,6 +28,7 @@ class FlightEntryCard extends StatefulWidget {
     required this.aircraftReg,
     this.trustLevel = TrustLevel.logged,
     this.showTrustBadge = true,
+    this.isSimSession = false,
     this.onTap,
   });
 
@@ -100,15 +102,34 @@ class _FlightEntryCardState extends State<FlightEntryCard> {
             ),
             const SizedBox(height: 16),
 
-            // Aircraft info row
+            // Aircraft/Simulator info row
             Row(
               children: [
                 Icon(
-                  Icons.airplanemode_active,
+                  widget.isSimSession ? Icons.desktop_mac : Icons.airplanemode_active,
                   size: 14,
-                  color: AppColors.whiteDarker,
+                  color: widget.isSimSession ? AppColors.denim : AppColors.whiteDarker,
                 ),
                 const SizedBox(width: 6),
+                if (widget.isSimSession) ...[
+                  // Show "SIM" badge for simulator sessions
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: AppColors.denim.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      'SIM',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.denim,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 Text(
                   widget.aircraftType,
                   style: AppTypography.caption,

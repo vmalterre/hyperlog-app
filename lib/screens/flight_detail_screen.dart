@@ -290,7 +290,10 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                 _buildDetailRow('Block On', timeFormat.format(_entry!.blockOn)),
                 _buildDetailRow('Block Time', _entry!.flightTime.formatted),
                 _buildDivider(),
-                _buildDetailRow('Aircraft', '${_entry!.aircraftType} (${_entry!.aircraftReg})'),
+                _buildDetailRow(
+                  _entry!.isSimSession ? 'Simulator' : 'Aircraft',
+                  '${_entry!.aircraftType} (${_entry!.displayReg})',
+                ),
                 _buildDetailRow('Function', _entry!.isPilotFlying ? 'Pilot Flying' : 'Pilot Monitoring'),
                 if (_entry!.isPilotFlying)
                   _buildDetailRow('Landings', _entry!.totalLandings.total.toString()),

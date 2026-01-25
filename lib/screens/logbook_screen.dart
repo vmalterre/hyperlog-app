@@ -333,6 +333,7 @@ class LogbookScreenState extends State<LogbookScreen> {
             aircraftReg: entry.acftReg,
             trustLevel: entry.trustLevel,
             showTrustBadge: _isOfficialTier,
+            isSimSession: entry.isSimSession,
             onTap: () async {
               await Navigator.push(
                 context,
