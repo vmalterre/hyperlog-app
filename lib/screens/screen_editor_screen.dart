@@ -19,6 +19,7 @@ class _ScreenEditorScreenState extends State<ScreenEditorScreen> {
   final ScreenConfigService _screenService = ScreenConfigService.instance;
   late TextEditingController _nameController;
   late Set<FlightField> _hiddenFields;
+  late bool _isSimulatorMode;
   bool _hasChanges = false;
 
   @override
@@ -26,6 +27,7 @@ class _ScreenEditorScreenState extends State<ScreenEditorScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.config.name);
     _hiddenFields = Set.from(widget.config.hiddenFields);
+    _isSimulatorMode = widget.config.isSimulatorMode;
     _nameController.addListener(_onFormChanged);
   }
 
@@ -67,6 +69,7 @@ class _ScreenEditorScreenState extends State<ScreenEditorScreen> {
     final updatedConfig = widget.config.copyWith(
       name: name,
       hiddenFields: _hiddenFields,
+      isSimulatorMode: _isSimulatorMode,
     );
 
     await _screenService.update(updatedConfig);
@@ -180,6 +183,49 @@ class _ScreenEditorScreenState extends State<ScreenEditorScreen> {
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
                   ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Aircraft / Simulator Mode Toggle
+              _buildSectionHeader('SCREEN TYPE'),
+              const SizedBox(height: 12),
+              GlassContainer(
+                padding: const EdgeInsets.all(8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _ModeToggleButton(
+                        label: 'Aircraft',
+                        icon: Icons.flight,
+                        isSelected: !_isSimulatorMode,
+                        onTap: () {
+                          if (_isSimulatorMode) {
+                            setState(() {
+                              _isSimulatorMode = false;
+                              _hasChanges = true;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ModeToggleButton(
+                        label: 'Simulator',
+                        icon: Icons.desktop_mac_outlined,
+                        isSelected: _isSimulatorMode,
+                        onTap: () {
+                          if (!_isSimulatorMode) {
+                            setState(() {
+                              _isSimulatorMode = true;
+                              _hasChanges = true;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
@@ -365,6 +411,60 @@ class _FieldToggleRow extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A toggle button for Aircraft/Simulator mode selection
+class _ModeToggleButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ModeToggleButton({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.denim.withValues(alpha: 0.2)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.denim : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? AppColors.denim : AppColors.whiteDarker,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: AppTypography.body.copyWith(
+                color: isSelected ? AppColors.denim : AppColors.whiteDarker,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
           ],

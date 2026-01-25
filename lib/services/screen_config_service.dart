@@ -160,10 +160,11 @@ class ScreenConfigService extends ChangeNotifier {
     return FlightField.values.length - config.hiddenFields.length;
   }
 
-  /// Get a summary description for a config (e.g., "12 of 14 fields")
+  /// Get a summary description for a config (e.g., "12 of 14 fields" or "SIM • 12 fields")
   String getConfigSummary(ScreenConfig config) {
     final visible = getVisibleFieldCount(config);
     final total = FlightField.values.length;
-    return '$visible of $total fields';
+    final prefix = config.isSimulatorMode ? 'SIM • ' : '';
+    return '$prefix$visible of $total fields';
   }
 }

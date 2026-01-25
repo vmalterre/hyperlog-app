@@ -380,7 +380,7 @@ class FlightService {
     check('blockOff', 'Block Off', formatTime(old.blockOff), formatTime(updated.blockOff));
     check('blockOn', 'Block On', formatTime(old.blockOn), formatTime(updated.blockOn));
     check('aircraftType', 'Aircraft Type', old.aircraftType, updated.aircraftType);
-    check('aircraftReg', 'Registration', old.aircraftReg, updated.aircraftReg);
+    check('aircraftReg', 'Registration', old.displayReg, updated.displayReg);
     check('flightTime', 'Block Time', old.flightTime.formatted, updated.flightTime.formatted);
     check('landings', 'Landings', old.totalLandings.total.toString(), updated.totalLandings.total.toString());
     check('role', 'Role', old.creatorCrew?.primaryRole ?? '', updated.creatorCrew?.primaryRole ?? '');

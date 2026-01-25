@@ -11,10 +11,14 @@ class LogbookEntryShort {
   final String? depIata;    // 3-letter IATA code (e.g., "LHR")
   final String? destIcao;   // 4-letter ICAO code (e.g., "KJFK")
   final String? destIata;   // 3-letter IATA code (e.g., "JFK")
-  final String acftReg;
+  final String acftReg;     // Display registration (aircraft or simulator)
   final String acftType;
+  final String? simReg;     // Simulator registration (if sim session)
   final String? blockTime;
   final TrustLevel trustLevel;
+
+  /// Whether this entry is a simulator session
+  bool get isSimSession => simReg != null && simReg!.isNotEmpty;
 
   LogbookEntryShort({
     required this.id,
@@ -27,6 +31,7 @@ class LogbookEntryShort {
     this.destIata,
     required this.acftReg,
     required this.acftType,
+    this.simReg,
     this.blockTime,
     this.trustLevel = TrustLevel.logged,
   });
@@ -43,6 +48,7 @@ class LogbookEntryShort {
       destIata: json['destIata'],
       acftReg: json['acftReg'],
       acftType: json['acftType'],
+      simReg: json['simReg'],
       blockTime: json['blockTime'],
       trustLevel: TrustLevel.values.firstWhere(
         (e) => e.name == json['trustLevel'],
@@ -63,6 +69,7 @@ class LogbookEntryShort {
       'destIata': destIata,
       'acftReg': acftReg,
       'acftType': acftType,
+      if (simReg != null) 'simReg': simReg,
       'blockTime': blockTime,
       'trustLevel': trustLevel.name,
     };

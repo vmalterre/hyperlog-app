@@ -111,7 +111,7 @@ FlightsCompanion flightToCompanion(
     blockOff: Value(entry.blockOff.toIso8601String()),
     blockOn: Value(entry.blockOn.toIso8601String()),
     aircraftType: Value(entry.aircraftType),
-    aircraftReg: Value(entry.aircraftReg),
+    aircraftReg: Value(entry.displayReg),
     flightTimeJson: Value(jsonEncode(entry.flightTime.toJson())),
     isPilotFlying: Value(entry.isPilotFlying),
     approachesJson: Value(jsonEncode(entry.approaches.toJson())),

@@ -16,6 +16,7 @@ import 'export_logbook_screen.dart';
 import 'saved_pilots_screen.dart';
 import 'my_roles_screen.dart';
 import 'my_aircraft_screen.dart';
+import 'my_simulators_screen.dart';
 import 'my_screens_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -296,6 +297,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => const MyAircraftScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _SettingsItem(
+                    icon: Icons.desktop_windows_outlined,
+                    title: 'My Simulators',
+                    subtitle: 'Manage saved flight simulators',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MySimulatorsScreen(),
                         ),
                       );
                     },

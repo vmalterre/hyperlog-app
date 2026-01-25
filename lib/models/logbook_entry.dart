@@ -626,7 +626,8 @@ class LogbookEntry {
   final DateTime? takeoffAt;        // Wheels up time (optional)
   final DateTime? landingAt;        // Wheels down time (optional)
   final String aircraftType;
-  final String aircraftReg;
+  final String? aircraftReg;          // Null for simulator sessions
+  final String? simReg;               // Simulator registration (mutually exclusive with aircraftReg)
   final FlightTime flightTime;
   final bool isPilotFlying;         // true = PF (can log landings), false = PM
   final Approaches approaches;      // Approaches by type (only for PF)
@@ -653,7 +654,8 @@ class LogbookEntry {
     this.takeoffAt,
     this.landingAt,
     required this.aircraftType,
-    required this.aircraftReg,
+    this.aircraftReg,
+    this.simReg,
     required this.flightTime,
     this.isPilotFlying = true,
     this.approaches = const Approaches(),
@@ -684,6 +686,7 @@ class LogbookEntry {
       landingAt: json['landingAt'] != null ? DateTime.parse(json['landingAt']) : null,
       aircraftType: json['aircraftType'],
       aircraftReg: json['aircraftReg'],
+      simReg: json['simReg'],
       flightTime: json['flightTime'] != null
           ? FlightTime.fromJson(json['flightTime'])
           : FlightTime(total: 0),
@@ -707,6 +710,12 @@ class LogbookEntry {
       updatedAt: DateTime.parse(json['updatedAt']),
     );
   }
+
+  /// Whether this entry is a simulator session
+  bool get isSimSession => simReg != null && simReg!.isNotEmpty;
+
+  /// Display registration (aircraft reg or sim reg)
+  String get displayReg => isSimSession ? simReg! : (aircraftReg ?? '');
 
   /// Compute trust level from entry data (not stored on blockchain)
   /// - ENDORSED: 2+ pilots in the crew array
@@ -767,8 +776,9 @@ class LogbookEntry {
       depIata: depIata,
       destIcao: destIcao,
       destIata: destIata,
-      acftReg: aircraftReg,
+      acftReg: displayReg,
       acftType: aircraftType,
+      simReg: simReg,
       blockTime: flightTime.formatted,
       trustLevel: trustLevel,
     );
@@ -806,7 +816,8 @@ class LogbookEntry {
       if (takeoffAt != null) 'takeoffAt': takeoffAt!.toUtc().toIso8601String(),
       if (landingAt != null) 'landingAt': landingAt!.toUtc().toIso8601String(),
       'aircraftType': aircraftType,
-      'aircraftReg': aircraftReg,
+      if (aircraftReg != null) 'aircraftReg': aircraftReg,
+      if (simReg != null) 'simReg': simReg,
       'flightTime': flightTime.toJson(),
       'isPilotFlying': isPilotFlying,
       'approaches': approaches.toJson(),

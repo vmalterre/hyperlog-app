@@ -197,7 +197,7 @@ class FaaTemplate extends PdfBaseTemplate {
       children: [
         cell(PdfFormatUtils.formatDateMMDDYY(entry.flightDate)),
         cell(entry.aircraftType),
-        cell(entry.aircraftReg),
+        cell(entry.displayReg),
         cell(entry.dep),
         cell(entry.dest),
         cell(PdfFormatUtils.formatInt(entry.approaches.total)),

@@ -6,6 +6,7 @@ class ScreenConfig {
   final String id;
   final String name;
   final Set<FlightField> hiddenFields;
+  final bool isSimulatorMode;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -13,6 +14,7 @@ class ScreenConfig {
     required this.id,
     required this.name,
     Set<FlightField>? hiddenFields,
+    this.isSimulatorMode = false,
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : hiddenFields = hiddenFields ?? {},
@@ -23,12 +25,14 @@ class ScreenConfig {
   factory ScreenConfig.allVisible({
     required String id,
     required String name,
+    bool isSimulatorMode = false,
   }) {
     final now = DateTime.now();
     return ScreenConfig(
       id: id,
       name: name,
       hiddenFields: {},
+      isSimulatorMode: isSimulatorMode,
       createdAt: now,
       updatedAt: now,
     );
@@ -45,6 +49,7 @@ class ScreenConfig {
     String? id,
     String? name,
     Set<FlightField>? hiddenFields,
+    bool? isSimulatorMode,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -52,6 +57,7 @@ class ScreenConfig {
       id: id ?? this.id,
       name: name ?? this.name,
       hiddenFields: hiddenFields ?? this.hiddenFields,
+      isSimulatorMode: isSimulatorMode ?? this.isSimulatorMode,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
     );
@@ -63,6 +69,7 @@ class ScreenConfig {
       'id': id,
       'name': name,
       'hiddenFields': hiddenFields.map((f) => f.name).toList(),
+      'isSimulatorMode': isSimulatorMode,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -86,6 +93,7 @@ class ScreenConfig {
       id: json['id'] as String,
       name: json['name'] as String,
       hiddenFields: hiddenFields,
+      isSimulatorMode: json['isSimulatorMode'] as bool? ?? false,
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
     );
@@ -102,5 +110,5 @@ class ScreenConfig {
   int get hashCode => id.hashCode;
 
   @override
-  String toString() => 'ScreenConfig(id: $id, name: $name, hidden: ${hiddenFields.length} fields)';
+  String toString() => 'ScreenConfig(id: $id, name: $name, hidden: ${hiddenFields.length} fields, sim: $isSimulatorMode)';
 }

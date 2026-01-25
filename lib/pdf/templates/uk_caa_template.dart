@@ -205,7 +205,7 @@ class UkCaaTemplate extends PdfBaseTemplate {
       children: [
         cell(PdfFormatUtils.formatDateDDMMYY(entry.flightDate)),
         cell(entry.aircraftType),
-        cell(entry.aircraftReg),
+        cell(entry.displayReg),
         cell(PdfFormatUtils.getPicName(entry)),
         cell(entry.dep),
         cell(PdfFormatUtils.formatTimeOfDay(entry.blockOff)),

@@ -137,7 +137,7 @@ class InternationalTemplate extends PdfBaseTemplate {
         cell(PdfFormatUtils.formatDateDDMMYY(entry.flightDate)),
         cell('${entry.dep}-${entry.dest}', alignment: pw.Alignment.centerLeft),
         cell(entry.aircraftType),
-        cell(entry.aircraftReg),
+        cell(entry.displayReg),
         cell(PdfFormatUtils.formatTimeOfDay(entry.blockOff)),
         cell(PdfFormatUtils.formatTimeOfDay(entry.blockOn)),
         cell(PdfFormatUtils.formatMinutesAsHHMM(entry.flightTime.total)),

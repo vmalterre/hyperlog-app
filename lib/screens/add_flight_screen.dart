@@ -826,6 +826,20 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   /// Whether a simulator is selected (sim session)
   bool get _isSimSession => _selectedSimulator != null;
 
+  /// Whether any calculated fields are visible in the screen config
+  bool get _hasVisibleCalculatedFields =>
+      _isFieldVisible(FlightField.nightTime) ||
+      _isFieldVisible(FlightField.multiEngineTime) ||
+      _isFieldVisible(FlightField.multiPilotTime) ||
+      _isFieldVisible(FlightField.soloTime) ||
+      _isFieldVisible(FlightField.crossCountryTime) ||
+      (_isFieldVisible(FlightField.ifrTime) && _showIfrInCalculatedSection);
+
+  /// Whether the takeoffs/landings section should be shown
+  bool get _showTakeoffsLandingsSection =>
+      _isFieldVisible(FlightField.pfPmToggle) ||
+      _isFieldVisible(FlightField.takeoffsLandings);
+
   /// Shows the simulator picker bottom sheet
   void _showSimulatorPicker() {
     showModalBottomSheet(
@@ -917,6 +931,88 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     );
   }
 
+  /// Build empty state when user has no saved simulators
+  Widget _buildNoSimulatorState() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.desktop_mac_outlined,
+          color: AppColors.whiteDarker,
+          size: 32,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'No simulators saved',
+          style: AppTypography.body.copyWith(
+            color: AppColors.whiteDark,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Add simulators in My Simulators first',
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.whiteDarker,
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MySimulatorsScreen()),
+            );
+          },
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Add Simulator'),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.denim,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Build the aircraft section content (loading, empty, or picker)
+  Widget _buildAircraftSection() {
+    if (_isLoadingAircraft) {
+      return const Center(
+        child: SizedBox(
+          height: 24,
+          width: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.denim,
+          ),
+        ),
+      );
+    }
+    if (_userAircraft.isEmpty) {
+      return _buildNoAircraftState();
+    }
+    return _buildAircraftPicker();
+  }
+
+  /// Build the simulator section content (loading, empty, or picker)
+  Widget _buildSimulatorSection() {
+    if (_isLoadingSimulators) {
+      return const Center(
+        child: SizedBox(
+          height: 24,
+          width: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.denim,
+          ),
+        ),
+      );
+    }
+    if (_userSimulators.isEmpty) {
+      return _buildNoSimulatorState();
+    }
+    return _buildSimulatorPicker();
+  }
+
   /// Build the aircraft picker field
   Widget _buildAircraftPicker() {
     // Display text: "REG - Type" or empty for hint
@@ -950,7 +1046,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     );
   }
 
-  /// Build the simulator picker field
+  /// Build the simulator picker field (matches aircraft picker style)
   Widget _buildSimulatorPicker() {
     // Display text: "REG - Type @ Facility" or empty for hint
     final displayText = _selectedSimulator != null
@@ -970,25 +1066,11 @@ class _AddFlightScreenState extends State<AddFlightScreen>
           ),
           decoration: InputDecoration(
             labelText: 'Simulator',
-            hintText: 'Select for sim session',
+            hintText: 'SIM-001',
             counterText: '',
-            suffixIcon: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_selectedSimulator != null)
-                  IconButton(
-                    onPressed: _clearSimulator,
-                    icon: Icon(Icons.close, color: AppColors.whiteDarker, size: 20),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.search,
-                  color: AppColors.whiteDarker,
-                ),
-                const SizedBox(width: 12),
-              ],
+            suffixIcon: Icon(
+              Icons.search,
+              color: AppColors.whiteDarker,
             ),
           ),
         ),
@@ -1704,169 +1786,53 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                               maxLength: 10,
                             ),
                           ],
-                          const SizedBox(height: 16),
-                          AirportRouteFields(
-                            depController: _depController,
-                            destController: _destController,
-                            initialDepAirport: _selectedDepAirport,
-                            initialDestAirport: _selectedDestAirport,
-                            depKey: _depKey,
-                            destKey: _destKey,
-                            depValidator: _validateAirportCode,
-                            destValidator: _validateAirportCode,
-                            onDepAirportSelected: (airport) {
-                              setState(() {
-                                _selectedDepAirport = airport;
-                                _hasChanges = true;
-                              });
-                              _triggerNightTimeCalculation();
-                              _calculateCrossCountryTime();
-                            },
-                            onDestAirportSelected: (airport) {
-                              setState(() {
-                                _selectedDestAirport = airport;
-                                _hasChanges = true;
-                              });
-                              _triggerNightTimeCalculation();
-                              _calculateCrossCountryTime();
-                            },
-                          ),
+                          // From/To airports (hidden for simulator screens)
+                          if (!(_activeScreenConfig?.isSimulatorMode ?? false)) ...[
+                            const SizedBox(height: 16),
+                            AirportRouteFields(
+                              depController: _depController,
+                              destController: _destController,
+                              initialDepAirport: _selectedDepAirport,
+                              initialDestAirport: _selectedDestAirport,
+                              depKey: _depKey,
+                              destKey: _destKey,
+                              depValidator: _validateAirportCode,
+                              destValidator: _validateAirportCode,
+                              onDepAirportSelected: (airport) {
+                                setState(() {
+                                  _selectedDepAirport = airport;
+                                  _hasChanges = true;
+                                });
+                                _triggerNightTimeCalculation();
+                                _calculateCrossCountryTime();
+                              },
+                              onDestAirportSelected: (airport) {
+                                setState(() {
+                                  _selectedDestAirport = airport;
+                                  _hasChanges = true;
+                                });
+                                _triggerNightTimeCalculation();
+                                _calculateCrossCountryTime();
+                              },
+                            ),
+                          ],
                         ],
                       ),
                     ),
 
                     const SizedBox(height: 24),
 
-                    // Aircraft / Simulator Section
+                    // Aircraft or Simulator Section (based on screen config)
                     _SectionHeader(
-                      title: _isSimSession ? 'SIMULATOR' : 'AIRCRAFT',
+                      title: (_activeScreenConfig?.isSimulatorMode ?? false) ? 'SIMULATOR' : 'AIRCRAFT',
                     ),
                     const SizedBox(height: 12),
                     GlassContainer(
                       key: _aircraftRegKey,
                       padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Aircraft picker (hidden when simulator is selected)
-                          if (!_isSimSession) ...[
-                            if (_isLoadingAircraft)
-                              const Center(
-                                child: SizedBox(
-                                  height: 24,
-                                  width: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.denim,
-                                  ),
-                                ),
-                              )
-                            else if (_userAircraft.isEmpty)
-                              _buildNoAircraftState()
-                            else
-                              _buildAircraftPicker(),
-                          ],
-
-                          // Simulator picker
-                          if (_isSimSession) ...[
-                            // Show selected simulator with highlight
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.denim.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: AppColors.denim.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.desktop_mac,
-                                    color: AppColors.denim,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Simulator Session',
-                                          style: AppTypography.caption.copyWith(
-                                            color: AppColors.denim,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          _selectedSimulator!.fullDisplayName,
-                                          style: GoogleFonts.jetBrainsMono(
-                                            fontSize: 14,
-                                            color: AppColors.white,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  IconButton(
-                                    onPressed: _clearSimulator,
-                                    icon: Icon(
-                                      Icons.close,
-                                      color: AppColors.whiteDarker,
-                                      size: 20,
-                                    ),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    tooltip: 'Switch to aircraft',
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ] else ...[
-                            // Divider and simulator option
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(child: Divider(color: AppColors.borderSubtle)),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  child: Text(
-                                    'or',
-                                    style: AppTypography.caption,
-                                  ),
-                                ),
-                                Expanded(child: Divider(color: AppColors.borderSubtle)),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            if (_isLoadingSimulators)
-                              const Center(
-                                child: SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.denim,
-                                  ),
-                                ),
-                              )
-                            else if (_userSimulators.isEmpty)
-                              Center(
-                                child: TextButton.icon(
-                                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MySimulatorsScreen())),
-                                  icon: Icon(Icons.desktop_mac_outlined, size: 18),
-                                  label: const Text('Add Simulator'),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: AppColors.whiteDarker,
-                                  ),
-                                ),
-                              )
-                            else
-                              _buildSimulatorPicker(),
-                          ],
-                        ],
-                      ),
+                      child: (_activeScreenConfig?.isSimulatorMode ?? false)
+                          ? _buildSimulatorSection()
+                          : _buildAircraftSection(),
                     ),
 
                     const SizedBox(height: 24),
@@ -2231,200 +2197,203 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                               );
                             }),
 
-                          // Expandable Calculated section
-                          const SizedBox(height: 16),
-                          Divider(
-                            color: AppColors.borderSubtle,
-                            height: 1,
-                          ),
-                          const SizedBox(height: 12),
-                          // Tappable header to expand/collapse
-                          GestureDetector(
-                            onTap: () => setState(() => _detailsExpanded = !_detailsExpanded),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Calculated',
-                                  style: AppTypography.body.copyWith(
-                                    color: AppColors.whiteDarker,
+                          // Expandable Calculated section (only if any calculated fields visible)
+                          if (_hasVisibleCalculatedFields) ...[
+                            const SizedBox(height: 16),
+                            Divider(
+                              color: AppColors.borderSubtle,
+                              height: 1,
+                            ),
+                            const SizedBox(height: 12),
+                            // Tappable header to expand/collapse
+                            GestureDetector(
+                              onTap: () => setState(() => _detailsExpanded = !_detailsExpanded),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Calculated',
+                                    style: AppTypography.body.copyWith(
+                                      color: AppColors.whiteDarker,
+                                    ),
                                   ),
+                                  const SizedBox(width: 4),
+                                  AnimatedRotation(
+                                    turns: _detailsExpanded ? 0.5 : 0,
+                                    duration: const Duration(milliseconds: 200),
+                                    child: Icon(
+                                      Icons.expand_more,
+                                      color: AppColors.whiteDarker,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (_detailsExpanded) ...[
+                              const SizedBox(height: 16),
+                              // Calculated fields (auto-populated based on aircraft/times)
+                              if (_isFieldVisible(FlightField.nightTime))
+                                DurationDisplay(
+                                  label: 'Night',
+                                  minutes: _nightMinutes,
                                 ),
-                                const SizedBox(width: 4),
-                                AnimatedRotation(
-                                  turns: _detailsExpanded ? 0.5 : 0,
-                                  duration: const Duration(milliseconds: 200),
-                                  child: Icon(
-                                    Icons.expand_more,
-                                    color: AppColors.whiteDarker,
-                                    size: 20,
-                                  ),
+                              // Multi-Engine only shown for multi-engine aircraft
+                              if (_isFieldVisible(FlightField.multiEngineTime) && _selectedAircraft?.isMultiEngine == true) ...[
+                                const SizedBox(height: 12),
+                                DurationDisplay(
+                                  label: 'Multi-Engine',
+                                  minutes: _multiEngineMinutes,
                                 ),
                               ],
-                            ),
-                          ),
-                          if (_detailsExpanded) ...[
-                            const SizedBox(height: 16),
-                            // Calculated fields (auto-populated based on aircraft/times)
-                            if (_isFieldVisible(FlightField.nightTime))
-                              DurationDisplay(
-                                label: 'Night',
-                                minutes: _nightMinutes,
-                              ),
-                            // Multi-Engine only shown for multi-engine aircraft
-                            if (_isFieldVisible(FlightField.multiEngineTime) && _selectedAircraft?.isMultiEngine == true) ...[
-                              const SizedBox(height: 12),
-                              DurationDisplay(
-                                label: 'Multi-Engine',
-                                minutes: _multiEngineMinutes,
-                              ),
-                            ],
-                            // Multi-Pilot only shown for multi-pilot aircraft
-                            if (_isFieldVisible(FlightField.multiPilotTime) && _selectedAircraft?.isMultiPilot == true) ...[
-                              const SizedBox(height: 12),
-                              DurationDisplay(
-                                label: 'Multi-Pilot',
-                                minutes: _multiPilotMinutes,
-                              ),
-                            ],
-                            // Solo only shown when conditions met (single-pilot, no instructor, no dual)
-                            if (_isFieldVisible(FlightField.soloTime) && _isSoloFlight) ...[
-                              const SizedBox(height: 12),
-                              DurationDisplay(
-                                label: 'Solo',
-                                minutes: _soloMinutes,
-                              ),
-                            ],
-                            if (_isFieldVisible(FlightField.crossCountryTime)) ...[
-                              const SizedBox(height: 12),
-                              DurationDisplay(
-                                label: 'Cross-Country',
-                                minutes: _crossCountryMinutes,
-                              ),
-                            ],
-                            // IFR in calculated section for IFR-only aircraft
-                            if (_isFieldVisible(FlightField.ifrTime) && _showIfrInCalculatedSection) ...[
-                              const SizedBox(height: 12),
-                              DurationDisplay(
-                                label: 'IFR',
-                                minutes: _ifrMinutes,
-                              ),
+                              // Multi-Pilot only shown for multi-pilot aircraft
+                              if (_isFieldVisible(FlightField.multiPilotTime) && _selectedAircraft?.isMultiPilot == true) ...[
+                                const SizedBox(height: 12),
+                                DurationDisplay(
+                                  label: 'Multi-Pilot',
+                                  minutes: _multiPilotMinutes,
+                                ),
+                              ],
+                              // Solo only shown when conditions met (single-pilot, no instructor, no dual)
+                              if (_isFieldVisible(FlightField.soloTime) && _isSoloFlight) ...[
+                                const SizedBox(height: 12),
+                                DurationDisplay(
+                                  label: 'Solo',
+                                  minutes: _soloMinutes,
+                                ),
+                              ],
+                              if (_isFieldVisible(FlightField.crossCountryTime)) ...[
+                                const SizedBox(height: 12),
+                                DurationDisplay(
+                                  label: 'Cross-Country',
+                                  minutes: _crossCountryMinutes,
+                                ),
+                              ],
+                              // IFR in calculated section for IFR-only aircraft
+                              if (_isFieldVisible(FlightField.ifrTime) && _showIfrInCalculatedSection) ...[
+                                const SizedBox(height: 12),
+                                DurationDisplay(
+                                  label: 'IFR',
+                                  minutes: _ifrMinutes,
+                                ),
+                              ],
                             ],
                           ],
                         ],
                       ),
                     ),
 
-                    const SizedBox(height: 24),
-
-                    // Takeoffs and Landings Section
-                    _SectionHeader(title: 'TAKEOFFS AND LANDINGS'),
-                    const SizedBox(height: 12),
-                    Container(
-                      key: _landingsKey,
-                      decoration: _landingsError != null
-                          ? BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFFEF4444),
-                                width: 1.5,
-                              ),
-                            )
-                          : null,
-                      child: GlassContainer(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          children: [
-                            // PF/PM Toggle (hidden defaults to PF)
-                            if (_isFieldVisible(FlightField.pfPmToggle))
-                              _PfPmToggle(
-                                isPilotFlying: _isPilotFlying,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isPilotFlying = value;
-                                    _hasChanges = true;
-                                    // Reset takeoffs and landings to 0 when switching to PM
-                                    if (!value) {
-                                      _dayTakeoffs = 0;
-                                      _nightTakeoffs = 0;
-                                      _dayLandings = 0;
-                                      _nightLandings = 0;
-                                    }
-                                    _landingsError = null;
-                                  });
-                                },
-                              ),
-                            // Show takeoff and landing steppers only for PF and when visible
-                            if (_isPilotFlying && _isFieldVisible(FlightField.takeoffsLandings)) ...[
-                              if (_isFieldVisible(FlightField.pfPmToggle)) const SizedBox(height: 16),
-                              NumberStepper(
-                                label: 'Day Takeoffs',
-                                value: _dayTakeoffs,
-                                minValue: 0,
-                                maxValue: 99,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _dayTakeoffs = value;
-                                    _hasChanges = true;
-                                  });
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                              NumberStepper(
-                                label: 'Night Takeoffs',
-                                value: _nightTakeoffs,
-                                minValue: 0,
-                                maxValue: 99,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _nightTakeoffs = value;
-                                    _hasChanges = true;
-                                  });
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                              NumberStepper(
-                                label: 'Day Landings',
-                                value: _dayLandings,
-                                minValue: 0,
-                                maxValue: 99,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _dayLandings = value;
-                                    _hasChanges = true;
-                                    _landingsError = null;
-                                  });
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                              NumberStepper(
-                                label: 'Night Landings',
-                                value: _nightLandings,
-                                minValue: 0,
-                                maxValue: 99,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _nightLandings = value;
-                                    _hasChanges = true;
-                                    _landingsError = null;
-                                  });
-                                },
-                              ),
+                    // Takeoffs and Landings Section (only if any T/O or landing fields visible)
+                    if (_showTakeoffsLandingsSection) ...[
+                      const SizedBox(height: 24),
+                      _SectionHeader(title: 'TAKEOFFS AND LANDINGS'),
+                      const SizedBox(height: 12),
+                      Container(
+                        key: _landingsKey,
+                        decoration: _landingsError != null
+                            ? BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(0xFFEF4444),
+                                  width: 1.5,
+                                ),
+                              )
+                            : null,
+                        child: GlassContainer(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            children: [
+                              // PF/PM Toggle (hidden defaults to PF)
+                              if (_isFieldVisible(FlightField.pfPmToggle))
+                                _PfPmToggle(
+                                  isPilotFlying: _isPilotFlying,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _isPilotFlying = value;
+                                      _hasChanges = true;
+                                      // Reset takeoffs and landings to 0 when switching to PM
+                                      if (!value) {
+                                        _dayTakeoffs = 0;
+                                        _nightTakeoffs = 0;
+                                        _dayLandings = 0;
+                                        _nightLandings = 0;
+                                      }
+                                      _landingsError = null;
+                                    });
+                                  },
+                                ),
+                              // Show takeoff and landing steppers only for PF and when visible
+                              if (_isPilotFlying && _isFieldVisible(FlightField.takeoffsLandings)) ...[
+                                if (_isFieldVisible(FlightField.pfPmToggle)) const SizedBox(height: 16),
+                                NumberStepper(
+                                  label: 'Day Takeoffs',
+                                  value: _dayTakeoffs,
+                                  minValue: 0,
+                                  maxValue: 99,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _dayTakeoffs = value;
+                                      _hasChanges = true;
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                NumberStepper(
+                                  label: 'Night Takeoffs',
+                                  value: _nightTakeoffs,
+                                  minValue: 0,
+                                  maxValue: 99,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _nightTakeoffs = value;
+                                      _hasChanges = true;
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                NumberStepper(
+                                  label: 'Day Landings',
+                                  value: _dayLandings,
+                                  minValue: 0,
+                                  maxValue: 99,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _dayLandings = value;
+                                      _hasChanges = true;
+                                      _landingsError = null;
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                NumberStepper(
+                                  label: 'Night Landings',
+                                  value: _nightLandings,
+                                  minValue: 0,
+                                  maxValue: 99,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _nightLandings = value;
+                                      _hasChanges = true;
+                                      _landingsError = null;
+                                    });
+                                  },
+                                ),
+                              ],
                             ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (_landingsError != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8, left: 12),
-                        child: Text(
-                          _landingsError!,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: const Color(0xFFEF4444),
                           ),
                         ),
                       ),
+                      if (_landingsError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, left: 12),
+                          child: Text(
+                            _landingsError!,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: const Color(0xFFEF4444),
+                            ),
+                          ),
+                        ),
+                    ],
 
                     // Approaches Section (only for PF and when visible)
                     if (_isPilotFlying && _isFieldVisible(FlightField.approaches)) ...[

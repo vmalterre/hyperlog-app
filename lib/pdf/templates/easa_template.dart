@@ -204,7 +204,7 @@ class EasaTemplate extends PdfBaseTemplate {
         cell(entry.dest),
         cell(PdfFormatUtils.formatTimeOfDay(entry.blockOn)),
         cell(entry.aircraftType),
-        cell(entry.aircraftReg),
+        cell(entry.displayReg),
         cell(PdfFormatUtils.formatMinutesAsHHMM(seTime)),
         cell(PdfFormatUtils.formatMinutesAsHHMM(meTime)),
         cell(PdfFormatUtils.formatMinutesAsHHMM(entry.flightTime.total)),
