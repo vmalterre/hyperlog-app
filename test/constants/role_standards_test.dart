@@ -13,13 +13,14 @@ void main() {
   });
 
   group('TimeFieldCodes', () {
-    test('has 5 time field codes', () {
-      expect(TimeFieldCodes.all.length, 5);
+    test('has 6 time field codes', () {
+      expect(TimeFieldCodes.all.length, 6);
       expect(TimeFieldCodes.all, contains('PIC'));
       expect(TimeFieldCodes.all, contains('PICUS'));
       expect(TimeFieldCodes.all, contains('SIC'));
       expect(TimeFieldCodes.all, contains('DUAL'));
       expect(TimeFieldCodes.all, contains('INSTRUCTOR'));
+      expect(TimeFieldCodes.all, contains('EXAMINER'));
     });
 
     test('has 3 primary roles', () {
@@ -29,10 +30,11 @@ void main() {
       expect(TimeFieldCodes.primary, contains('PICUS'));
     });
 
-    test('has 2 secondary roles', () {
-      expect(TimeFieldCodes.secondary.length, 2);
+    test('has 3 secondary roles', () {
+      expect(TimeFieldCodes.secondary.length, 3);
       expect(TimeFieldCodes.secondary, contains('DUAL'));
       expect(TimeFieldCodes.secondary, contains('INSTRUCTOR'));
+      expect(TimeFieldCodes.secondary, contains('EXAMINER'));
     });
   });
 
@@ -188,9 +190,10 @@ void main() {
     group('getSecondaryRolesWithLabels', () {
       test('returns secondary roles with labels', () {
         final roles = RoleStandards.getSecondaryRolesWithLabels(RoleStandard.faa);
-        expect(roles.length, 2);
+        expect(roles.length, 3);
         expect(roles.map((r) => r.code), contains('DUAL'));
         expect(roles.map((r) => r.code), contains('INSTRUCTOR'));
+        expect(roles.map((r) => r.code), contains('EXAMINER'));
 
         final dualRole = roles.firstWhere((r) => r.code == 'DUAL');
         expect(dualRole.label, 'Dual Received');
