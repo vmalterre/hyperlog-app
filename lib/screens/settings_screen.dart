@@ -14,6 +14,7 @@ import '../services/preferences_service.dart';
 import 'display_options_screen.dart';
 import 'export_logbook_screen.dart';
 import 'saved_pilots_screen.dart';
+import 'settings/import/import_provider_screen.dart';
 import 'my_roles_screen.dart';
 import 'my_aircraft_screen.dart';
 import 'my_simulators_screen.dart';
@@ -335,6 +336,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _SettingsSection(
                 title: 'DATA',
                 items: [
+                  _SettingsItem(
+                    icon: Icons.upload_outlined,
+                    title: 'Import Logbook',
+                    subtitle: 'Import flights from FlyLog, LogTen, etc.',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ImportProviderScreen(),
+                        ),
+                      );
+                    },
+                  ),
                   _SettingsItem(
                     icon: Icons.download_outlined,
                     title: 'Export Logbook',
