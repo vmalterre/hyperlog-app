@@ -406,7 +406,7 @@ void main() {
 
     group('updateSavedPilotNameByUserId', () {
       test('updates pilot name and returns affected count', () async {
-        when(() => mockApiService.put(any(), any())).thenAnswer((_) async => {
+        when(() => mockApiService.post(any(), any())).thenAnswer((_) async => {
               'success': true,
               'data': {'updatedCount': 5},
             });
@@ -418,16 +418,16 @@ void main() {
         );
 
         expect(count, 5);
-        verify(() => mockApiService.put(
-              '/users/uuid-user-123/saved-pilots/Old%20Name',
-              {'name': 'New Name'},
+        verify(() => mockApiService.post(
+              '/users/uuid-user-123/saved-pilots/rename',
+              {'oldName': 'Old Name', 'newName': 'New Name'},
             )).called(1);
       });
     });
 
     group('deleteSavedPilotByUserId', () {
       test('deletes saved pilot and returns deleted count', () async {
-        when(() => mockApiService.delete(any())).thenAnswer((_) async => {
+        when(() => mockApiService.post(any(), any())).thenAnswer((_) async => {
               'success': true,
               'data': {'deletedCount': 3},
             });
@@ -435,13 +435,16 @@ void main() {
         final count = await pilotService.deleteSavedPilotByUserId('uuid-user-123', 'Crew Name');
 
         expect(count, 3);
-        verify(() => mockApiService.delete('/users/uuid-user-123/saved-pilots/Crew%20Name')).called(1);
+        verify(() => mockApiService.post(
+              '/users/uuid-user-123/saved-pilots/delete',
+              {'name': 'Crew Name'},
+            )).called(1);
       });
     });
 
     group('getFlightCountForPilotByUserId', () {
       test('returns flight count for pilot', () async {
-        when(() => mockApiService.get(any())).thenAnswer((_) async => {
+        when(() => mockApiService.post(any(), any())).thenAnswer((_) async => {
               'success': true,
               'data': {'flightCount': 42},
             });
@@ -452,8 +455,9 @@ void main() {
         );
 
         expect(count, 42);
-        verify(() => mockApiService.get(
-              '/users/uuid-user-123/saved-pilots/Captain%20Smith/flight-count',
+        verify(() => mockApiService.post(
+              '/users/uuid-user-123/saved-pilots/flight-count',
+              {'name': 'Captain Smith'},
             )).called(1);
       });
     });
