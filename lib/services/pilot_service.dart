@@ -151,10 +151,9 @@ class PilotService {
     String newName,
   ) async {
     try {
-      final encodedName = Uri.encodeComponent(oldName);
-      final response = await _api.put(
-        '${AppConfig.users}/$userId/saved-pilots/$encodedName',
-        {'name': newName},
+      final response = await _api.post(
+        '${AppConfig.users}/$userId/saved-pilots/rename',
+        {'oldName': oldName, 'newName': newName},
       );
       return response['data']['updatedCount'] as int;
     } on ApiException catch (e) {
@@ -180,9 +179,9 @@ class PilotService {
     String name,
   ) async {
     try {
-      final encodedName = Uri.encodeComponent(name);
-      final response = await _api.delete(
-        '${AppConfig.users}/$userId/saved-pilots/$encodedName',
+      final response = await _api.post(
+        '${AppConfig.users}/$userId/saved-pilots/delete',
+        {'name': name},
       );
       return response['data']['deletedCount'] as int;
     } on ApiException catch (e) {
@@ -198,15 +197,35 @@ class PilotService {
     }
   }
 
+  /// Delete all saved pilots by user UUID (bulk delete)
+  Future<int> deleteAllSavedPilotsByUserId(String userId) async {
+    try {
+      final response = await _api.delete(
+        '${AppConfig.users}/$userId/saved-pilots',
+      );
+      return response['data']['deletedCount'] as int;
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to delete all saved pilots',
+          metadata: {'userId': userId},
+        );
+      }
+      rethrow;
+    }
+  }
+
   /// Get flight count by user UUID (preferred method)
   Future<int> getFlightCountForPilotByUserId(
     String userId,
     String name,
   ) async {
     try {
-      final encodedName = Uri.encodeComponent(name);
-      final response = await _api.get(
-        '${AppConfig.users}/$userId/saved-pilots/$encodedName/flight-count',
+      final response = await _api.post(
+        '${AppConfig.users}/$userId/saved-pilots/flight-count',
+        {'name': name},
       );
       return response['data']['flightCount'] as int;
     } on ApiException catch (e) {
@@ -279,10 +298,9 @@ class PilotService {
     String newName,
   ) async {
     try {
-      final encodedName = Uri.encodeComponent(oldName);
-      final response = await _api.put(
-        '${AppConfig.pilots}/$licenseNumber/saved-pilots/$encodedName',
-        {'name': newName},
+      final response = await _api.post(
+        '${AppConfig.pilots}/$licenseNumber/saved-pilots/rename',
+        {'oldName': oldName, 'newName': newName},
       );
       return response['data']['updatedCount'] as int;
     } on ApiException catch (e) {
@@ -308,9 +326,9 @@ class PilotService {
     String name,
   ) async {
     try {
-      final encodedName = Uri.encodeComponent(name);
-      final response = await _api.delete(
-        '${AppConfig.pilots}/$licenseNumber/saved-pilots/$encodedName',
+      final response = await _api.post(
+        '${AppConfig.pilots}/$licenseNumber/saved-pilots/delete',
+        {'name': name},
       );
       return response['data']['deletedCount'] as int;
     } on ApiException catch (e) {
@@ -332,9 +350,9 @@ class PilotService {
     String name,
   ) async {
     try {
-      final encodedName = Uri.encodeComponent(name);
-      final response = await _api.get(
-        '${AppConfig.pilots}/$licenseNumber/saved-pilots/$encodedName/flight-count',
+      final response = await _api.post(
+        '${AppConfig.pilots}/$licenseNumber/saved-pilots/flight-count',
+        {'name': name},
       );
       return response['data']['flightCount'] as int;
     } on ApiException catch (e) {

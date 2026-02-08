@@ -99,6 +99,15 @@ class ApiService {
 
   /// Parse API response
   Map<String, dynamic> _handleResponse(http.Response response) {
+    // Handle rate limiting (nginx returns HTML for 429)
+    if (response.statusCode == 429) {
+      throw ApiException(
+        message: 'Too many requests. Please try again shortly.',
+        statusCode: 429,
+        errorCode: 'RATE_LIMITED',
+      );
+    }
+
     final Map<String, dynamic> data;
 
     try {

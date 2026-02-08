@@ -275,16 +275,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       final pilotService = PilotService();
-      final pilots = await pilotService.getSavedPilotsByUserId(userId);
-
-      for (final pilot in pilots) {
-        await pilotService.deleteSavedPilotByUserId(userId, pilot.name);
-      }
+      final deletedCount = await pilotService.deleteAllSavedPilotsByUserId(userId);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Deleted ${pilots.length} saved pilots'),
+            content: Text('Deleted $deletedCount saved pilots'),
             backgroundColor: AppColors.endorsedGreen,
           ),
         );
@@ -459,12 +455,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       totalDeleted += aircraftRegs.length + aircraftTypes.length;
       await briefPause();
 
-      // 4. Delete all saved pilots
-      final pilots = await pilotService.getSavedPilotsByUserId(userId);
-      for (final pilot in pilots) {
-        await pilotService.deleteSavedPilotByUserId(userId, pilot.name);
-      }
-      totalDeleted += pilots.length;
+      // 4. Delete all saved pilots (bulk)
+      final deletedPilots = await pilotService.deleteAllSavedPilotsByUserId(userId);
+      totalDeleted += deletedPilots;
       await briefPause();
 
       // 5. Delete all simulator registrations then types
