@@ -662,7 +662,7 @@ class ImportReport {
       imported: json['imported'] ?? 0,
       skipped: json['skipped'] ?? 0,
       crewCreated: json['crewCreated'] ?? 0,
-      totalFlightTime: json['totalFlightTime'] ?? 0,
+      totalFlightTime: (json['totalFlightTime'] ?? 0) - simTime,
       flightIds: (json['flightIds'] as List<dynamic>?)?.cast<String>() ?? [],
       errors: (json['errors'] as List<dynamic>?)?.cast<String>() ?? [],
       aircraftTypesCount: aircraftTypes.length,

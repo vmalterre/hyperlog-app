@@ -6,9 +6,11 @@ import '../constants/role_standards.dart';
 import '../database/database_provider.dart';
 import '../models/logbook_entry.dart';
 import '../models/flight_history.dart';
+import '../models/user_simulator.dart';
 import '../services/flight_service.dart';
 import '../services/pilot_service.dart';
 import '../services/preferences_service.dart';
+import '../services/simulator_service.dart';
 import '../session_state.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
@@ -35,8 +37,10 @@ class FlightDetailScreen extends StatefulWidget {
 class _FlightDetailScreenState extends State<FlightDetailScreen> {
   final FlightService _flightService = FlightService();
   final PilotService _pilotService = PilotService();
+  final SimulatorService _simulatorService = SimulatorService();
 
   LogbookEntry? _entry;
+  UserSimulatorRegistration? _resolvedSim;
   List<VersionDiff>? _diffs;
   bool _isLoading = true;
   String? _error;
@@ -84,6 +88,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
           _entry = localEntry;
           _isLoading = false;
         });
+        _resolveSimulator(localEntry);
       }
     } catch (_) {
       // Local read failed, will try API below
@@ -124,6 +129,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
               : null;
           _isLoading = false;
         });
+        _resolveSimulator(entry);
       }
     } catch (e) {
       // API failed — only show error if we have no local data
@@ -138,6 +144,24 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// Look up the simulator registration for sim entries
+  Future<void> _resolveSimulator(LogbookEntry entry) async {
+    if (!entry.isSimSession || entry.simReg == null) return;
+    try {
+      final userId = Provider.of<SessionState>(context, listen: false).userId;
+      if (userId == null) return;
+      final sim = await _simulatorService.lookupSimulatorRegistration(
+        userId,
+        entry.simReg!,
+      );
+      if (mounted) {
+        setState(() => _resolvedSim = sim);
+      }
+    } catch (_) {
+      // Lookup failed, will use fallback display
     }
   }
 
@@ -162,7 +186,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
       backgroundColor: AppColors.nightRiderDark,
       appBar: AppBar(
         title: Text(
-          _entry?.flightNumber ?? 'Flight Details',
+          _entry?.flightNumber ?? (_entry?.isSimSession == true ? 'Simulator Details' : 'Flight Details'),
           style: AppTypography.h4,
         ),
         backgroundColor: Colors.transparent,
@@ -256,6 +280,33 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
           // Route header
           Builder(
             builder: (context) {
+              if (_entry!.isSimSession) {
+                return GlassContainer(
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.simulatorBg,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'SIM',
+                          style: AppTypography.airportCode.copyWith(
+                            fontSize: 32,
+                            color: AppColors.simulatorPurple,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        dateFormat.format(_entry!.flightDate),
+                        style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
+                      ),
+                    ],
+                  ),
+                );
+              }
               // Get user's preferred airport code format
               final airportFormat = PreferencesService.instance.getAirportCodeFormat();
               final depDisplay = AirportFormats.formatCode(
@@ -307,41 +358,49 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
           GlassContainer(
             child: Column(
               children: [
-                _buildDetailRow('Flight Number', _entry!.flightNumber ?? '-'),
-                _buildDivider(),
+                if (!_entry!.isSimSession) ...[
+                  _buildDetailRow('Flight Number', _entry!.flightNumber ?? '-'),
+                  _buildDivider(),
+                ],
                 _buildDetailRow('Block Off', timeFormat.format(_entry!.blockOff)),
                 _buildDetailRow('Block On', timeFormat.format(_entry!.blockOn)),
                 _buildDetailRow('Block Time', _entry!.flightTime.formatted),
                 _buildDivider(),
                 _buildDetailRow(
                   _entry!.isSimSession ? 'Simulator' : 'Aircraft',
-                  '${_entry!.aircraftType} (${_entry!.displayReg})',
+                  _entry!.isSimSession
+                      ? _resolvedSim != null
+                          ? '${_resolvedSim!.categoryLevelDisplay} ${_resolvedSim!.icaoDesignator} (${_resolvedSim!.registration})'
+                          : '${_entry!.aircraftType} (Unknown reg)'
+                      : '${_entry!.aircraftType} (${_entry!.displayReg})',
                 ),
-                _buildDetailRow('Function', _entry!.isPilotFlying ? 'Pilot Flying' : 'Pilot Monitoring'),
-                if (_entry!.isPilotFlying)
-                  _buildDetailRow('Landings', _entry!.totalLandings.total.toString()),
-                if (_entry!.approaches.hasAny) ...[
-                  _buildDivider(),
-                  if (_entry!.approaches.visual > 0)
-                    _buildDetailRow('Visual', _entry!.approaches.visual.toString()),
-                  if (_entry!.approaches.ilsCatI > 0)
-                    _buildDetailRow('ILS CAT I', _entry!.approaches.ilsCatI.toString()),
-                  if (_entry!.approaches.ilsCatII > 0)
-                    _buildDetailRow('ILS CAT II', _entry!.approaches.ilsCatII.toString()),
-                  if (_entry!.approaches.ilsCatIII > 0)
-                    _buildDetailRow('ILS CAT III', _entry!.approaches.ilsCatIII.toString()),
-                  if (_entry!.approaches.rnp > 0)
-                    _buildDetailRow('RNP', _entry!.approaches.rnp.toString()),
-                  if (_entry!.approaches.rnpAr > 0)
-                    _buildDetailRow('RNP AR', _entry!.approaches.rnpAr.toString()),
-                  if (_entry!.approaches.vor > 0)
-                    _buildDetailRow('VOR', _entry!.approaches.vor.toString()),
-                  if (_entry!.approaches.ndb > 0)
-                    _buildDetailRow('NDB', _entry!.approaches.ndb.toString()),
-                  if (_entry!.approaches.ilsBackCourse > 0)
-                    _buildDetailRow('ILS Back Course', _entry!.approaches.ilsBackCourse.toString()),
-                  if (_entry!.approaches.localizer > 0)
-                    _buildDetailRow('Localizer', _entry!.approaches.localizer.toString()),
+                if (!_entry!.isSimSession) ...[
+                  _buildDetailRow('Function', _entry!.isPilotFlying ? 'Pilot Flying' : 'Pilot Monitoring'),
+                  if (_entry!.isPilotFlying)
+                    _buildDetailRow('Landings', _entry!.totalLandings.total.toString()),
+                  if (_entry!.approaches.hasAny) ...[
+                    _buildDivider(),
+                    if (_entry!.approaches.visual > 0)
+                      _buildDetailRow('Visual', _entry!.approaches.visual.toString()),
+                    if (_entry!.approaches.ilsCatI > 0)
+                      _buildDetailRow('ILS CAT I', _entry!.approaches.ilsCatI.toString()),
+                    if (_entry!.approaches.ilsCatII > 0)
+                      _buildDetailRow('ILS CAT II', _entry!.approaches.ilsCatII.toString()),
+                    if (_entry!.approaches.ilsCatIII > 0)
+                      _buildDetailRow('ILS CAT III', _entry!.approaches.ilsCatIII.toString()),
+                    if (_entry!.approaches.rnp > 0)
+                      _buildDetailRow('RNP', _entry!.approaches.rnp.toString()),
+                    if (_entry!.approaches.rnpAr > 0)
+                      _buildDetailRow('RNP AR', _entry!.approaches.rnpAr.toString()),
+                    if (_entry!.approaches.vor > 0)
+                      _buildDetailRow('VOR', _entry!.approaches.vor.toString()),
+                    if (_entry!.approaches.ndb > 0)
+                      _buildDetailRow('NDB', _entry!.approaches.ndb.toString()),
+                    if (_entry!.approaches.ilsBackCourse > 0)
+                      _buildDetailRow('ILS Back Course', _entry!.approaches.ilsBackCourse.toString()),
+                    if (_entry!.approaches.localizer > 0)
+                      _buildDetailRow('Localizer', _entry!.approaches.localizer.toString()),
+                  ],
                 ],
                 if (_entry!.creatorCrew != null && _entry!.creatorCrew!.remarks.isNotEmpty) ...[
                   _buildDivider(),
@@ -435,7 +494,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
 
           // Amend button
           PrimaryButton(
-            label: 'Amend Flight',
+            label: _entry!.isSimSession ? 'Amend Simulator' : 'Amend Flight',
             onPressed: _navigateToEdit,
             icon: Icons.edit,
             fullWidth: true,

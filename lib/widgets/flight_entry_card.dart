@@ -64,7 +64,9 @@ class _FlightEntryCardState extends State<FlightEntryCard> {
           color: Colors.black.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _isPressed ? AppColors.denimBorder : AppColors.borderSubtle,
+            color: _isPressed
+                ? (widget.isSimSession ? AppColors.simulatorBorder : AppColors.denimBorder)
+                : AppColors.borderSubtle,
             width: 1,
           ),
         ),
@@ -85,21 +87,78 @@ class _FlightEntryCardState extends State<FlightEntryCard> {
             const SizedBox(height: 16),
 
             // Route display
-            RouteDisplay(
-              departure: widget.departureCode,
-              arrival: widget.arrivalCode,
-              duration: widget.blockTime,
-              codeStyle: GoogleFonts.jetBrainsMono(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: AppColors.white,
+            if (widget.isSimSession)
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.simulatorBg,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'SIM',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.simulatorPurple,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            widget.blockTime,
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.whiteDarker,
+                            ),
+                          ),
+                        ),
+                        RouteLine(isSimSession: true),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.simulatorBg,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'SIM',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.simulatorPurple,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              RouteDisplay(
+                departure: widget.departureCode,
+                arrival: widget.arrivalCode,
+                duration: widget.blockTime,
+                isSimSession: widget.isSimSession,
+                codeStyle: GoogleFonts.jetBrainsMono(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.white,
+                ),
+                durationStyle: GoogleFonts.jetBrainsMono(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.whiteDarker,
+                ),
               ),
-              durationStyle: GoogleFonts.jetBrainsMono(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: AppColors.whiteDarker,
-              ),
-            ),
             const SizedBox(height: 16),
 
             // Aircraft/Simulator info row
@@ -108,28 +167,9 @@ class _FlightEntryCardState extends State<FlightEntryCard> {
                 Icon(
                   widget.isSimSession ? Icons.desktop_mac : Icons.airplanemode_active,
                   size: 14,
-                  color: widget.isSimSession ? AppColors.denim : AppColors.whiteDarker,
+                  color: AppColors.whiteDarker,
                 ),
                 const SizedBox(width: 6),
-                if (widget.isSimSession) ...[
-                  // Show "SIM" badge for simulator sessions
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: AppColors.denim.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      'SIM',
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.denim,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                ],
                 Text(
                   widget.aircraftType,
                   style: AppTypography.caption,

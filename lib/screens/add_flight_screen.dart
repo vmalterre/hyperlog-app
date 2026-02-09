@@ -826,6 +826,12 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   /// Whether a simulator is selected (sim session)
   bool get _isSimSession => _selectedSimulator != null;
 
+  /// Whether the form should behave in simulator mode
+  /// True when screen config is sim mode OR editing an existing sim entry
+  bool get _isSimulatorMode =>
+      (_activeScreenConfig?.isSimulatorMode ?? false) ||
+      (widget.isEditMode && widget.entry?.isSimSession == true);
+
   /// Whether any calculated fields are visible in the screen config
   bool get _hasVisibleCalculatedFields =>
       _isFieldVisible(FlightField.nightTime) ||
@@ -1727,7 +1733,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
               }
             },
           ),
-          title: Text(widget.isEditMode ? 'Amend Flight' : 'Log Flight', style: AppTypography.h3),
+          title: Text(widget.isEditMode ? (_isSimulatorMode ? 'Amend Simulator' : 'Amend Flight') : 'Log Flight', style: AppTypography.h3),
           centerTitle: true,
           actions: [
             IconButton(
@@ -1766,7 +1772,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                               _triggerNightTimeCalculation();
                             },
                           ),
-                          if (_isFieldVisible(FlightField.flightNumber)) ...[
+                          if (_isFieldVisible(FlightField.flightNumber) && !_isSimulatorMode) ...[
                             const SizedBox(height: 16),
                             GlassTextField(
                               controller: _flightNumberController,
@@ -1778,7 +1784,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                             ),
                           ],
                           // From/To airports (hidden for simulator screens)
-                          if (!(_activeScreenConfig?.isSimulatorMode ?? false)) ...[
+                          if (!_isSimulatorMode) ...[
                             const SizedBox(height: 16),
                             AirportRouteFields(
                               depController: _depController,
@@ -1815,13 +1821,13 @@ class _AddFlightScreenState extends State<AddFlightScreen>
 
                     // Aircraft or Simulator Section (based on screen config)
                     _SectionHeader(
-                      title: (_activeScreenConfig?.isSimulatorMode ?? false) ? 'SIMULATOR' : 'AIRCRAFT',
+                      title: _isSimulatorMode ? 'SIMULATOR' : 'AIRCRAFT',
                     ),
                     const SizedBox(height: 12),
                     GlassContainer(
                       key: _aircraftRegKey,
                       padding: const EdgeInsets.all(20),
-                      child: (_activeScreenConfig?.isSimulatorMode ?? false)
+                      child: _isSimulatorMode
                           ? _buildSimulatorSection()
                           : _buildAircraftSection(),
                     ),

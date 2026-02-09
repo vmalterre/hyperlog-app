@@ -65,6 +65,29 @@ class LogbookScreenState extends State<LogbookScreen> {
     _airportFormat = PreferencesService.instance.getAirportCodeFormat();
   }
 
+  /// Parse raw sim device identifier (e.g., "B763SIM") into display name (e.g., "FFS B763")
+  /// Already-formatted names (e.g., "FFS B763") pass through unchanged.
+  String _formatSimDisplayType(String rawType) {
+    if (rawType.contains(' ')) return rawType;
+    final match = RegExp(r'^([A-Z]\d{2,3}[A-Z]?)(SIM|FFS|FTD)$')
+        .firstMatch(rawType.toUpperCase());
+    if (match != null) {
+      final icaoCode = match.group(1)!;
+      final suffix = match.group(2)!;
+      final category = suffix == 'FTD' ? 'FTD' : 'FFS';
+      return '$category $icaoCode';
+    }
+    return rawType;
+  }
+
+  /// For sim sessions, show "Unknown Reg" when the reg is just a device identifier
+  String _formatSimDisplayReg(String reg, String type) {
+    if (reg.isEmpty || reg == type || reg == type.toUpperCase()) {
+      return 'Unknown Reg';
+    }
+    return reg;
+  }
+
   String? get _userId {
     return Provider.of<SessionState>(context, listen: false).userId;
   }
@@ -325,13 +348,20 @@ class LogbookScreenState extends State<LogbookScreen> {
             fallbackCode: entry.destCode,
             format: currentFormat,
           );
+          // For sim sessions, format type and reg for display
+          final displayType = entry.isSimSession
+              ? _formatSimDisplayType(entry.acftType)
+              : entry.acftType;
+          final displayReg = entry.isSimSession
+              ? _formatSimDisplayReg(entry.acftReg, entry.acftType)
+              : entry.acftReg;
           return FlightEntryCard(
             departureCode: depDisplay,
             arrivalCode: destDisplay,
             blockTime: entry.blockTime ?? '--:--',
             date: entry.date,
-            aircraftType: entry.acftType,
-            aircraftReg: entry.acftReg,
+            aircraftType: displayType,
+            aircraftReg: displayReg,
             trustLevel: entry.trustLevel,
             showTrustBadge: _isOfficialTier,
             isSimSession: entry.isSimSession,

@@ -29,6 +29,7 @@ class AppColors {
 
   // Category Colors
   static const Color simulatorPurple = Color(0xFF8B5CF6);
+  static const Color simulatorPurpleLight = Color(0xFFA78BFA);
 
   // Common opacity variants for glass-morphism
   static Color glass50 = nightRider.withValues(alpha: 0.5);

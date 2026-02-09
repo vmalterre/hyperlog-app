@@ -6,34 +6,35 @@ class RouteLine extends StatelessWidget {
   final double height;
   final bool showPlane;
   final double planeSize;
+  final bool isSimSession;
 
   const RouteLine({
     super.key,
     this.height = 2,
     this.showPlane = true,
     this.planeSize = 16,
+    this.isSimSession = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = isSimSession ? AppColors.simulatorPurple : AppColors.denim;
+    final lightColor = isSimSession ? AppColors.simulatorPurpleLight : AppColors.denimLight;
+
     if (!showPlane) {
       // Simple continuous line when no plane
       return Container(
         height: height,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              AppColors.denim,
-              AppColors.denimLight,
-              AppColors.denim,
-            ],
+            colors: [primaryColor, lightColor, primaryColor],
           ),
           borderRadius: BorderRadius.circular(height / 2),
         ),
       );
     }
 
-    // Line with gap for airplane icon
+    // Line with gap for icon
     return Row(
       children: [
         // Left line segment
@@ -42,21 +43,18 @@ class RouteLine extends StatelessWidget {
             height: height,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  AppColors.denim,
-                  AppColors.denimLight,
-                ],
+                colors: [primaryColor, lightColor],
               ),
               borderRadius: BorderRadius.circular(height / 2),
             ),
           ),
         ),
-        // Gap + airplane icon + gap
+        // Gap + icon + gap
         const SizedBox(width: 6),
         Icon(
-          Icons.flight,
+          isSimSession ? Icons.desktop_mac : Icons.flight,
           size: planeSize,
-          color: AppColors.denimLight,
+          color: lightColor,
         ),
         const SizedBox(width: 6),
         // Right line segment
@@ -65,10 +63,7 @@ class RouteLine extends StatelessWidget {
             height: height,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  AppColors.denimLight,
-                  AppColors.denim,
-                ],
+                colors: [lightColor, primaryColor],
               ),
               borderRadius: BorderRadius.circular(height / 2),
             ),
@@ -86,6 +81,7 @@ class RouteDisplay extends StatelessWidget {
   final String? duration;
   final TextStyle? codeStyle;
   final TextStyle? durationStyle;
+  final bool isSimSession;
 
   const RouteDisplay({
     super.key,
@@ -94,6 +90,7 @@ class RouteDisplay extends StatelessWidget {
     this.duration,
     this.codeStyle,
     this.durationStyle,
+    this.isSimSession = false,
   });
 
   @override
@@ -128,7 +125,7 @@ class RouteDisplay extends StatelessWidget {
                         ),
                   ),
                 ),
-              const RouteLine(),
+              RouteLine(isSimSession: isSimSession),
             ],
           ),
         ),
