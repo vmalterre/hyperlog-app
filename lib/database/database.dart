@@ -59,6 +59,7 @@ class Flights extends Table {
   TextColumn get landingAt => text().nullable()(); // ISO datetime (wheels down)
   TextColumn get aircraftType => text()();
   TextColumn get aircraftReg => text()();
+  TextColumn get simReg => text().nullable()(); // Simulator registration (null for real flights)
   TextColumn get flightTimeJson => text()(); // JSON-encoded FlightTime
   BoolColumn get isPilotFlying => boolean().withDefault(const Constant(true))();
   TextColumn get approachesJson => text().nullable()(); // JSON-encoded Approaches
@@ -146,7 +147,7 @@ class HyperlogDatabase extends _$HyperlogDatabase {
   HyperlogDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -178,6 +179,14 @@ class HyperlogDatabase extends _$HyperlogDatabase {
               'ALTER TABLE flights ADD COLUMN takeoff_at TEXT');
           await customStatement(
               'ALTER TABLE flights ADD COLUMN landing_at TEXT');
+        }
+        // Migration v2 -> v3: Add sim_reg column to flights
+        if (from < 3) {
+          await customStatement(
+              'ALTER TABLE flights ADD COLUMN sim_reg TEXT');
+          // Force full re-sync so simReg gets populated from server data
+          await customStatement(
+              "DELETE FROM sync_metadata WHERE entity_type = 'flights'");
         }
       },
     );

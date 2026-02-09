@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../constants/airport_format.dart';
 import '../constants/role_standards.dart';
+import '../database/database_provider.dart';
 import '../models/logbook_entry.dart';
 import '../models/flight_history.dart';
 import '../services/flight_service.dart';
@@ -75,14 +76,26 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
       _error = null;
     });
 
+    // 1. Load from local database first (instant, works offline)
     try {
-      // Get user ID for tier routing
+      final localEntry = await flightRepo.getFlightById(widget.flightId);
+      if (localEntry != null && mounted) {
+        setState(() {
+          _entry = localEntry;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      // Local read failed, will try API below
+    }
+
+    // 2. Try API fetch in background for fresh data + history
+    try {
       final userId = Provider.of<SessionState>(context, listen: false).userId;
 
-      // Always fetch flight details
       final entry = await _flightService.getFlight(widget.flightId, userId: userId);
 
-      // Only fetch history for official tier (standard tier doesn't have access)
+      // Only fetch history for official tier
       FlightHistory? history;
       if (_isOfficialTier) {
         try {
@@ -103,18 +116,28 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
         }
       }
 
-      setState(() {
-        _entry = entry;
-        _diffs = history != null
-            ? _flightService.computeHistoryDiffs(history, pilotName: pilotName)
-            : null;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _entry = entry;
+          _diffs = history != null
+              ? _flightService.computeHistoryDiffs(history, pilotName: pilotName)
+              : null;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = 'Failed to load flight details';
-        _isLoading = false;
-      });
+      // API failed — only show error if we have no local data
+      if (_entry == null && mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      } else if (mounted) {
+        // Silently keep showing local data
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

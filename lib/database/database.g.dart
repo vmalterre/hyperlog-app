@@ -1244,6 +1244,12 @@ class $FlightsTable extends Flights with TableInfo<$FlightsTable, Flight> {
   late final GeneratedColumn<String> aircraftReg = GeneratedColumn<String>(
       'aircraft_reg', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _simRegMeta =
+      const VerificationMeta('simReg');
+  @override
+  late final GeneratedColumn<String> simReg = GeneratedColumn<String>(
+      'sim_reg', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _flightTimeJsonMeta =
       const VerificationMeta('flightTimeJson');
   @override
@@ -1334,6 +1340,7 @@ class $FlightsTable extends Flights with TableInfo<$FlightsTable, Flight> {
         landingAt,
         aircraftType,
         aircraftReg,
+        simReg,
         flightTimeJson,
         isPilotFlying,
         approachesJson,
@@ -1447,6 +1454,11 @@ class $FlightsTable extends Flights with TableInfo<$FlightsTable, Flight> {
     } else if (isInserting) {
       context.missing(_aircraftRegMeta);
     }
+    if (data.containsKey('sim_reg')) {
+      context.handle(
+          _simRegMeta,
+          simReg.isAcceptableOrUnknown(data['sim_reg']!, _simRegMeta));
+    }
     if (data.containsKey('flight_time_json')) {
       context.handle(
           _flightTimeJsonMeta,
@@ -1558,6 +1570,8 @@ class $FlightsTable extends Flights with TableInfo<$FlightsTable, Flight> {
           .read(DriftSqlType.string, data['${effectivePrefix}aircraft_type'])!,
       aircraftReg: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}aircraft_reg'])!,
+      simReg: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sim_reg']),
       flightTimeJson: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}flight_time_json'])!,
       isPilotFlying: attachedDatabase.typeMapping
@@ -1606,6 +1620,7 @@ class Flight extends DataClass implements Insertable<Flight> {
   final String? landingAt;
   final String aircraftType;
   final String aircraftReg;
+  final String? simReg;
   final String flightTimeJson;
   final bool isPilotFlying;
   final String? approachesJson;
@@ -1634,6 +1649,7 @@ class Flight extends DataClass implements Insertable<Flight> {
       this.landingAt,
       required this.aircraftType,
       required this.aircraftReg,
+      this.simReg,
       required this.flightTimeJson,
       required this.isPilotFlying,
       this.approachesJson,
@@ -1678,6 +1694,9 @@ class Flight extends DataClass implements Insertable<Flight> {
     }
     map['aircraft_type'] = Variable<String>(aircraftType);
     map['aircraft_reg'] = Variable<String>(aircraftReg);
+    if (!nullToAbsent || simReg != null) {
+      map['sim_reg'] = Variable<String>(simReg);
+    }
     map['flight_time_json'] = Variable<String>(flightTimeJson);
     map['is_pilot_flying'] = Variable<bool>(isPilotFlying);
     if (!nullToAbsent || approachesJson != null) {
@@ -1732,6 +1751,9 @@ class Flight extends DataClass implements Insertable<Flight> {
           : Value(landingAt),
       aircraftType: Value(aircraftType),
       aircraftReg: Value(aircraftReg),
+      simReg: simReg == null && nullToAbsent
+          ? const Value.absent()
+          : Value(simReg),
       flightTimeJson: Value(flightTimeJson),
       isPilotFlying: Value(isPilotFlying),
       approachesJson: approachesJson == null && nullToAbsent
@@ -1774,6 +1796,7 @@ class Flight extends DataClass implements Insertable<Flight> {
       landingAt: serializer.fromJson<String?>(json['landingAt']),
       aircraftType: serializer.fromJson<String>(json['aircraftType']),
       aircraftReg: serializer.fromJson<String>(json['aircraftReg']),
+      simReg: serializer.fromJson<String?>(json['simReg']),
       flightTimeJson: serializer.fromJson<String>(json['flightTimeJson']),
       isPilotFlying: serializer.fromJson<bool>(json['isPilotFlying']),
       approachesJson: serializer.fromJson<String?>(json['approachesJson']),
@@ -1808,6 +1831,7 @@ class Flight extends DataClass implements Insertable<Flight> {
       'landingAt': serializer.toJson<String?>(landingAt),
       'aircraftType': serializer.toJson<String>(aircraftType),
       'aircraftReg': serializer.toJson<String>(aircraftReg),
+      'simReg': serializer.toJson<String?>(simReg),
       'flightTimeJson': serializer.toJson<String>(flightTimeJson),
       'isPilotFlying': serializer.toJson<bool>(isPilotFlying),
       'approachesJson': serializer.toJson<String?>(approachesJson),
@@ -1839,6 +1863,7 @@ class Flight extends DataClass implements Insertable<Flight> {
           Value<String?> landingAt = const Value.absent(),
           String? aircraftType,
           String? aircraftReg,
+          Value<String?> simReg = const Value.absent(),
           String? flightTimeJson,
           bool? isPilotFlying,
           Value<String?> approachesJson = const Value.absent(),
@@ -1868,6 +1893,7 @@ class Flight extends DataClass implements Insertable<Flight> {
         landingAt: landingAt.present ? landingAt.value : this.landingAt,
         aircraftType: aircraftType ?? this.aircraftType,
         aircraftReg: aircraftReg ?? this.aircraftReg,
+        simReg: simReg.present ? simReg.value : this.simReg,
         flightTimeJson: flightTimeJson ?? this.flightTimeJson,
         isPilotFlying: isPilotFlying ?? this.isPilotFlying,
         approachesJson:
@@ -1912,6 +1938,7 @@ class Flight extends DataClass implements Insertable<Flight> {
           : this.aircraftType,
       aircraftReg:
           data.aircraftReg.present ? data.aircraftReg.value : this.aircraftReg,
+      simReg: data.simReg.present ? data.simReg.value : this.simReg,
       flightTimeJson: data.flightTimeJson.present
           ? data.flightTimeJson.value
           : this.flightTimeJson,
@@ -1960,6 +1987,7 @@ class Flight extends DataClass implements Insertable<Flight> {
           ..write('landingAt: $landingAt, ')
           ..write('aircraftType: $aircraftType, ')
           ..write('aircraftReg: $aircraftReg, ')
+          ..write('simReg: $simReg, ')
           ..write('flightTimeJson: $flightTimeJson, ')
           ..write('isPilotFlying: $isPilotFlying, ')
           ..write('approachesJson: $approachesJson, ')
@@ -1993,6 +2021,7 @@ class Flight extends DataClass implements Insertable<Flight> {
         landingAt,
         aircraftType,
         aircraftReg,
+        simReg,
         flightTimeJson,
         isPilotFlying,
         approachesJson,
@@ -2025,6 +2054,7 @@ class Flight extends DataClass implements Insertable<Flight> {
           other.landingAt == this.landingAt &&
           other.aircraftType == this.aircraftType &&
           other.aircraftReg == this.aircraftReg &&
+          other.simReg == this.simReg &&
           other.flightTimeJson == this.flightTimeJson &&
           other.isPilotFlying == this.isPilotFlying &&
           other.approachesJson == this.approachesJson &&
@@ -2055,6 +2085,7 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
   final Value<String?> landingAt;
   final Value<String> aircraftType;
   final Value<String> aircraftReg;
+  final Value<String?> simReg;
   final Value<String> flightTimeJson;
   final Value<bool> isPilotFlying;
   final Value<String?> approachesJson;
@@ -2084,6 +2115,7 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
     this.landingAt = const Value.absent(),
     this.aircraftType = const Value.absent(),
     this.aircraftReg = const Value.absent(),
+    this.simReg = const Value.absent(),
     this.flightTimeJson = const Value.absent(),
     this.isPilotFlying = const Value.absent(),
     this.approachesJson = const Value.absent(),
@@ -2114,6 +2146,7 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
     this.landingAt = const Value.absent(),
     required String aircraftType,
     required String aircraftReg,
+    this.simReg = const Value.absent(),
     required String flightTimeJson,
     this.isPilotFlying = const Value.absent(),
     this.approachesJson = const Value.absent(),
@@ -2157,6 +2190,7 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
     Expression<String>? landingAt,
     Expression<String>? aircraftType,
     Expression<String>? aircraftReg,
+    Expression<String>? simReg,
     Expression<String>? flightTimeJson,
     Expression<bool>? isPilotFlying,
     Expression<String>? approachesJson,
@@ -2187,6 +2221,7 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
       if (landingAt != null) 'landing_at': landingAt,
       if (aircraftType != null) 'aircraft_type': aircraftType,
       if (aircraftReg != null) 'aircraft_reg': aircraftReg,
+      if (simReg != null) 'sim_reg': simReg,
       if (flightTimeJson != null) 'flight_time_json': flightTimeJson,
       if (isPilotFlying != null) 'is_pilot_flying': isPilotFlying,
       if (approachesJson != null) 'approaches_json': approachesJson,
@@ -2219,6 +2254,7 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
       Value<String?>? landingAt,
       Value<String>? aircraftType,
       Value<String>? aircraftReg,
+      Value<String?>? simReg,
       Value<String>? flightTimeJson,
       Value<bool>? isPilotFlying,
       Value<String?>? approachesJson,
@@ -2248,6 +2284,7 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
       landingAt: landingAt ?? this.landingAt,
       aircraftType: aircraftType ?? this.aircraftType,
       aircraftReg: aircraftReg ?? this.aircraftReg,
+      simReg: simReg ?? this.simReg,
       flightTimeJson: flightTimeJson ?? this.flightTimeJson,
       isPilotFlying: isPilotFlying ?? this.isPilotFlying,
       approachesJson: approachesJson ?? this.approachesJson,
@@ -2314,6 +2351,9 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
     if (aircraftReg.present) {
       map['aircraft_reg'] = Variable<String>(aircraftReg.value);
     }
+    if (simReg.present) {
+      map['sim_reg'] = Variable<String>(simReg.value);
+    }
     if (flightTimeJson.present) {
       map['flight_time_json'] = Variable<String>(flightTimeJson.value);
     }
@@ -2372,6 +2412,7 @@ class FlightsCompanion extends UpdateCompanion<Flight> {
           ..write('landingAt: $landingAt, ')
           ..write('aircraftType: $aircraftType, ')
           ..write('aircraftReg: $aircraftReg, ')
+          ..write('simReg: $simReg, ')
           ..write('flightTimeJson: $flightTimeJson, ')
           ..write('isPilotFlying: $isPilotFlying, ')
           ..write('approachesJson: $approachesJson, ')
@@ -4258,6 +4299,7 @@ typedef $$FlightsTableCreateCompanionBuilder = FlightsCompanion Function({
   Value<String?> landingAt,
   required String aircraftType,
   required String aircraftReg,
+  Value<String?> simReg,
   required String flightTimeJson,
   Value<bool> isPilotFlying,
   Value<String?> approachesJson,
@@ -4288,6 +4330,7 @@ typedef $$FlightsTableUpdateCompanionBuilder = FlightsCompanion Function({
   Value<String?> landingAt,
   Value<String> aircraftType,
   Value<String> aircraftReg,
+  Value<String?> simReg,
   Value<String> flightTimeJson,
   Value<bool> isPilotFlying,
   Value<String?> approachesJson,
@@ -4358,6 +4401,9 @@ class $$FlightsTableFilterComposer
 
   ColumnFilters<String> get aircraftReg => $composableBuilder(
       column: $table.aircraftReg, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get simReg => $composableBuilder(
+      column: $table.simReg, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get flightTimeJson => $composableBuilder(
       column: $table.flightTimeJson,
@@ -4458,6 +4504,9 @@ class $$FlightsTableOrderingComposer
   ColumnOrderings<String> get aircraftReg => $composableBuilder(
       column: $table.aircraftReg, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get simReg => $composableBuilder(
+      column: $table.simReg, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get flightTimeJson => $composableBuilder(
       column: $table.flightTimeJson,
       builder: (column) => ColumnOrderings(column));
@@ -4556,6 +4605,9 @@ class $$FlightsTableAnnotationComposer
   GeneratedColumn<String> get aircraftReg => $composableBuilder(
       column: $table.aircraftReg, builder: (column) => column);
 
+  GeneratedColumn<String> get simReg =>
+      $composableBuilder(column: $table.simReg, builder: (column) => column);
+
   GeneratedColumn<String> get flightTimeJson => $composableBuilder(
       column: $table.flightTimeJson, builder: (column) => column);
 
@@ -4629,6 +4681,7 @@ class $$FlightsTableTableManager extends RootTableManager<
             Value<String?> landingAt = const Value.absent(),
             Value<String> aircraftType = const Value.absent(),
             Value<String> aircraftReg = const Value.absent(),
+            Value<String?> simReg = const Value.absent(),
             Value<String> flightTimeJson = const Value.absent(),
             Value<bool> isPilotFlying = const Value.absent(),
             Value<String?> approachesJson = const Value.absent(),
@@ -4659,6 +4712,7 @@ class $$FlightsTableTableManager extends RootTableManager<
             landingAt: landingAt,
             aircraftType: aircraftType,
             aircraftReg: aircraftReg,
+            simReg: simReg,
             flightTimeJson: flightTimeJson,
             isPilotFlying: isPilotFlying,
             approachesJson: approachesJson,
@@ -4689,6 +4743,7 @@ class $$FlightsTableTableManager extends RootTableManager<
             Value<String?> landingAt = const Value.absent(),
             required String aircraftType,
             required String aircraftReg,
+            Value<String?> simReg = const Value.absent(),
             required String flightTimeJson,
             Value<bool> isPilotFlying = const Value.absent(),
             Value<String?> approachesJson = const Value.absent(),
@@ -4719,6 +4774,7 @@ class $$FlightsTableTableManager extends RootTableManager<
             landingAt: landingAt,
             aircraftType: aircraftType,
             aircraftReg: aircraftReg,
+            simReg: simReg,
             flightTimeJson: flightTimeJson,
             isPilotFlying: isPilotFlying,
             approachesJson: approachesJson,

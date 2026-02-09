@@ -112,6 +112,7 @@ FlightsCompanion flightToCompanion(
     blockOn: Value(entry.blockOn.toIso8601String()),
     aircraftType: Value(entry.aircraftType),
     aircraftReg: Value(entry.displayReg),
+    simReg: Value(entry.simReg),
     flightTimeJson: Value(jsonEncode(entry.flightTime.toJson())),
     isPilotFlying: Value(entry.isPilotFlying),
     approachesJson: Value(jsonEncode(entry.approaches.toJson())),
@@ -164,6 +165,7 @@ LogbookEntry flightFromRow(Flight row) {
     blockOn: DateTime.parse(row.blockOn),
     aircraftType: row.aircraftType,
     aircraftReg: row.aircraftReg,
+    simReg: row.simReg,
     flightTime: FlightTime.fromJson(flightTimeMap),
     isPilotFlying: row.isPilotFlying,
     approaches: Approaches.fromJson(approachesMap),
@@ -207,6 +209,7 @@ LogbookEntryShort flightToShort(Flight row) {
     destIata: row.destIata,
     acftReg: row.aircraftReg,
     acftType: row.aircraftType,
+    simReg: row.simReg,
     blockTime: flightTime.formatted,
     trustLevel: trustLevel,
   );

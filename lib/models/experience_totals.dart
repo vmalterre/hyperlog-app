@@ -13,6 +13,8 @@ class ExperienceTotals {
   final int nightLandings;
   final int jetMinutes;
   final int gaPistonMinutes;
+  final int simulatorMinutes;
+  final int picusMinutes;
 
   const ExperienceTotals({
     required this.totalMinutes,
@@ -25,6 +27,8 @@ class ExperienceTotals {
     required this.nightLandings,
     required this.jetMinutes,
     required this.gaPistonMinutes,
+    required this.simulatorMinutes,
+    required this.picusMinutes,
   });
 
   /// Create empty totals
@@ -38,7 +42,9 @@ class ExperienceTotals {
         dayLandings = 0,
         nightLandings = 0,
         jetMinutes = 0,
-        gaPistonMinutes = 0;
+        gaPistonMinutes = 0,
+        simulatorMinutes = 0,
+        picusMinutes = 0;
 
   /// Aggregate totals from a list of flights
   factory ExperienceTotals.fromFlights(List<LogbookEntry> flights) {
@@ -54,11 +60,18 @@ class ExperienceTotals {
     int nightLandings = 0;
     int jetMinutes = 0;
     int gaPistonMinutes = 0;
+    int simulatorMinutes = 0;
+    int picusMinutes = 0;
 
     for (final flight in flights) {
       final ft = flight.flightTime;
 
-      totalMinutes += ft.total;
+      if (flight.isSimSession) {
+        simulatorMinutes += ft.total;
+      } else {
+        totalMinutes += ft.total;
+      }
+      picusMinutes += ft.picus;
       nightMinutes += ft.night;
       ifrMinutes += ft.ifr;
 
@@ -92,6 +105,8 @@ class ExperienceTotals {
       nightLandings: nightLandings,
       jetMinutes: jetMinutes,
       gaPistonMinutes: gaPistonMinutes,
+      simulatorMinutes: simulatorMinutes,
+      picusMinutes: picusMinutes,
     );
   }
 
@@ -111,6 +126,8 @@ class ExperienceTotals {
   String get ifrFormatted => formatMinutes(ifrMinutes);
   String get jetFormatted => formatMinutes(jetMinutes);
   String get gaPistonFormatted => formatMinutes(gaPistonMinutes);
+  String get simulatorFormatted => formatMinutes(simulatorMinutes);
+  String get picusFormatted => formatMinutes(picusMinutes);
 
   int get totalLandings => dayLandings + nightLandings;
 }

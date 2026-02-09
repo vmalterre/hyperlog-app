@@ -125,11 +125,12 @@ class LogbookScreenState extends State<LogbookScreen> {
   }
 
   // Calculate stats from loaded entries
-  int get totalFlights => _logbookEntries.length;
+  int get totalFlights => _logbookEntries.where((e) => !e.isSimSession).length;
 
   String get totalHours {
     int totalMinutes = 0;
     for (var entry in _logbookEntries) {
+      if (entry.isSimSession) continue;
       if (entry.blockTime != null) {
         final parts = entry.blockTime!.split(':');
         if (parts.length == 2) {

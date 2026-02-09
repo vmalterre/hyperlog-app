@@ -121,6 +121,8 @@ class ExperienceKpiGrid extends StatelessWidget {
       _CardData(Icons.airline_seat_recline_extra, totals.picFormatted, 'PIC', AppColors.endorsedGreen),
       _CardData(Icons.airline_seat_recline_normal, totals.sicFormatted, 'SIC', AppColors.trackedAmber),
       _CardData(Icons.school, totals.dualFormatted, 'DUAL', const Color(0xFF8B5CF6)),
+      _CardData(Icons.desktop_windows, totals.simulatorFormatted, 'SIMULATOR', const Color(0xFF0EA5E9)),
+      _CardData(Icons.supervisor_account, totals.picusFormatted, 'PICUS', const Color(0xFF14B8A6)),
       _CardData(Icons.nightlight_round, totals.nightFormatted, 'NIGHT', const Color(0xFF6366F1)),
       _CardData(Icons.cloud, totals.ifrFormatted, 'IFR', const Color(0xFF8B5CF6)),
       _CardData(Icons.wb_sunny, totals.dayLandings.toString(), 'DAY LANDINGS', AppColors.trackedAmber),

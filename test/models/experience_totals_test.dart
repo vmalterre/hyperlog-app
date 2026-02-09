@@ -13,9 +13,11 @@ void main() {
         int pic = 0,
         int sic = 0,
         int dual = 0,
+        int picus = 0,
         int landingsDay = 0,
         int landingsNight = 0,
         String aircraftType = 'C172',
+        String? simReg,
       }) {
         return LogbookEntry(
           id: 'flight-${DateTime.now().millisecondsSinceEpoch}',
@@ -26,7 +28,8 @@ void main() {
           blockOff: DateTime.now(),
           blockOn: DateTime.now().add(Duration(minutes: total)),
           aircraftType: aircraftType,
-          aircraftReg: 'G-TEST',
+          aircraftReg: simReg != null ? null : 'G-TEST',
+          simReg: simReg,
           flightTime: FlightTime(
             total: total,
             night: night,
@@ -34,6 +37,7 @@ void main() {
             pic: pic,
             sic: sic,
             dual: dual,
+            picus: picus,
           ),
           landingsDay: landingsDay,
           landingsNight: landingsNight,
@@ -55,16 +59,42 @@ void main() {
         expect(totals.nightLandings, 0);
       });
 
-      test('sums total time from all flights', () {
+      test('sums total time from flights only (excludes sim sessions)', () {
         final flights = [
           createFlight(total: 60),
           createFlight(total: 90),
           createFlight(total: 120),
+          createFlight(total: 30, simReg: 'FNPT-II'), // sim session
         ];
 
         final totals = ExperienceTotals.fromFlights(flights);
 
-        expect(totals.totalMinutes, 270); // 60 + 90 + 120
+        expect(totals.totalMinutes, 270); // 60 + 90 + 120 (sim excluded)
+      });
+
+      test('sim sessions counted in simulatorMinutes', () {
+        final flights = [
+          createFlight(total: 60),
+          createFlight(total: 120, simReg: 'FNPT-II'),
+          createFlight(total: 90, simReg: 'FFS-A320'),
+        ];
+
+        final totals = ExperienceTotals.fromFlights(flights);
+
+        expect(totals.simulatorMinutes, 210); // 120 + 90
+        expect(totals.totalMinutes, 60); // only the real flight
+      });
+
+      test('sums PICUS time correctly', () {
+        final flights = [
+          createFlight(total: 480, picus: 480),
+          createFlight(total: 540, picus: 540),
+          createFlight(total: 60, picus: 0),
+        ];
+
+        final totals = ExperienceTotals.fromFlights(flights);
+
+        expect(totals.picusMinutes, 1020); // 480 + 540
       });
 
       test('sums PIC time from flightTime.pic field', () {
@@ -242,6 +272,8 @@ void main() {
           nightLandings: 0,
           jetMinutes: 0,
           gaPistonMinutes: 0,
+          simulatorMinutes: 0,
+          picusMinutes: 0,
         );
 
         expect(totals.totalFormatted, '2:30');
@@ -259,6 +291,8 @@ void main() {
           nightLandings: 0,
           jetMinutes: 0,
           gaPistonMinutes: 0,
+          simulatorMinutes: 0,
+          picusMinutes: 0,
         );
 
         expect(totals.picFormatted, '127:30'); // 7650 / 60 = 127.5
