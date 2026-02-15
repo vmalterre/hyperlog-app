@@ -210,38 +210,40 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
               child: Column(
                 children: [
                   // TOTP
-                  _buildFactorRow(
+                  _buildFactorToggleRow(
                     icon: Icons.apps,
                     title: 'Authenticator App',
                     subtitle: _hasTotp ? 'Enabled' : 'Not set up',
                     isEnabled: _hasTotp,
-                    onSetup: _hasTotp ? null : _navigateToTotpSetup,
-                    onDisable: _hasTotp
-                        ? () {
-                            final totpFactor = _factors.firstWhere(
-                                (f) => f.factorId == MfaService.totpFactorId);
-                            _disableFactor(totpFactor);
-                          }
-                        : null,
+                    onToggle: (value) {
+                      if (value) {
+                        _navigateToTotpSetup();
+                      } else {
+                        final totpFactor = _factors.firstWhere(
+                            (f) => f.factorId == MfaService.totpFactorId);
+                        _disableFactor(totpFactor);
+                      }
+                    },
                   ),
                   Divider(
                       height: 1,
                       color: AppColors.borderSubtle,
                       indent: 56),
                   // SMS
-                  _buildFactorRow(
+                  _buildFactorToggleRow(
                     icon: Icons.sms,
                     title: 'SMS Verification',
                     subtitle: _hasSms ? 'Enabled' : 'Not set up',
                     isEnabled: _hasSms,
-                    onSetup: _hasSms ? null : _navigateToSmsSetup,
-                    onDisable: _hasSms
-                        ? () {
-                            final smsFactor = _factors.firstWhere(
-                                (f) => f.factorId == MfaService.phoneFactorId);
-                            _disableFactor(smsFactor);
-                          }
-                        : null,
+                    onToggle: (value) {
+                      if (value) {
+                        _navigateToSmsSetup();
+                      } else {
+                        final smsFactor = _factors.firstWhere(
+                            (f) => f.factorId == MfaService.phoneFactorId);
+                        _disableFactor(smsFactor);
+                      }
+                    },
                   ),
                 ],
               ),
@@ -287,7 +289,10 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
                       Switch(
                         value: _biometricEnabled,
                         onChanged: _toggleBiometric,
-                        activeColor: AppColors.denimLight,
+                        activeColor: AppColors.endorsedGreen,
+                        activeTrackColor: AppColors.endorsedGreen.withValues(alpha: 0.4),
+                        inactiveThumbColor: AppColors.whiteDarker,
+                        inactiveTrackColor: AppColors.nightRiderLight.withValues(alpha: 0.3),
                       ),
                     ],
                   ),
@@ -359,16 +364,15 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
     );
   }
 
-  Widget _buildFactorRow({
+  Widget _buildFactorToggleRow({
     required IconData icon,
     required String title,
     required String subtitle,
     required bool isEnabled,
-    VoidCallback? onSetup,
-    VoidCallback? onDisable,
+    required ValueChanged<bool> onToggle,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Row(
         children: [
           Container(
@@ -393,25 +397,14 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
               ],
             ),
           ),
-          if (isEnabled) ...[
-            const Icon(Icons.check_circle,
-                size: 16, color: AppColors.endorsedGreen),
-            const SizedBox(width: 8),
-            if (onDisable != null)
-              GestureDetector(
-                onTap: onDisable,
-                child: Text('Disable',
-                    style: AppTypography.buttonSmall
-                        .copyWith(color: AppColors.errorRed)),
-              ),
-          ],
-          if (!isEnabled && onSetup != null)
-            GestureDetector(
-              onTap: onSetup,
-              child: Text('Set Up',
-                  style: AppTypography.buttonSmall
-                      .copyWith(color: AppColors.denimLight)),
-            ),
+          Switch(
+            value: isEnabled,
+            onChanged: _isLoading ? null : onToggle,
+            activeColor: AppColors.endorsedGreen,
+            activeTrackColor: AppColors.endorsedGreen.withValues(alpha: 0.4),
+            inactiveThumbColor: AppColors.whiteDarker,
+            inactiveTrackColor: AppColors.nightRiderLight.withValues(alpha: 0.3),
+          ),
         ],
       ),
     );
