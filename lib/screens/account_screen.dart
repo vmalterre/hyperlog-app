@@ -1,7 +1,12 @@
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/photo_service.dart';
+import '../services/pilot_service.dart';
+import '../session_state.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../widgets/glass_card.dart';
@@ -15,6 +20,8 @@ class AccountScreen extends StatefulWidget {
 
 class _AccountScreenState extends State<AccountScreen> {
   final AuthService _authService = AuthService();
+  final PhotoService _photoService = PhotoService();
+  final PilotService _pilotService = PilotService();
   bool _isLoading = false;
 
   List<String> get _providers => _authService.getLinkedProviders();
@@ -131,6 +138,113 @@ class _AccountScreenState extends State<AccountScreen> {
       }
     } catch (e) {
       if (mounted) _showSnackBar('Failed to send reset email: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ==========================================
+  // Profile Photo Actions
+  // ==========================================
+
+  void _showPhotoOptions() {
+    final sessionState = Provider.of<SessionState>(context, listen: false);
+    final hasPhoto = sessionState.currentPilot?.photoUrl != null;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.nightRiderDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.whiteDarker,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.denimLight),
+              title: Text('Take Photo', style: AppTypography.body.copyWith(color: AppColors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndUploadPhoto(fromCamera: true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppColors.denimLight),
+              title: Text('Choose from Gallery', style: AppTypography.body.copyWith(color: AppColors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndUploadPhoto(fromCamera: false);
+              },
+            ),
+            if (hasPhoto)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: AppColors.errorRed),
+                title: Text('Remove Photo', style: AppTypography.body.copyWith(color: AppColors.errorRed)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _removePhoto();
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadPhoto({required bool fromCamera}) async {
+    final File? file;
+    try {
+      file = fromCamera
+          ? await _photoService.takePhoto()
+          : await _photoService.pickFromGallery();
+    } catch (e) {
+      if (mounted) _showSnackBar('Failed to pick photo: $e');
+      return;
+    }
+    if (file == null) return;
+
+    final sessionState = Provider.of<SessionState>(context, listen: false);
+    final userId = sessionState.userId;
+    if (userId == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final downloadUrl = await _photoService.uploadProfilePhoto(file);
+      await _pilotService.updateProfilePhotoUrl(userId, downloadUrl);
+      await sessionState.refreshPilot();
+      if (mounted) _showSnackBar('Profile photo updated', isError: false);
+    } catch (e) {
+      if (mounted) _showSnackBar('Failed to upload photo: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _removePhoto() async {
+    final sessionState = Provider.of<SessionState>(context, listen: false);
+    final userId = sessionState.userId;
+    if (userId == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await _photoService.deleteProfilePhoto();
+      await _pilotService.updateProfilePhotoUrl(userId, null);
+      await sessionState.refreshPilot();
+      if (mounted) _showSnackBar('Profile photo removed', isError: false);
+    } catch (e) {
+      if (mounted) _showSnackBar('Failed to remove photo: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -380,39 +494,92 @@ class _AccountScreenState extends State<AccountScreen> {
     final memberSince = _createdAt != null
         ? DateFormat('MMMM yyyy').format(_createdAt!)
         : 'Unknown';
+    final photoUrl = Provider.of<SessionState>(context).currentPilot?.photoUrl;
 
-    return GlassContainer(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
+    return SizedBox(
+      width: double.infinity,
+      child: GlassContainer(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: Column(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.denim.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.email_outlined, color: AppColors.denimLight, size: 22),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _email ?? 'No email',
-                  style: AppTypography.body.copyWith(color: AppColors.white),
-                  overflow: TextOverflow.ellipsis,
+          // Tappable avatar with camera badge
+          GestureDetector(
+            onTap: _showPhotoOptions,
+            child: SizedBox(
+              width: 80,
+              height: 80,
+              child: Stack(
+                children: [
+                // Avatar with denim border
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.denim.withValues(alpha: 0.3),
+                  ),
+                  padding: const EdgeInsets.all(3),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.nightRiderDark,
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: photoUrl != null
+                        ? Image.network(
+                            photoUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.person,
+                              size: 36,
+                              color: AppColors.denimLight,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.person,
+                            size: 36,
+                            color: AppColors.denimLight,
+                          ),
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Member since $memberSince',
-                  style: AppTypography.caption,
+                // Camera badge
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.denim,
+                      border: Border.all(color: AppColors.nightRiderDark, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      size: 14,
+                      color: AppColors.white,
+                    ),
+                  ),
                 ),
               ],
+              ),
             ),
           ),
+          const SizedBox(height: 14),
+          // Email
+          Text(
+            _email ?? 'No email',
+            style: AppTypography.body.copyWith(color: AppColors.white),
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          // Member since
+          Text(
+            'Member since $memberSince',
+            style: AppTypography.caption,
+          ),
         ],
+      ),
       ),
     );
   }

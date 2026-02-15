@@ -242,6 +242,32 @@ class PilotService {
   }
 
   // ==========================================
+  // Profile Operations (UUID-based)
+  // ==========================================
+
+  /// Update the pilot's profile photo URL
+  /// Pass null to remove the photo
+  Future<Pilot> updateProfilePhotoUrl(String userId, String? photoUrl) async {
+    try {
+      final response = await _api.put(
+        '${AppConfig.users}/$userId',
+        {'photoUrl': photoUrl},
+      );
+      return Pilot.fromJson(response['data']);
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to update profile photo',
+          metadata: {'userId': userId},
+        );
+      }
+      rethrow;
+    }
+  }
+
+  // ==========================================
   // GDPR Operations (UUID-based)
   // ==========================================
 
