@@ -259,11 +259,13 @@ class _RecoveryCodesScreenState extends State<RecoveryCodesScreen> {
                             style: AppTypography.h4,
                           ),
                           const SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
                             _remainingCount != null && _remainingCount! > 0
-                                ? 'out of 10 recovery codes'
+                                ? 'Codes are only shown once when generated.\nIf you lost them, regenerate new ones.'
                                 : 'Regenerate codes to create new ones',
                             style: AppTypography.caption,
+                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),
