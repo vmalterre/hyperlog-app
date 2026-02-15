@@ -744,7 +744,7 @@ class _AccountScreenState extends State<AccountScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.backgroundDark,
+        backgroundColor: AppColors.nightRiderDark,
         title: const Text('Delete Account', style: TextStyle(color: AppColors.errorRed)),
         content: const Text(
           'This will permanently delete your personal data (name, email, photo). '
