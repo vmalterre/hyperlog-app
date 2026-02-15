@@ -735,6 +735,60 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
+  Future<void> _deleteAccount() async {
+    final session = Provider.of<SessionState>(context, listen: false);
+    final userId = session.userId;
+    if (userId == null) return;
+
+    // First confirmation
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.backgroundDark,
+        title: const Text('Delete Account', style: TextStyle(color: AppColors.errorRed)),
+        content: const Text(
+          'This will permanently delete your personal data (name, email, photo). '
+          'Any blockchain flight records will remain but will no longer be linked to your identity.\n\n'
+          'This action cannot be undone.',
+          style: TextStyle(color: AppColors.white),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: AppColors.errorRed)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isLoading = true);
+    try {
+      // GDPR-anonymize in PostgreSQL
+      await _pilotService.deleteUserAccount(userId);
+      // Delete Firebase Auth account
+      await FirebaseAuth.instance.currentUser?.delete();
+      // Sign out and clear session
+      if (mounted) {
+        await session.logOut();
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete account: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Widget _buildDataPrivacyCard() {
     return GlassContainer(
       padding: EdgeInsets.zero,
@@ -743,10 +797,10 @@ class _AccountScreenState extends State<AccountScreen> {
           _buildActionRow(
             icon: Icons.delete_forever,
             title: 'Delete Account',
-            subtitle: 'Coming soon',
+            subtitle: 'Permanently delete your data',
             titleColor: AppColors.errorRed,
             iconColor: AppColors.errorRed,
-            enabled: false,
+            onTap: _deleteAccount,
           ),
         ],
       ),
