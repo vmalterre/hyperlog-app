@@ -1,13 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:hyperlog/services/auth_service.dart';
 import 'package:hyperlog/services/mfa_service.dart';
-import 'package:hyperlog/services/api_service.dart';
-import 'package:hyperlog/config/app_config.dart';
-import 'package:hyperlog/session_state.dart';
 import 'package:hyperlog/theme/app_colors.dart';
 import 'package:hyperlog/theme/app_typography.dart';
 import 'package:hyperlog/widgets/glass_card.dart';
@@ -90,22 +86,12 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
     try {
       await _mfaService.finalizeTotpEnrollment(_totpSecret!, code);
       if (mounted) {
-        // Auto-generate recovery codes, then show them
-        final userId = Provider.of<SessionState>(context, listen: false).userId;
-        if (userId != null) {
-          try {
-            await ApiService().post(
-              '${AppConfig.users}/$userId/recovery-codes/generate',
-              {},
-            );
-          } catch (_) {
-            // Non-fatal: codes can be generated later from settings
-          }
-        }
-        // Navigate to recovery codes screen before returning
+        // Navigate to recovery codes screen (generates and displays codes)
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const RecoveryCodesScreen()),
+          MaterialPageRoute(
+            builder: (_) => const RecoveryCodesScreen(isInitialSetup: true),
+          ),
         );
         if (mounted) Navigator.pop(context, true);
       }
