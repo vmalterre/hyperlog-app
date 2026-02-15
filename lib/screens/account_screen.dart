@@ -689,8 +689,8 @@ class _AccountScreenState extends State<AccountScreen> {
                     if (!value && !canDisable) return;
                     onToggle(value);
                   },
-            activeColor: AppColors.denimLight,
-            activeTrackColor: AppColors.denim.withValues(alpha: 0.4),
+            activeColor: AppColors.endorsedGreen,
+            activeTrackColor: AppColors.endorsedGreen.withValues(alpha: 0.4),
             inactiveThumbColor: AppColors.whiteDarker,
             inactiveTrackColor: AppColors.nightRiderLight.withValues(alpha: 0.3),
           ),
