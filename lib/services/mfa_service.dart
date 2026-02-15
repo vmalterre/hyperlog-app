@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// Service for managing Multi-Factor Authentication (TOTP and SMS)
@@ -52,33 +54,32 @@ class MfaService {
 
     final session = await user.multiFactor.getSession();
 
-    String? verificationId;
-    String? errorMessage;
+    final completer = Completer<String>();
 
     await _auth.verifyPhoneNumber(
       multiFactorSession: session,
       phoneNumber: phoneNumber,
       verificationCompleted: (_) {},
       verificationFailed: (e) {
-        errorMessage = e.message ?? 'Phone verification failed';
+        if (!completer.isCompleted) {
+          completer.completeError(
+            Exception(e.message ?? 'Phone verification failed'),
+          );
+        }
       },
       codeSent: (id, _) {
-        verificationId = id;
+        if (!completer.isCompleted) {
+          completer.complete(id);
+        }
       },
       codeAutoRetrievalTimeout: (_) {},
+      timeout: const Duration(seconds: 60),
     );
 
-    // Wait briefly for the callback to fire
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (errorMessage != null) {
-      throw Exception(errorMessage);
-    }
-    if (verificationId == null) {
-      throw Exception('Failed to send verification code');
-    }
-
-    return verificationId!;
+    return completer.future.timeout(
+      const Duration(seconds: 60),
+      onTimeout: () => throw Exception('Failed to send verification code'),
+    );
   }
 
   /// Finalize SMS enrollment with the SMS code received.
@@ -123,32 +124,32 @@ class MfaService {
     MultiFactorResolver resolver,
     MultiFactorInfo smsFactorInfo,
   ) async {
-    String? verificationId;
-    String? errorMessage;
+    final completer = Completer<String>();
 
     await _auth.verifyPhoneNumber(
       multiFactorSession: resolver.session,
       multiFactorInfo: smsFactorInfo as PhoneMultiFactorInfo,
       verificationCompleted: (_) {},
       verificationFailed: (e) {
-        errorMessage = e.message ?? 'Phone verification failed';
+        if (!completer.isCompleted) {
+          completer.completeError(
+            Exception(e.message ?? 'Phone verification failed'),
+          );
+        }
       },
       codeSent: (id, _) {
-        verificationId = id;
+        if (!completer.isCompleted) {
+          completer.complete(id);
+        }
       },
       codeAutoRetrievalTimeout: (_) {},
+      timeout: const Duration(seconds: 60),
     );
 
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (errorMessage != null) {
-      throw Exception(errorMessage);
-    }
-    if (verificationId == null) {
-      throw Exception('Failed to send verification code');
-    }
-
-    return verificationId!;
+    return completer.future.timeout(
+      const Duration(seconds: 60),
+      onTimeout: () => throw Exception('Failed to send verification code'),
+    );
   }
 
   /// Resolve an SMS MFA challenge during sign-in.
