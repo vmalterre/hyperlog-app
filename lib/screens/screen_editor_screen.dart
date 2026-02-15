@@ -22,13 +22,21 @@ class _ScreenEditorScreenState extends State<ScreenEditorScreen> {
   late bool _isSimulatorMode;
   bool _hasChanges = false;
 
+  bool get _isBuiltIn => widget.config.isBuiltIn;
+
+  static const _simulatorLockedFields = ScreenConfig.simulatorLockedFields;
+
+  bool get _isSimulatorBuiltIn => widget.config.id == ScreenConfig.simulatorId;
+
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.config.name);
     _hiddenFields = Set.from(widget.config.hiddenFields);
     _isSimulatorMode = widget.config.isSimulatorMode;
-    _nameController.addListener(_onFormChanged);
+    if (!_isBuiltIn) {
+      _nameController.addListener(_onFormChanged);
+    }
   }
 
   @override
@@ -67,9 +75,9 @@ class _ScreenEditorScreenState extends State<ScreenEditorScreen> {
     }
 
     final updatedConfig = widget.config.copyWith(
-      name: name,
+      name: _isBuiltIn ? widget.config.name : name,
       hiddenFields: _hiddenFields,
-      isSimulatorMode: _isSimulatorMode,
+      isSimulatorMode: _isBuiltIn ? widget.config.isSimulatorMode : _isSimulatorMode,
     );
 
     await _screenService.update(updatedConfig);
@@ -152,7 +160,10 @@ class _ScreenEditorScreenState extends State<ScreenEditorScreen> {
               }
             },
           ),
-          title: Text('Edit Screen', style: AppTypography.h3),
+          title: Text(
+            _isBuiltIn ? widget.config.name : 'Edit Screen',
+            style: AppTypography.h3,
+          ),
           centerTitle: true,
           actions: [
             TextButton(
@@ -169,66 +180,70 @@ class _ScreenEditorScreenState extends State<ScreenEditorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Screen Name
-              _buildSectionHeader('SCREEN NAME'),
-              const SizedBox(height: 12),
-              GlassContainer(
-                child: TextField(
-                  controller: _nameController,
-                  style: AppTypography.body.copyWith(color: AppColors.white),
-                  textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(
-                    hintText: 'e.g. GA Simple, Airline, Instruction',
-                    hintStyle: AppTypography.body.copyWith(color: AppColors.whiteDarker),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
+              // Screen Name (hidden for built-in screens)
+              if (!_isBuiltIn) ...[
+                _buildSectionHeader('SCREEN NAME'),
+                const SizedBox(height: 12),
+                GlassContainer(
+                  child: TextField(
+                    controller: _nameController,
+                    style: AppTypography.body.copyWith(color: AppColors.white),
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. GA Simple, Airline, Instruction',
+                      hintStyle: AppTypography.body.copyWith(color: AppColors.whiteDarker),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
+              ],
 
-              // Aircraft / Simulator Mode Toggle
-              _buildSectionHeader('SCREEN TYPE'),
-              const SizedBox(height: 12),
-              GlassContainer(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _ModeToggleButton(
-                        label: 'Aircraft',
-                        icon: Icons.flight,
-                        isSelected: !_isSimulatorMode,
-                        onTap: () {
-                          if (_isSimulatorMode) {
-                            setState(() {
-                              _isSimulatorMode = false;
-                              _hasChanges = true;
-                            });
-                          }
-                        },
+              // Aircraft / Simulator Mode Toggle (hidden for built-in screens)
+              if (!_isBuiltIn) ...[
+                _buildSectionHeader('SCREEN TYPE'),
+                const SizedBox(height: 12),
+                GlassContainer(
+                  padding: const EdgeInsets.all(8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _ModeToggleButton(
+                          label: 'Aircraft',
+                          icon: Icons.flight,
+                          isSelected: !_isSimulatorMode,
+                          onTap: () {
+                            if (_isSimulatorMode) {
+                              setState(() {
+                                _isSimulatorMode = false;
+                                _hasChanges = true;
+                              });
+                            }
+                          },
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _ModeToggleButton(
-                        label: 'Simulator',
-                        icon: Icons.desktop_mac_outlined,
-                        isSelected: _isSimulatorMode,
-                        onTap: () {
-                          if (!_isSimulatorMode) {
-                            setState(() {
-                              _isSimulatorMode = true;
-                              _hasChanges = true;
-                            });
-                          }
-                        },
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _ModeToggleButton(
+                          label: 'Simulator',
+                          icon: Icons.desktop_mac_outlined,
+                          isSelected: _isSimulatorMode,
+                          onTap: () {
+                            if (!_isSimulatorMode) {
+                              setState(() {
+                                _isSimulatorMode = true;
+                                _hasChanges = true;
+                              });
+                            }
+                          },
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
+              ],
 
               // Info text
               Container(
@@ -263,8 +278,14 @@ class _ScreenEditorScreenState extends State<ScreenEditorScreen> {
 
               // Field sections
               ...sectionOrder.map((section) {
-                final fields = bySection[section];
-                if (fields == null || fields.isEmpty) return const SizedBox.shrink();
+                final rawFields = bySection[section];
+                if (rawFields == null || rawFields.isEmpty) return const SizedBox.shrink();
+
+                // Filter out permanently locked fields for Simulator built-in
+                final fields = _isSimulatorBuiltIn
+                    ? rawFields.where((m) => !_simulatorLockedFields.contains(m.field)).toList()
+                    : rawFields;
+                if (fields.isEmpty) return const SizedBox.shrink();
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,4 +494,3 @@ class _ModeToggleButton extends StatelessWidget {
     );
   }
 }
-

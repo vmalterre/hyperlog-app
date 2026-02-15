@@ -13,6 +13,7 @@ import '../services/aircraft_service.dart';
 import '../services/flight_service.dart';
 import '../services/pilot_service.dart';
 import '../services/preferences_service.dart';
+import '../services/screen_config_service.dart';
 import '../services/simulator_service.dart';
 import 'account_screen.dart';
 import 'display_options_screen.dart';
@@ -395,7 +396,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           '• All flights and simulator sessions\n'
           '• All saved aircraft types and registrations\n'
           '• All saved pilots\n'
-          '• All saved simulators\n\n'
+          '• All saved simulators\n'
+          '• All custom screens\n\n'
           'This action cannot be undone.',
           style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
         ),
@@ -472,6 +474,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await simulatorService.deleteUserSimulatorType(userId, type.id);
       }
       totalDeleted += simRegs.length + simTypes.length;
+
+      // 6. Delete all screen configs
+      final screenConfigService = ScreenConfigService.instance;
+      final screenCount = screenConfigService.getAll().length;
+      await screenConfigService.deleteAll();
+      totalDeleted += screenCount;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

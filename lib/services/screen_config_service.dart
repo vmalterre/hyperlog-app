@@ -36,6 +36,7 @@ class ScreenConfigService extends ChangeNotifier {
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
     _loadConfigs();
+    _ensureBuiltInScreens();
   }
 
   /// Load configs from SharedPreferences
@@ -55,6 +56,57 @@ class ScreenConfigService extends ChangeNotifier {
     _defaultScreenId = _prefs?.getString(_keyDefaultScreenId);
   }
 
+  /// Ensure built-in screens exist (called after loading configs)
+  void _ensureBuiltInScreens() {
+    bool changed = false;
+
+    // Full Form: all fields visible, aircraft mode
+    if (!_configs.any((c) => c.id == ScreenConfig.fullFormId)) {
+      _configs.insert(0, ScreenConfig.allVisible(
+        id: ScreenConfig.fullFormId,
+        name: 'Full Form',
+        isBuiltIn: true,
+      ));
+      changed = true;
+    }
+
+    // Simulator: sim mode, some fields pre-hidden
+    if (!_configs.any((c) => c.id == ScreenConfig.simulatorId)) {
+      final insertIndex = _configs.indexWhere((c) => c.id == ScreenConfig.fullFormId) + 1;
+      _configs.insert(insertIndex, ScreenConfig(
+        id: ScreenConfig.simulatorId,
+        name: 'Simulator',
+        isSimulatorMode: true,
+        isBuiltIn: true,
+        hiddenFields: {
+          FlightField.flightNumber,
+          FlightField.flightTime,
+          FlightField.ifrActual,
+          FlightField.ifrSimulated,
+          FlightField.soloTime,
+          FlightField.nightTime,
+          FlightField.crossCountryTime,
+          FlightField.multiEngineTime,
+          FlightField.multiPilotTime,
+          FlightField.pfPmToggle,
+          FlightField.takeoffsLandings,
+        },
+      ));
+      changed = true;
+    }
+
+    // Default to Full Form if no default is set
+    if (_defaultScreenId == null) {
+      _defaultScreenId = ScreenConfig.fullFormId;
+      _saveDefaultScreenId();
+      changed = true;
+    }
+
+    if (changed) {
+      _saveConfigs();
+    }
+  }
+
   /// Save configs to SharedPreferences
   Future<void> _saveConfigs() async {
     final json = jsonEncode(_configs.map((c) => c.toJson()).toList());
@@ -70,8 +122,12 @@ class ScreenConfigService extends ChangeNotifier {
     }
   }
 
-  /// Get all screen configs
-  List<ScreenConfig> getAll() => List.unmodifiable(_configs);
+  /// Get all screen configs (built-ins first, then user screens)
+  List<ScreenConfig> getAll() {
+    final builtIns = _configs.where((c) => c.isBuiltIn).toList();
+    final custom = _configs.where((c) => !c.isBuiltIn).toList();
+    return List.unmodifiable([...builtIns, ...custom]);
+  }
 
   /// Get a specific config by ID
   ScreenConfig? getById(String id) {
@@ -81,9 +137,12 @@ class ScreenConfigService extends ChangeNotifier {
         );
   }
 
-  /// Get the default screen config (null = full form)
+  /// Get the default screen config
   ScreenConfig? getDefault() {
-    if (_defaultScreenId == null) return null;
+    if (_defaultScreenId == null) {
+      // Fallback to built-in full form
+      return getById(ScreenConfig.fullFormId);
+    }
     return getById(_defaultScreenId!);
   }
 
@@ -97,12 +156,6 @@ class ScreenConfigService extends ChangeNotifier {
       name: name.trim(),
     );
     _configs.add(config);
-
-    // First screen created becomes default automatically
-    if (_configs.length == 1) {
-      _defaultScreenId = config.id;
-      await _saveDefaultScreenId();
-    }
 
     await _saveConfigs();
     notifyListeners();
@@ -119,13 +172,16 @@ class ScreenConfigService extends ChangeNotifier {
     }
   }
 
-  /// Delete a screen config by ID
+  /// Delete a screen config by ID (no-op for built-in screens)
   Future<void> delete(String id) async {
+    final config = getById(id);
+    if (config != null && config.isBuiltIn) return;
+
     _configs.removeWhere((c) => c.id == id);
 
     // Clear default if deleted screen was default
     if (_defaultScreenId == id) {
-      _defaultScreenId = _configs.isNotEmpty ? _configs.first.id : null;
+      _defaultScreenId = ScreenConfig.fullFormId;
       await _saveDefaultScreenId();
     }
 
@@ -133,12 +189,22 @@ class ScreenConfigService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Set the default screen by ID (null to use full form)
+  /// Delete all screen configs (factory reset — built-ins recreated fresh)
+  Future<void> deleteAll() async {
+    _configs.clear();
+    _defaultScreenId = null;
+    _ensureBuiltInScreens();
+    await _saveConfigs();
+    await _saveDefaultScreenId();
+    notifyListeners();
+  }
+
+  /// Set the default screen by ID
   Future<void> setDefault(String? id) async {
     if (id != null && !_configs.any((c) => c.id == id)) {
       return; // Invalid ID
     }
-    _defaultScreenId = id;
+    _defaultScreenId = id ?? ScreenConfig.fullFormId;
     await _saveDefaultScreenId();
     notifyListeners();
   }
@@ -160,11 +226,20 @@ class ScreenConfigService extends ChangeNotifier {
     return FlightField.values.length - config.hiddenFields.length;
   }
 
-  /// Get a summary description for a config (e.g., "12 of 14 fields" or "SIM • 12 fields")
+  /// Get a summary description for a config (e.g., "12 of 14 fields" or "SIM • 5 of 6 fields")
   String getConfigSummary(ScreenConfig config) {
+    final prefix = config.isSimulatorMode ? 'SIM \u2022 ' : '';
+
+    // For Simulator built-in, count only toggleable (non-locked) fields
+    if (config.id == ScreenConfig.simulatorId) {
+      final locked = ScreenConfig.simulatorLockedFields;
+      final total = FlightField.values.where((f) => !locked.contains(f)).length;
+      final visible = FlightField.values.where((f) => !locked.contains(f) && !config.hiddenFields.contains(f)).length;
+      return '$prefix$visible of $total fields';
+    }
+
     final visible = getVisibleFieldCount(config);
     final total = FlightField.values.length;
-    final prefix = config.isSimulatorMode ? 'SIM • ' : '';
     return '$prefix$visible of $total fields';
   }
 }

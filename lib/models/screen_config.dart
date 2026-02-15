@@ -3,10 +3,29 @@ import '../constants/flight_fields.dart';
 /// A custom screen configuration that defines which flight fields are visible.
 /// Stores hidden fields (smaller set) rather than visible fields.
 class ScreenConfig {
+  /// Well-known IDs for built-in screens
+  static const String fullFormId = 'builtin_full_form';
+  static const String simulatorId = 'builtin_simulator';
+
+  /// Fields permanently locked (hidden and non-toggleable) for the Simulator built-in
+  static const simulatorLockedFields = {
+    FlightField.flightNumber,
+    FlightField.flightTime,
+    FlightField.ifrActual,
+    FlightField.ifrSimulated,
+    FlightField.soloTime,
+    FlightField.nightTime,
+    FlightField.crossCountryTime,
+    FlightField.multiEngineTime,
+    FlightField.multiPilotTime,
+    FlightField.pfPmToggle,
+  };
+
   final String id;
   final String name;
   final Set<FlightField> hiddenFields;
   final bool isSimulatorMode;
+  final bool isBuiltIn;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -15,6 +34,7 @@ class ScreenConfig {
     required this.name,
     Set<FlightField>? hiddenFields,
     this.isSimulatorMode = false,
+    this.isBuiltIn = false,
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : hiddenFields = hiddenFields ?? {},
@@ -26,6 +46,7 @@ class ScreenConfig {
     required String id,
     required String name,
     bool isSimulatorMode = false,
+    bool isBuiltIn = false,
   }) {
     final now = DateTime.now();
     return ScreenConfig(
@@ -33,6 +54,7 @@ class ScreenConfig {
       name: name,
       hiddenFields: {},
       isSimulatorMode: isSimulatorMode,
+      isBuiltIn: isBuiltIn,
       createdAt: now,
       updatedAt: now,
     );
@@ -50,6 +72,7 @@ class ScreenConfig {
     String? name,
     Set<FlightField>? hiddenFields,
     bool? isSimulatorMode,
+    bool? isBuiltIn,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -58,6 +81,7 @@ class ScreenConfig {
       name: name ?? this.name,
       hiddenFields: hiddenFields ?? this.hiddenFields,
       isSimulatorMode: isSimulatorMode ?? this.isSimulatorMode,
+      isBuiltIn: isBuiltIn ?? this.isBuiltIn,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
     );
@@ -70,6 +94,7 @@ class ScreenConfig {
       'name': name,
       'hiddenFields': hiddenFields.map((f) => f.name).toList(),
       'isSimulatorMode': isSimulatorMode,
+      'isBuiltIn': isBuiltIn,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -94,6 +119,7 @@ class ScreenConfig {
       name: json['name'] as String,
       hiddenFields: hiddenFields,
       isSimulatorMode: json['isSimulatorMode'] as bool? ?? false,
+      isBuiltIn: json['isBuiltIn'] as bool? ?? false,
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
     );
@@ -110,5 +136,5 @@ class ScreenConfig {
   int get hashCode => id.hashCode;
 
   @override
-  String toString() => 'ScreenConfig(id: $id, name: $name, hidden: ${hiddenFields.length} fields, sim: $isSimulatorMode)';
+  String toString() => 'ScreenConfig(id: $id, name: $name, hidden: ${hiddenFields.length} fields, sim: $isSimulatorMode, builtIn: $isBuiltIn)';
 }

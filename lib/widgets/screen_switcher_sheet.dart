@@ -51,8 +51,17 @@ class _ScreenSwitcherSheetState extends State<ScreenSwitcherSheet> {
     Navigator.pop(context, true);
   }
 
+  IconData _iconForConfig(ScreenConfig config) {
+    if (config.id == ScreenConfig.fullFormId) return Icons.dashboard;
+    if (config.id == ScreenConfig.simulatorId) return Icons.desktop_mac_outlined;
+    return Icons.dashboard_customize;
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Treat null selectedId as builtin_full_form for backwards compatibility
+    final effectiveSelectedId = _selectedId ?? ScreenConfig.fullFormId;
+
     return Container(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -96,29 +105,17 @@ class _ScreenSwitcherSheetState extends State<ScreenSwitcherSheet> {
             ),
             const SizedBox(height: 8),
 
-            // Screen list
+            // Screen list (built-ins first, then custom — already sorted by service)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
-                children: [
-                  // Full Form option
-                  _ScreenOption(
-                    title: 'Full Form',
-                    subtitle: 'All fields visible',
-                    icon: Icons.dashboard,
-                    isSelected: _selectedId == null,
-                    onTap: () => _selectScreen(null),
-                  ),
-
-                  // Custom screens
-                  ..._screens.map((config) => _ScreenOption(
-                        title: config.name,
-                        subtitle: _screenService.getConfigSummary(config),
-                        icon: Icons.dashboard_customize,
-                        isSelected: _selectedId == config.id,
-                        onTap: () => _selectScreen(config.id),
-                      )),
-                ],
+                children: _screens.map((config) => _ScreenOption(
+                      title: config.name,
+                      subtitle: _screenService.getConfigSummary(config),
+                      icon: _iconForConfig(config),
+                      isSelected: effectiveSelectedId == config.id,
+                      onTap: () => _selectScreen(config.id),
+                    )).toList(),
               ),
             ),
 

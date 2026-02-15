@@ -175,8 +175,16 @@ class _MyScreensScreenState extends State<MyScreensScreen> {
     );
   }
 
+  IconData _iconForConfig(ScreenConfig config) {
+    if (config.id == ScreenConfig.fullFormId) return Icons.dashboard;
+    if (config.id == ScreenConfig.simulatorId) return Icons.desktop_mac_outlined;
+    return Icons.dashboard_customize;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final customScreens = _screens.where((c) => !c.isBuiltIn).toList();
+
     return Scaffold(
       backgroundColor: AppColors.nightRider,
       appBar: AppBar(
@@ -201,11 +209,11 @@ class _MyScreensScreenState extends State<MyScreensScreen> {
           ),
         ],
       ),
-      body: _buildBody(),
+      body: _buildBody(customScreens),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(List<ScreenConfig> customScreens) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -219,59 +227,58 @@ class _MyScreensScreenState extends State<MyScreensScreen> {
           ),
           const SizedBox(height: 24),
 
-          if (_screens.isEmpty)
-            _buildEmptyState()
-          else
-            ..._screens.map((config) => SizedBox(
+          // Built-in screens
+          ..._screens.where((c) => c.isBuiltIn).map((config) => SizedBox(
+                width: double.infinity,
+                child: _ScreenCard(
+                  config: config,
+                  isDefault: config.id == _screenService.defaultScreenId,
+                  summary: _screenService.getConfigSummary(config),
+                  icon: _iconForConfig(config),
+                  isBuiltIn: true,
+                  onEdit: () => _editScreen(config),
+                  onDelete: () => _deleteScreen(config),
+                  onSetDefault: () => _setAsDefault(config),
+                ),
+              )),
+
+          // Custom screens section
+          if (customScreens.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 12),
+              child: Text(
+                'CUSTOM SCREENS',
+                style: AppTypography.label,
+              ),
+            ),
+            ...customScreens.map((config) => SizedBox(
                   width: double.infinity,
                   child: _ScreenCard(
                     config: config,
                     isDefault: config.id == _screenService.defaultScreenId,
                     summary: _screenService.getConfigSummary(config),
+                    icon: _iconForConfig(config),
+                    isBuiltIn: false,
                     onEdit: () => _editScreen(config),
                     onDelete: () => _deleteScreen(config),
                     onSetDefault: () => _setAsDefault(config),
                   ),
                 )),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(
-              Icons.dashboard_customize_outlined,
-              color: AppColors.whiteDarker,
-              size: 48,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No custom screens yet',
-              style: AppTypography.h4.copyWith(color: AppColors.whiteDark),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tap + to create a screen with only\nthe fields you need',
-              style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
-              textAlign: TextAlign.center,
-            ),
           ],
-        ),
+        ],
       ),
     );
   }
 }
 
-/// Card for a custom screen configuration
+/// Card for a screen configuration
 class _ScreenCard extends StatelessWidget {
   final ScreenConfig config;
   final bool isDefault;
   final String summary;
+  final IconData icon;
+  final bool isBuiltIn;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onSetDefault;
@@ -280,6 +287,8 @@ class _ScreenCard extends StatelessWidget {
     required this.config,
     required this.isDefault,
     required this.summary,
+    required this.icon,
+    required this.isBuiltIn,
     required this.onEdit,
     required this.onDelete,
     required this.onSetDefault,
@@ -300,8 +309,8 @@ class _ScreenCard extends StatelessWidget {
               color: AppColors.denim.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
-              Icons.dashboard_customize,
+            child: Icon(
+              icon,
               color: AppColors.denim,
               size: 24,
             ),
@@ -360,16 +369,18 @@ class _ScreenCard extends StatelessWidget {
           ),
 
           // Action buttons
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, color: AppColors.denim, size: 20),
-            onPressed: onEdit,
-            tooltip: 'Edit',
-          ),
-          IconButton(
-            icon: Icon(Icons.delete_outline, color: AppColors.errorRed, size: 20),
-            onPressed: onDelete,
-            tooltip: 'Delete',
-          ),
+          if (config.id != ScreenConfig.fullFormId)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, color: AppColors.denim, size: 20),
+              onPressed: onEdit,
+              tooltip: 'Edit',
+            ),
+          if (!isBuiltIn)
+            IconButton(
+              icon: Icon(Icons.delete_outline, color: AppColors.errorRed, size: 20),
+              onPressed: onDelete,
+              tooltip: 'Delete',
+            ),
           if (!isDefault)
             IconButton(
               icon: Icon(
