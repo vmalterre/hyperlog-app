@@ -609,41 +609,50 @@ class _AccountScreenState extends State<AccountScreen> {
       child: Column(
         children: [
           // Email & Password row
-          _buildProviderRow(
+          _buildProviderToggleRow(
             icon: Icons.lock_outline,
             title: 'Email & Password',
             subtitle: _hasPassword ? _email : null,
-            isLinked: _hasPassword,
-            actionLabel: _hasPassword ? null : 'Set Up',
-            onAction: _hasPassword ? null : _setupEmailPassword,
+            isEnabled: _hasPassword,
+            onToggle: (value) {
+              if (value && !_hasPassword) {
+                _setupEmailPassword();
+              }
+              // Don't allow disabling password if it's the only provider
+            },
+            canDisable: false,
           ),
           Divider(height: 1, color: AppColors.borderSubtle, indent: 56),
           // Google row
-          _buildProviderRow(
+          _buildProviderToggleRow(
             icon: Icons.g_mobiledata,
             title: 'Google',
             subtitle: _hasGoogle ? _email : null,
-            isLinked: _hasGoogle,
-            actionLabel: _hasGoogle ? 'Disconnect' : 'Connect',
-            onAction: _hasGoogle ? _disconnectGoogle : _connectGoogle,
-            actionColor: _hasGoogle ? AppColors.errorRed : AppColors.denimLight,
+            isEnabled: _hasGoogle,
+            onToggle: (value) {
+              if (value) {
+                _connectGoogle();
+              } else {
+                _disconnectGoogle();
+              }
+            },
+            canDisable: _hasPassword,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProviderRow({
+  Widget _buildProviderToggleRow({
     required IconData icon,
     required String title,
     String? subtitle,
-    required bool isLinked,
-    String? actionLabel,
-    VoidCallback? onAction,
-    Color? actionColor,
+    required bool isEnabled,
+    required ValueChanged<bool> onToggle,
+    bool canDisable = true,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Row(
         children: [
           Container(
@@ -672,31 +681,19 @@ class _AccountScreenState extends State<AccountScreen> {
               ],
             ),
           ),
-          if (isLinked && actionLabel == null)
-            Icon(Icons.check_circle, size: 20, color: AppColors.endorsedGreen),
-          if (isLinked && actionLabel != null) ...[
-            Icon(Icons.check_circle, size: 16, color: AppColors.endorsedGreen),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: onAction,
-              child: Text(
-                actionLabel,
-                style: AppTypography.buttonSmall.copyWith(
-                  color: actionColor ?? AppColors.denimLight,
-                ),
-              ),
-            ),
-          ],
-          if (!isLinked && actionLabel != null)
-            GestureDetector(
-              onTap: onAction,
-              child: Text(
-                actionLabel,
-                style: AppTypography.buttonSmall.copyWith(
-                  color: actionColor ?? AppColors.denimLight,
-                ),
-              ),
-            ),
+          Switch(
+            value: isEnabled,
+            onChanged: _isLoading
+                ? null
+                : (value) {
+                    if (!value && !canDisable) return;
+                    onToggle(value);
+                  },
+            activeColor: AppColors.denimLight,
+            activeTrackColor: AppColors.denim.withValues(alpha: 0.4),
+            inactiveThumbColor: AppColors.whiteDarker,
+            inactiveTrackColor: AppColors.nightRiderLight.withValues(alpha: 0.3),
+          ),
         ],
       ),
     );
