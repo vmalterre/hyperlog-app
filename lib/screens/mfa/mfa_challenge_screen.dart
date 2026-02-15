@@ -7,6 +7,7 @@ import 'package:hyperlog/theme/app_typography.dart';
 import 'package:hyperlog/widgets/glass_card.dart';
 import 'package:hyperlog/widgets/app_button.dart';
 import 'package:hyperlog/services/api_service.dart';
+import 'package:hyperlog/services/api_exception.dart';
 
 /// Screen shown when a user with MFA enabled signs in and needs to provide
 /// a second factor.
@@ -136,10 +137,19 @@ class _MfaChallengeScreenState extends State<MfaChallengeScreen> {
       if (mounted) {
         Navigator.pop(context, FirebaseAuth.instance.currentUser);
       }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.statusCode == 401
+              ? 'Invalid recovery code. Please try again.'
+              : 'Recovery login failed: ${e.message}';
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Invalid recovery code. Please try again.';
+          _errorMessage = 'Recovery login failed: $e';
           _isLoading = false;
         });
       }

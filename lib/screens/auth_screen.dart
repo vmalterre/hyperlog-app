@@ -185,7 +185,7 @@ class AuthScreenState extends State<AuthScreen>
           context,
           MaterialPageRoute(
             builder: (_) =>
-                MfaChallengeScreen(resolver: result.mfaResolver!),
+                MfaChallengeScreen(resolver: result.mfaResolver!, email: result.email),
           ),
         );
         if (user != null && mounted) {
@@ -245,7 +245,7 @@ class AuthScreenState extends State<AuthScreen>
             context,
             MaterialPageRoute(
               builder: (_) =>
-                  MfaChallengeScreen(resolver: result.mfaResolver!),
+                  MfaChallengeScreen(resolver: result.mfaResolver!, email: email),
             ),
           );
           user = mfaUser;

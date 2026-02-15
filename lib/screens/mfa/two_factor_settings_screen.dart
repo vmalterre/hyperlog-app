@@ -185,8 +185,9 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
                       children: [
                         Text(
                           _hasMfa ? 'Two-factor is enabled' : 'Two-factor is off',
-                          style: AppTypography.body
-                              .copyWith(color: AppColors.white),
+                          style: AppTypography.body.copyWith(
+                            color: _hasMfa ? AppColors.endorsedGreen : AppColors.white,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -393,7 +394,9 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
                     style:
                         AppTypography.body.copyWith(color: AppColors.white)),
                 const SizedBox(height: 2),
-                Text(subtitle, style: AppTypography.caption),
+                Text(subtitle, style: AppTypography.caption.copyWith(
+                  color: isEnabled ? AppColors.endorsedGreen : null,
+                )),
               ],
             ),
           ),

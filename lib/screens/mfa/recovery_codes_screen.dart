@@ -161,8 +161,8 @@ class _RecoveryCodesScreenState extends State<RecoveryCodesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Warning banner
-                  Container(
+                  // Warning banner (only on initial setup)
+                  if (widget.isInitialSetup) Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: const Color(0xFFD97706).withValues(alpha: 0.1),
@@ -188,7 +188,7 @@ class _RecoveryCodesScreenState extends State<RecoveryCodesScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  if (widget.isInitialSetup) const SizedBox(height: 24),
 
                   if (_codes != null) ...[
                     // Codes grid

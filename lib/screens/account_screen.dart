@@ -722,6 +722,7 @@ class _AccountScreenState extends State<AccountScreen> {
             icon: Icons.security,
             title: 'Two-Factor Authentication',
             subtitle: _mfaEnabled ? 'Enabled' : 'Not set up',
+            subtitleColor: _mfaEnabled ? AppColors.endorsedGreen : null,
             onTap: () async {
               await Navigator.push(
                 context,
@@ -816,6 +817,7 @@ class _AccountScreenState extends State<AccountScreen> {
     bool enabled = true,
     Color? titleColor,
     Color? iconColor,
+    Color? subtitleColor,
   }) {
     final effectiveColor = enabled
         ? (titleColor ?? AppColors.white)
@@ -856,7 +858,7 @@ class _AccountScreenState extends State<AccountScreen> {
                       Text(
                         subtitle,
                         style: AppTypography.caption.copyWith(
-                          color: AppColors.whiteDarker.withValues(alpha: enabled ? 1.0 : 0.5),
+                          color: subtitleColor ?? AppColors.whiteDarker.withValues(alpha: enabled ? 1.0 : 0.5),
                         ),
                       ),
                     ],

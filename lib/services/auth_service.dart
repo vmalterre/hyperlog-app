@@ -8,8 +8,10 @@ import 'package:hyperlog/services/integrations/auth_error_codes.dart';
 class SignInResult {
   final User? user;
   final MultiFactorResolver? mfaResolver;
+  /// Email from the sign-in attempt (needed for recovery code flow during MFA).
+  final String? email;
 
-  SignInResult({this.user, this.mfaResolver});
+  SignInResult({this.user, this.mfaResolver, this.email});
 
   bool get requiresMfa => mfaResolver != null;
 }
@@ -68,12 +70,14 @@ class AuthService {
 
   // Sign In with Google — returns SignInResult to handle MFA challenge
   Future<SignInResult> signInWithGoogle() async {
+    String? googleEmail;
     try {
       final googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
         // User cancelled the sign-in flow
         return SignInResult();
       }
+      googleEmail = googleUser.email;
 
       final googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
@@ -85,7 +89,7 @@ class AuthService {
       return SignInResult(user: userCredential.user);
 
     } on FirebaseAuthMultiFactorException catch (e) {
-      return SignInResult(mfaResolver: e.resolver);
+      return SignInResult(mfaResolver: e.resolver, email: googleEmail);
 
     } on FirebaseAuthException catch (e) {
       if (!AuthErrorCodes.ignoreErrorCodes.contains(e.code)) {
