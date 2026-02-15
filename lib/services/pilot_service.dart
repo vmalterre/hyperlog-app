@@ -82,6 +82,36 @@ class PilotService {
     }
   }
 
+  /// Create a new user in PostgreSQL (auto-registration on first sign-in)
+  Future<Pilot> createUser({
+    required String email,
+    String? firstName,
+    String? lastName,
+    String? photoUrl,
+    String? firebaseUid,
+  }) async {
+    try {
+      final response = await _api.post(AppConfig.users, {
+        'email': email,
+        if (firstName != null) 'firstName': firstName,
+        if (lastName != null) 'lastName': lastName,
+        if (photoUrl != null) 'photoUrl': photoUrl,
+        if (firebaseUid != null) 'firebaseUid': firebaseUid,
+      });
+      return Pilot.fromJson(response['data']);
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to create user',
+          metadata: {'email': email},
+        );
+      }
+      rethrow;
+    }
+  }
+
   /// Check if pilot exists by license number
   Future<bool> pilotExists(String licenseNumber) async {
     try {

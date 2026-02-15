@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:hyperlog/database/database_provider.dart';
 import 'package:hyperlog/models/pilot.dart';
+import 'package:hyperlog/services/api_exception.dart';
 import 'package:hyperlog/services/auth_service.dart';
 import 'package:hyperlog/services/pilot_service.dart';
 
@@ -111,6 +113,7 @@ class SessionState extends ChangeNotifier {
   ///
   /// Uses the API to look up pilot by email, which returns the full profile
   /// including the UUID for subsequent API calls.
+  /// If the user doesn't exist yet (first sign-in), auto-creates them.
   Future<void> _loadPilotData(String? email) async {
     if (email == null) return;
 
@@ -119,8 +122,32 @@ class SessionState extends ChangeNotifier {
     try {
       // Look up pilot by email - API returns full profile with UUID
       _currentPilot = await _pilotService.getPilotByEmail(email);
+    } on ApiException catch (e) {
+      if (e.isNotFound) {
+        // User doesn't exist in PostgreSQL yet — auto-create from Firebase profile
+        try {
+          final fbUser = fb.FirebaseAuth.instance.currentUser;
+          final displayName = fbUser?.displayName ?? '';
+          final parts = displayName.split(' ');
+          final firstName = parts.isNotEmpty ? parts.first : null;
+          final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : null;
+
+          _currentPilot = await _pilotService.createUser(
+            email: email,
+            firstName: firstName,
+            lastName: lastName,
+            photoUrl: fbUser?.photoURL,
+            firebaseUid: fbUser?.uid,
+          );
+        } catch (createError) {
+          _pilotLoadError = createError.toString();
+          _currentPilot = null;
+        }
+      } else {
+        _pilotLoadError = e.toString();
+        _currentPilot = null;
+      }
     } catch (e) {
-      // Capture the error for debugging
       _pilotLoadError = e.toString();
       _currentPilot = null;
     }
