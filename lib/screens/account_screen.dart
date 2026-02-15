@@ -1,14 +1,7 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 import '../services/auth_service.dart';
-import '../services/pilot_service.dart';
-import '../session_state.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../widgets/glass_card.dart';
@@ -22,7 +15,6 @@ class AccountScreen extends StatefulWidget {
 
 class _AccountScreenState extends State<AccountScreen> {
   final AuthService _authService = AuthService();
-  final PilotService _pilotService = PilotService();
   bool _isLoading = false;
 
   List<String> get _providers => _authService.getLinkedProviders();
@@ -148,102 +140,6 @@ class _AccountScreenState extends State<AccountScreen> {
   // Data & Privacy Actions
   // ==========================================
 
-  Future<void> _exportData() async {
-    final userId = Provider.of<SessionState>(context, listen: false).userId;
-    if (userId == null) return;
-
-    setState(() => _isLoading = true);
-    try {
-      final data = await _pilotService.exportUserData(userId);
-      final jsonStr = const JsonEncoder.withIndent('  ').convert(data);
-
-      if (mounted) {
-        // Write to temp file and share
-        final dir = await getTemporaryDirectory();
-        final file = File('${dir.path}/hyperlog_data_export.json');
-        await file.writeAsString(jsonStr);
-        await Share.shareXFiles(
-          [XFile(file.path)],
-          subject: 'HyperLog Data Export',
-        );
-      }
-    } catch (e) {
-      if (mounted) _showSnackBar('Failed to export data: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _deleteAccount() async {
-    final userId = Provider.of<SessionState>(context, listen: false).userId;
-    if (userId == null) return;
-
-    // Step 1: Warning dialog
-    final wantsToDelete = await _showConfirmDialog(
-      title: 'Delete Account?',
-      message: 'This will permanently delete your account and all associated data. '
-          'Your personal information will be anonymized. '
-          'Blockchain flight records will remain but will no longer be linked to your identity.\n\n'
-          'This action cannot be undone.',
-      confirmLabel: 'Continue',
-      isDangerous: true,
-    );
-    if (wantsToDelete != true || !mounted) return;
-
-    // Step 2: Type DELETE to confirm
-    final confirmed = await _showTypeToConfirmDialog();
-    if (confirmed != true || !mounted) return;
-
-    setState(() => _isLoading = true);
-    try {
-      // Reauthenticate before deletion
-      await _reauthenticate();
-
-      // Delete backend data (GDPR anonymization)
-      await _pilotService.deleteUserAccount(userId);
-
-      // Delete Firebase Auth account
-      await _authService.deleteAccount();
-
-      // Sign out and return to login
-      if (mounted) {
-        final session = Provider.of<SessionState>(context, listen: false);
-        await session.logOut();
-        if (mounted) {
-          Navigator.of(context).popUntil((route) => route.isFirst);
-        }
-      }
-    } on FirebaseAuthException catch (e) {
-      if (mounted) _showSnackBar(e.message ?? 'Failed to delete account');
-    } catch (e) {
-      if (mounted) _showSnackBar('Failed to delete account: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _reauthenticate() async {
-    if (_hasPassword && _hasGoogle) {
-      // User has both - let them choose
-      final method = await _showReauthMethodDialog();
-      if (method == 'password') {
-        final password = await _showPasswordPromptDialog();
-        if (password == null) throw Exception('Reauthentication cancelled');
-        await _authService.reauthenticateWithPassword(_email!, password);
-      } else if (method == 'google') {
-        await _authService.reauthenticateWithGoogle();
-      } else {
-        throw Exception('Reauthentication cancelled');
-      }
-    } else if (_hasPassword) {
-      final password = await _showPasswordPromptDialog();
-      if (password == null) throw Exception('Reauthentication cancelled');
-      await _authService.reauthenticateWithPassword(_email!, password);
-    } else if (_hasGoogle) {
-      await _authService.reauthenticateWithGoogle();
-    }
-  }
-
   // ==========================================
   // Dialogs
   // ==========================================
@@ -359,66 +255,6 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
-  Future<String?> _showPasswordPromptDialog() {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.nightRiderDark,
-        title: Text('Enter Password', style: AppTypography.h4),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Enter your password to continue',
-              style: AppTypography.bodySmall,
-            ),
-            const SizedBox(height: 16),
-            _buildPasswordField(controller, 'Password'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: AppColors.whiteDarker)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: Text('Continue', style: TextStyle(color: AppColors.denimLight)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<String?> _showReauthMethodDialog() {
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.nightRiderDark,
-        title: Text('Verify Identity', style: AppTypography.h4),
-        content: Text(
-          'Choose how to verify your identity to continue.',
-          style: AppTypography.bodySmall,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: AppColors.whiteDarker)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'password'),
-            child: Text('Use Password', style: TextStyle(color: AppColors.denimLight)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'google'),
-            child: Text('Use Google', style: TextStyle(color: AppColors.denimLight)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<bool?> _showConfirmDialog({
     required String title,
     required String message,
@@ -444,67 +280,6 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Future<bool?> _showTypeToConfirmDialog() {
-    final controller = TextEditingController();
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.nightRiderDark,
-          title: Text('Confirm Deletion', style: AppTypography.h4),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Type DELETE to permanently delete your account.',
-                style: AppTypography.body.copyWith(color: AppColors.whiteDarker),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                style: AppTypography.body.copyWith(color: AppColors.white),
-                decoration: InputDecoration(
-                  hintText: 'Type DELETE',
-                  hintStyle: AppTypography.body.copyWith(color: AppColors.whiteDarker.withValues(alpha: 0.5)),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.borderVisible),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: AppColors.errorRed),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  filled: true,
-                  fillColor: AppColors.nightRider,
-                ),
-                onChanged: (_) => setDialogState(() {}),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text('Cancel', style: TextStyle(color: AppColors.whiteDarker)),
-            ),
-            TextButton(
-              onPressed: controller.text == 'DELETE'
-                  ? () => Navigator.pop(context, true)
-                  : null,
-              child: Text(
-                'Delete My Account',
-                style: TextStyle(
-                  color: controller.text == 'DELETE'
-                      ? AppColors.errorRed
-                      : AppColors.whiteDarker.withValues(alpha: 0.3),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -777,17 +552,12 @@ class _AccountScreenState extends State<AccountScreen> {
       child: Column(
         children: [
           _buildActionRow(
-            icon: Icons.download_outlined,
-            title: 'Export My Data',
-            onTap: _exportData,
-          ),
-          Divider(height: 1, color: AppColors.borderSubtle, indent: 56),
-          _buildActionRow(
             icon: Icons.delete_forever,
             title: 'Delete Account',
+            subtitle: 'Coming soon',
             titleColor: AppColors.errorRed,
             iconColor: AppColors.errorRed,
-            onTap: _deleteAccount,
+            enabled: false,
           ),
         ],
       ),
