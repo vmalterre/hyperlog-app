@@ -1,3 +1,5 @@
+import 'package:hyperlog/services/biometric_service.dart';
+
 /// Key Management Service
 ///
 /// Handles cryptographic key operations for blockchain identity:
@@ -134,9 +136,8 @@ class KeyManagementService {
 
   /// Check if biometric authentication is available on this device
   Future<bool> canUseBiometrics() async {
-    // This would typically use local_auth package
-    // For now, return false as placeholder
-    return false;
+    final biometricService = BiometricService();
+    return await biometricService.isAvailable();
   }
 }
 

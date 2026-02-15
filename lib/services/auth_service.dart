@@ -3,6 +3,17 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hyperlog/services/error_service.dart';
 import 'package:hyperlog/services/integrations/auth_error_codes.dart';
 
+/// Result of a sign-in attempt. Either succeeds with a User,
+/// or requires MFA resolution.
+class SignInResult {
+  final User? user;
+  final MultiFactorResolver? mfaResolver;
+
+  SignInResult({this.user, this.mfaResolver});
+
+  bool get requiresMfa => mfaResolver != null;
+}
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -28,14 +39,17 @@ class AuthService {
     }
   }
 
-  // Sign In
-  Future<User?> signIn(String email, String password) async {
+  // Sign In — returns SignInResult to handle MFA challenge
+  Future<SignInResult> signIn(String email, String password) async {
     try {
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      return userCredential.user;
+      return SignInResult(user: userCredential.user);
+
+    } on FirebaseAuthMultiFactorException catch (e) {
+      return SignInResult(mfaResolver: e.resolver);
 
     } on FirebaseAuthException catch  (e) {
 
@@ -47,18 +61,18 @@ class AuthService {
         };
         ErrorService().reporter.reportError(e, StackTrace.current, message: 'Error during sign in', metadata: metadata);
       }
-      
+
       return Future.error(e.message ?? "An unknown error occurred.");
     }
   }
 
-  // Sign In with Google
-  Future<User?> signInWithGoogle() async {
+  // Sign In with Google — returns SignInResult to handle MFA challenge
+  Future<SignInResult> signInWithGoogle() async {
     try {
       final googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
         // User cancelled the sign-in flow
-        return null;
+        return SignInResult();
       }
 
       final googleAuth = await googleUser.authentication;
@@ -68,7 +82,11 @@ class AuthService {
       );
 
       final userCredential = await _auth.signInWithCredential(credential);
-      return userCredential.user;
+      return SignInResult(user: userCredential.user);
+
+    } on FirebaseAuthMultiFactorException catch (e) {
+      return SignInResult(mfaResolver: e.resolver);
+
     } on FirebaseAuthException catch (e) {
       if (!AuthErrorCodes.ignoreErrorCodes.contains(e.code)) {
         ErrorService().reporter.reportError(e, StackTrace.current,

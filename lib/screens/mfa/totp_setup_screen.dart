@@ -1,0 +1,388 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:hyperlog/services/auth_service.dart';
+import 'package:hyperlog/services/mfa_service.dart';
+import 'package:hyperlog/theme/app_colors.dart';
+import 'package:hyperlog/theme/app_typography.dart';
+import 'package:hyperlog/widgets/glass_card.dart';
+import 'package:hyperlog/widgets/app_button.dart';
+
+class TotpSetupScreen extends StatefulWidget {
+  const TotpSetupScreen({super.key});
+
+  @override
+  State<TotpSetupScreen> createState() => _TotpSetupScreenState();
+}
+
+class _TotpSetupScreenState extends State<TotpSetupScreen> {
+  final MfaService _mfaService = MfaService();
+  final AuthService _authService = AuthService();
+  final TextEditingController _codeController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  int _step = 0; // 0: reauthenticate, 1: QR code, 2: verify code
+  bool _isLoading = false;
+  String? _errorMessage;
+  TotpSecret? _totpSecret;
+
+  Future<void> _reauthenticate() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final providers = _authService.getLinkedProviders();
+      if (providers.contains('google.com')) {
+        await _authService.reauthenticateWithGoogle();
+      } else {
+        final password = _passwordController.text;
+        if (password.isEmpty) {
+          setState(() {
+            _errorMessage = 'Please enter your password';
+            _isLoading = false;
+          });
+          return;
+        }
+        final email = _authService.getCurrentUser()?.email;
+        if (email == null) throw Exception('No email found');
+        await _authService.reauthenticateWithPassword(email, password);
+      }
+
+      // Start TOTP enrollment
+      final secret = await _mfaService.startTotpEnrollment();
+      if (mounted) {
+        setState(() {
+          _totpSecret = secret;
+          _step = 1;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _verifyCode() async {
+    final code = _codeController.text.trim();
+    if (code.length != 6) {
+      setState(() => _errorMessage = 'Enter a 6-digit code');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _mfaService.finalizeTotpEnrollment(_totpSecret!, code);
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.message ?? 'Invalid code';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.nightRider,
+      appBar: AppBar(
+        backgroundColor: AppColors.nightRider,
+        elevation: 0,
+        title: Text('Set Up Authenticator', style: AppTypography.h3),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: _step == 0
+            ? _buildReauthStep()
+            : _step == 1
+                ? _buildQrStep()
+                : const SizedBox(),
+      ),
+    );
+  }
+
+  Widget _buildReauthStep() {
+    final providers = _authService.getLinkedProviders();
+    final hasGoogle = providers.contains('google.com');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GlassContainer(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Confirm your identity',
+                  style: AppTypography.h4),
+              const SizedBox(height: 8),
+              Text(
+                'Before setting up two-factor authentication, please verify your identity.',
+                style: AppTypography.bodySmall,
+              ),
+              const SizedBox(height: 20),
+              if (hasGoogle)
+                PrimaryButton(
+                  label: 'Continue with Google',
+                  onPressed: _isLoading ? null : _reauthenticate,
+                  isLoading: _isLoading,
+                )
+              else ...[
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  style:
+                      AppTypography.body.copyWith(color: AppColors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Current Password',
+                    labelStyle: AppTypography.bodySmall
+                        .copyWith(color: AppColors.whiteDarker),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide:
+                          BorderSide(color: AppColors.borderVisible),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide:
+                          const BorderSide(color: AppColors.denimLight),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.nightRider,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                PrimaryButton(
+                  label: 'Continue',
+                  onPressed: _isLoading ? null : _reauthenticate,
+                  isLoading: _isLoading,
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (_errorMessage != null) ...[
+          const SizedBox(height: 16),
+          _buildErrorBanner(_errorMessage!),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildQrStep() {
+    final secret = _totpSecret!;
+    final secretKey = secret.secretKey;
+
+    return FutureBuilder<String>(
+      future: secret.generateQrCodeUrl(
+        accountName: _authService.getCurrentUser()?.email ?? 'user',
+        issuer: 'HyperLog',
+      ),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.denimLight),
+          );
+        }
+        final qrUri = snapshot.data!;
+        return _buildQrStepContent(qrUri, secretKey);
+      },
+    );
+  }
+
+  Widget _buildQrStepContent(String qrUri, String secretKey) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GlassContainer(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Text('Scan this QR code', style: AppTypography.h4),
+              const SizedBox(height: 8),
+              Text(
+                'Open your authenticator app (Google Authenticator, Authy, etc.) and scan this QR code.',
+                style: AppTypography.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              // QR Code
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: QrImageView(
+                  data: qrUri,
+                  version: QrVersions.auto,
+                  size: 200,
+                  backgroundColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Manual entry key
+              Text(
+                "Can't scan? Enter this key manually:",
+                style: AppTypography.caption,
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: secretKey));
+                  _showSnackBar('Key copied to clipboard', isError: false);
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.nightRiderDark,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.borderVisible),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          secretKey,
+                          style: AppTypography.body
+                              .copyWith(color: AppColors.denimLight),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.copy,
+                          size: 16, color: AppColors.whiteDarker),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Verification code input
+        GlassContainer(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Enter verification code', style: AppTypography.h4),
+              const SizedBox(height: 8),
+              Text(
+                'Enter the 6-digit code from your authenticator app to verify setup.',
+                style: AppTypography.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _codeController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                textAlign: TextAlign.center,
+                style: AppTypography.h3.copyWith(
+                  letterSpacing: 8,
+                  color: AppColors.white,
+                ),
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: '000000',
+                  hintStyle: AppTypography.h3.copyWith(
+                    letterSpacing: 8,
+                    color: AppColors.whiteDarker.withValues(alpha: 0.3),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.borderVisible),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: AppColors.denimLight),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.nightRider,
+                ),
+              ),
+              const SizedBox(height: 16),
+              PrimaryButton(
+                label: 'Verify & Activate',
+                onPressed: _isLoading ? null : _verifyCode,
+                isLoading: _isLoading,
+              ),
+            ],
+          ),
+        ),
+        if (_errorMessage != null) ...[
+          const SizedBox(height: 16),
+          _buildErrorBanner(_errorMessage!),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildErrorBanner(String message) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.errorRed.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.errorRed.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: AppColors.errorRed, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: AppTypography.bodySmall
+                  .copyWith(color: AppColors.errorRed),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnackBar(String message, {bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? AppColors.errorRed : AppColors.endorsedGreen,
+      ),
+    );
+  }
+}

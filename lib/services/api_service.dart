@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import 'api_exception.dart';
@@ -38,11 +39,20 @@ class ApiService {
     return _request('DELETE', endpoint);
   }
 
+  /// Get Firebase ID token for the current user.
+  /// Returns null if no user is signed in.
+  Future<String?> _getAuthToken() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+    return await user.getIdToken();
+  }
+
   /// Internal request handler
   Future<Map<String, dynamic>> _request(
     String method,
     String endpoint, {
     Map<String, dynamic>? body,
+    bool isRetry = false,
   }) async {
     try {
       final uri = Uri.parse('${AppConfig.apiBaseUrl}$endpoint');
@@ -50,6 +60,12 @@ class ApiService {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       };
+
+      // Attach Firebase auth token if available
+      final token = await _getAuthToken();
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
 
       http.Response response;
 
@@ -76,6 +92,16 @@ class ApiService {
           break;
         default:
           throw ApiException(message: 'Unsupported HTTP method: $method');
+      }
+
+      // Handle 401 by refreshing token and retrying once
+      if (response.statusCode == 401 && !isRetry) {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          // Force token refresh
+          await user.getIdToken(true);
+          return _request(method, endpoint, body: body, isRetry: true);
+        }
       }
 
       return _handleResponse(response);

@@ -9,6 +9,7 @@ import 'package:hyperlog/theme/app_colors.dart';
 import 'package:hyperlog/theme/app_typography.dart';
 import 'package:hyperlog/widgets/glass_card.dart';
 import 'package:hyperlog/widgets/app_button.dart';
+import 'package:hyperlog/screens/mfa/mfa_challenge_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -123,8 +124,21 @@ class AuthScreenState extends State<AuthScreen>
       });
 
       try {
-        var user = await _authService.signIn(email, password);
-        if (user != null && mounted) {
+        var result = await _authService.signIn(email, password);
+        if (result.requiresMfa && mounted) {
+          // Navigate to MFA challenge screen
+          final user = await Navigator.push<dynamic>(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  MfaChallengeScreen(resolver: result.mfaResolver!, email: email),
+            ),
+          );
+          if (user != null && mounted) {
+            await Provider.of<SessionState>(context, listen: false)
+                .logIn(email: email);
+          }
+        } else if (result.user != null && mounted) {
           await Provider.of<SessionState>(context, listen: false)
               .logIn(email: email);
         } else {
@@ -164,12 +178,26 @@ class AuthScreenState extends State<AuthScreen>
     });
 
     try {
-      var user = await _authService.signInWithGoogle();
-      if (user != null && mounted) {
+      var result = await _authService.signInWithGoogle();
+      if (result.requiresMfa && mounted) {
+        // Navigate to MFA challenge screen
+        final user = await Navigator.push<dynamic>(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                MfaChallengeScreen(resolver: result.mfaResolver!),
+          ),
+        );
+        if (user != null && mounted) {
+          final resolvedUser = user as dynamic;
+          await Provider.of<SessionState>(context, listen: false)
+              .logIn(email: resolvedUser.email!);
+        }
+      } else if (result.user != null && mounted) {
         await Provider.of<SessionState>(context, listen: false)
-            .logIn(email: user.email!);
+            .logIn(email: result.user!.email!);
       }
-      // user == null means the user cancelled, just reset loading
+      // result.user == null && !requiresMfa means the user cancelled, just reset loading
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -211,7 +239,19 @@ class AuthScreenState extends State<AuthScreen>
 
       // Try sign in first
       try {
-        user = await _authService.signIn(email, password);
+        final result = await _authService.signIn(email, password);
+        if (result.requiresMfa && mounted) {
+          final mfaUser = await Navigator.push<dynamic>(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  MfaChallengeScreen(resolver: result.mfaResolver!),
+            ),
+          );
+          user = mfaUser;
+        } else {
+          user = result.user;
+        }
       } catch (_) {
         // Sign in failed, try sign up
         user = await _authService.signUp(email, password);

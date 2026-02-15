@@ -10,6 +10,8 @@ import '../session_state.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../widgets/glass_card.dart';
+import 'mfa/two_factor_settings_screen.dart';
+import '../services/mfa_service.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -22,7 +24,20 @@ class _AccountScreenState extends State<AccountScreen> {
   final AuthService _authService = AuthService();
   final PhotoService _photoService = PhotoService();
   final PilotService _pilotService = PilotService();
+  final MfaService _mfaService = MfaService();
   bool _isLoading = false;
+  bool _mfaEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMfaStatus();
+  }
+
+  Future<void> _loadMfaStatus() async {
+    final enabled = await _mfaService.hasMfaEnabled();
+    if (mounted) setState(() => _mfaEnabled = enabled);
+  }
 
   List<String> get _providers => _authService.getLinkedProviders();
   bool get _hasPassword => _providers.contains('password');
@@ -705,8 +720,15 @@ class _AccountScreenState extends State<AccountScreen> {
           _buildActionRow(
             icon: Icons.security,
             title: 'Two-Factor Authentication',
-            subtitle: 'Coming soon',
-            enabled: false,
+            subtitle: _mfaEnabled ? 'Enabled' : 'Not set up',
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const TwoFactorSettingsScreen()),
+              );
+              if (mounted) _loadMfaStatus(); // Refresh subtitle
+            },
           ),
         ],
       ),
