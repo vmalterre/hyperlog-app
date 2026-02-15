@@ -14,6 +14,7 @@ import '../services/flight_service.dart';
 import '../services/pilot_service.dart';
 import '../services/preferences_service.dart';
 import '../services/simulator_service.dart';
+import 'account_screen.dart';
 import 'display_options_screen.dart';
 import 'export_logbook_screen.dart';
 import 'saved_pilots_screen.dart';
@@ -554,10 +555,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 32),
 
               // Identity Card
-              _PilotIdentityCard(
-                displayName: displayName,
-                email: email,
-                photoUrl: photoUrl,
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AccountScreen()),
+                  );
+                },
+                child: _PilotIdentityCard(
+                  displayName: displayName,
+                  email: email,
+                  photoUrl: photoUrl,
+                ),
               ),
               const SizedBox(height: 24),
 
@@ -578,7 +587,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _SettingsItem(
                     icon: Icons.lock_outline,
                     title: 'Privacy & Security',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AccountScreen()),
+                      );
+                    },
                   ),
                 ],
               ),

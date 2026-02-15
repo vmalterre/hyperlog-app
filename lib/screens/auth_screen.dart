@@ -155,6 +155,36 @@ class AuthScreenState extends State<AuthScreen>
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      var user = await _authService.signInWithGoogle();
+      if (user != null && mounted) {
+        await Provider.of<SessionState>(context, listen: false)
+            .logIn(email: user.email!);
+      }
+      // user == null means the user cancelled, just reset loading
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   Future<void> _alphaStandardLogin() async {
     await _alphaLogin('standard@hyperlog.aero', 'STANDARD-PILOT-001');
   }
@@ -414,6 +444,64 @@ class AuthScreenState extends State<AuthScreen>
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Divider with "or"
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Divider(color: AppColors.borderVisible),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                'or',
+                                style: AppTypography.caption,
+                              ),
+                            ),
+                            Expanded(
+                              child: Divider(color: AppColors.borderVisible),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Google Sign-In button
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: _isLoading ? null : _signInWithGoogle,
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: AppColors.white,
+                              foregroundColor: const Color(0xFF3C4043),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              side: BorderSide.none,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  'assets/icon/google_logo.png',
+                                  width: 20,
+                                  height: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Continue with Google',
+                                  style: AppTypography.button.copyWith(
+                                    color: const Color(0xFF3C4043),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),

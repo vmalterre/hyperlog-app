@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hyperlog/services/error_service.dart';
 import 'package:hyperlog/services/integrations/auth_error_codes.dart';
 
@@ -51,8 +52,39 @@ class AuthService {
     }
   }
 
+  // Sign In with Google
+  Future<User?> signInWithGoogle() async {
+    try {
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        // User cancelled the sign-in flow
+        return null;
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      return userCredential.user;
+    } on FirebaseAuthException catch (e) {
+      if (!AuthErrorCodes.ignoreErrorCodes.contains(e.code)) {
+        ErrorService().reporter.reportError(e, StackTrace.current,
+            message: 'Error during Google sign in');
+      }
+      return Future.error(e.message ?? "An unknown error occurred.");
+    } catch (e, stackTrace) {
+      ErrorService().reporter.reportError(e, stackTrace,
+          message: 'Error during Google sign in');
+      return Future.error("Google sign-in failed. Please try again.");
+    }
+  }
+
   // Sign Out
   Future<void> signOut() async {
+    await GoogleSignIn().signOut();
     await _auth.signOut();
   }
 
@@ -64,5 +96,91 @@ class AuthService {
   //Check login status
   bool isUserLoggedIn() {
     return _auth.currentUser != null;
+  }
+
+  // Account Management
+
+  /// Returns list of provider IDs linked to the current user (e.g. 'password', 'google.com')
+  List<String> getLinkedProviders() {
+    final user = _auth.currentUser;
+    if (user == null) return [];
+    return user.providerData.map((info) => info.providerId).toList();
+  }
+
+  /// Reauthenticate with email/password (required before sensitive operations)
+  Future<void> reauthenticateWithPassword(String email, String password) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No user signed in');
+
+    final credential = EmailAuthProvider.credential(email: email, password: password);
+    await user.reauthenticateWithCredential(credential);
+  }
+
+  /// Reauthenticate with Google (required before sensitive operations)
+  Future<void> reauthenticateWithGoogle() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No user signed in');
+
+    final googleUser = await GoogleSignIn().signIn();
+    if (googleUser == null) throw Exception('Google sign-in cancelled');
+
+    final googleAuth = await googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+    await user.reauthenticateWithCredential(credential);
+  }
+
+  /// Update password (requires prior reauthentication)
+  Future<void> updatePassword(String newPassword) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No user signed in');
+    await user.updatePassword(newPassword);
+  }
+
+  /// Send password reset email
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
+
+  /// Link email/password provider to current account (for Google-only users)
+  Future<void> linkEmailPassword(String email, String password) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No user signed in');
+
+    final credential = EmailAuthProvider.credential(email: email, password: password);
+    await user.linkWithCredential(credential);
+  }
+
+  /// Link Google provider to current account
+  Future<void> linkGoogle() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No user signed in');
+
+    final googleUser = await GoogleSignIn().signIn();
+    if (googleUser == null) throw Exception('Google sign-in cancelled');
+
+    final googleAuth = await googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+    await user.linkWithCredential(credential);
+  }
+
+  /// Unlink a provider from the current account (e.g. 'google.com')
+  Future<void> unlinkProvider(String providerId) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No user signed in');
+    await user.unlink(providerId);
+  }
+
+  /// Delete the Firebase Auth account (requires prior reauthentication)
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No user signed in');
+    await GoogleSignIn().signOut();
+    await user.delete();
   }
 }

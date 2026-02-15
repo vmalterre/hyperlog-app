@@ -12,7 +12,20 @@
           "package_name": "aero.hyperlog.logbook"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "988137830414-8ltph7rnou9ar2qbvgea47ru7n9fujcl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "aero.hyperlog.logbook",
+            "certificate_hash": "f1ab737359f5ed710bd793eae24450d67cd54b89"
+          }
+        },
+        {
+          "client_id": "988137830414-sdm8dq532e8s7qkq0ca76f5nk43k745g.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyADKk1PdXH60r_9xNNTEEDsOJdaM33FpLI"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "988137830414-sdm8dq532e8s7qkq0ca76f5nk43k745g.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "988137830414-4fji5ukvlpoc048b0ss0asun4hqjj9ce.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "aero.hyperlog.logbook"
+              }
+            }
+          ]
         }
       }
     }

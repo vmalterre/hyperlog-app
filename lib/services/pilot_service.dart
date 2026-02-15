@@ -242,6 +242,50 @@ class PilotService {
   }
 
   // ==========================================
+  // GDPR Operations (UUID-based)
+  // ==========================================
+
+  /// Request GDPR deletion of user account (anonymize personal data)
+  Future<void> deleteUserAccount(String userId) async {
+    try {
+      await _api.post(
+        '${AppConfig.users}/$userId/gdpr/delete',
+        {},
+      );
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to request GDPR deletion',
+          metadata: {'userId': userId},
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Export all user data (GDPR data portability)
+  Future<Map<String, dynamic>> exportUserData(String userId) async {
+    try {
+      final response = await _api.get(
+        '${AppConfig.users}/$userId/gdpr/export',
+      );
+      return response['data'] as Map<String, dynamic>;
+    } on ApiException catch (e) {
+      if (e.isServerError) {
+        _errorService.reporter.reportError(
+          e,
+          StackTrace.current,
+          message: 'Failed to export user data',
+          metadata: {'userId': userId},
+        );
+      }
+      rethrow;
+    }
+  }
+
+  // ==========================================
   // Saved Pilots Operations (deprecated - use UUID methods above)
   // ==========================================
 
