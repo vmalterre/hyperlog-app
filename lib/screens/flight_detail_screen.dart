@@ -46,10 +46,6 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
   String? _error;
   int _selectedTabIndex = 0; // 0 = Details, 1 = History
 
-  bool get _isOfficialTier {
-    return Provider.of<SessionState>(context, listen: false).currentPilot?.isOfficialTier ?? false;
-  }
-
   /// Get display label for a role code based on user's regulatory standard
   String _getRoleLabel(String roleCode) {
     final standard = PreferencesService.instance.getRoleStandard();
@@ -100,17 +96,15 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
 
       final entry = await _flightService.getFlight(widget.flightId, userId: userId);
 
-      // Only fetch history for official tier
+      // Fetch history for blockchain flights
       FlightHistory? history;
-      if (_isOfficialTier) {
-        try {
-          history = await _flightService.getFlightHistory(widget.flightId, userId: userId);
-        } catch (_) {
-          // History fetch failed, continue without it
-        }
+      try {
+        history = await _flightService.getFlightHistory(widget.flightId, userId: userId);
+      } catch (_) {
+        // History fetch failed, continue without it
       }
 
-      // Fetch pilot name for history display (official tier only)
+      // Fetch pilot name for history display
       String? pilotName;
       if (history != null && entry.creatorLicense != null) {
         try {
@@ -227,8 +221,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
       children: [
         _buildTabToggle(),
         Expanded(
-          // Standard tier only sees details (no history tab)
-          child: (_selectedTabIndex == 0 || !_isOfficialTier)
+          child: _selectedTabIndex == 0
               ? _buildDetailsTab()
               : _buildHistoryTab(),
         ),
@@ -237,8 +230,8 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
   }
 
   Widget _buildTabToggle() {
-    // Standard tier doesn't have access to history
-    if (!_isOfficialTier) {
+    // Hide tab toggle if no history data available
+    if (_diffs == null || _diffs!.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -473,8 +466,8 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
             ),
           ],
 
-          // Trust level (official tier only)
-          if (_isOfficialTier) ...[
+          // Trust level
+          ...[
             const SizedBox(height: 16),
             GlassContainer(
               child: Row(

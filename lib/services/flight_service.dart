@@ -195,9 +195,9 @@ class FlightService {
   }
 
   /// Update an existing flight entry
-  /// Pass [tier] to route to correct storage (standard=PostgreSQL, official=blockchain)
+  /// Pass [tier] to route to correct storage (expired=PostgreSQL, active=blockchain)
   /// Saves to server first, then updates local database
-  Future<LogbookEntry> updateFlight(String id, LogbookEntry entry, {String tier = 'standard'}) async {
+  Future<LogbookEntry> updateFlight(String id, LogbookEntry entry, {String tier = 'active'}) async {
     try {
       final response = await _api.put('${AppConfig.flights}/$id?tier=$tier', entry.toJson());
       final updatedEntry = LogbookEntry.fromJson(response['data']);

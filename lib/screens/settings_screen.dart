@@ -519,7 +519,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final displayName = pilot?.displayName ?? 'Pilot Account';
     final email = pilot?.email ?? '';
     final photoUrl = pilot?.photoUrl;
-    final isOfficial = pilot?.isOfficialTier ?? false;
+    final isActive = pilot?.isActiveTier ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.nightRider,
@@ -548,7 +548,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: _TierBadge(isOfficial: isOfficial),
+                    child: _TierBadge(isActive: isActive),
                   ),
                 ],
               ),
@@ -1103,16 +1103,16 @@ class _PilotIdentityCard extends StatelessWidget {
   }
 }
 
-/// Premium tier badge - Standard vs Official
+/// Subscription tier badge - Active vs Expired
 class _TierBadge extends StatelessWidget {
-  final bool isOfficial;
+  final bool isActive;
 
-  const _TierBadge({required this.isOfficial});
+  const _TierBadge({required this.isActive});
 
   @override
   Widget build(BuildContext context) {
-    if (isOfficial) {
-      // Premium Official badge with gradient and icon
+    if (isActive) {
+      // Active badge with gradient and icon
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
@@ -1143,7 +1143,7 @@ class _TierBadge extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              'OFFICIAL',
+              'ACTIVE',
               style: GoogleFonts.outfit(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
@@ -1156,7 +1156,7 @@ class _TierBadge extends StatelessWidget {
       );
     }
 
-    // Standard badge - simpler style
+    // Expired badge - simpler style
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
@@ -1167,7 +1167,7 @@ class _TierBadge extends StatelessWidget {
         ),
       ),
       child: Text(
-        'STANDARD',
+        'EXPIRED',
         style: GoogleFonts.outfit(
           fontSize: 13,
           fontWeight: FontWeight.w600,

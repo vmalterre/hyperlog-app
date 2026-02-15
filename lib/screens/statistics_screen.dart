@@ -33,13 +33,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   StatisticsView? _selectedView;
   MapTimeFilter _mapFilter = MapTimeFilter.allTime;
 
-  bool get _isOfficialTier {
-    return Provider.of<SessionState>(context, listen: false).currentPilot?.isOfficialTier ?? false;
-  }
-
   StatisticsView get _currentView {
-    // Initialize default view based on tier if not set
-    _selectedView ??= _isOfficialTier ? StatisticsView.trust : StatisticsView.experience;
+    _selectedView ??= StatisticsView.trust;
     return _selectedView!;
   }
 
@@ -200,18 +195,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
                   child: Row(
                     children: [
-                      // Trust tab (official tier only)
-                      if (_isOfficialTier) ...[
-                        Expanded(
-                          child: TabButton(
-                            label: 'Trust',
-                            isActive: _currentView == StatisticsView.trust,
-                            onPressed: () => setState(() => _selectedView = StatisticsView.trust),
-                            expand: true,
-                          ),
+                      Expanded(
+                        child: TabButton(
+                          label: 'Trust',
+                          isActive: _currentView == StatisticsView.trust,
+                          onPressed: () => setState(() => _selectedView = StatisticsView.trust),
+                          expand: true,
                         ),
-                        const SizedBox(width: 8),
-                      ],
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: TabButton(
                           label: 'XP',

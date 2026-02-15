@@ -92,10 +92,6 @@ class LogbookScreenState extends State<LogbookScreen> {
     return Provider.of<SessionState>(context, listen: false).userId;
   }
 
-  bool get _isOfficialTier {
-    return Provider.of<SessionState>(context, listen: false).currentPilot?.isOfficialTier ?? false;
-  }
-
   String? get _pilotLoadError {
     return Provider.of<SessionState>(context, listen: false).pilotLoadError;
   }
@@ -363,7 +359,7 @@ class LogbookScreenState extends State<LogbookScreen> {
             aircraftType: displayType,
             aircraftReg: displayReg,
             trustLevel: entry.trustLevel,
-            showTrustBadge: _isOfficialTier,
+            showTrustBadge: true,
             isSimSession: entry.isSimSession,
             onTap: () async {
               await Navigator.push(

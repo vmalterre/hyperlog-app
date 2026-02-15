@@ -25,7 +25,7 @@ class AppIdentity {
     this.photoUrl,
     this.pilotLicense,
     this.firebaseUid,
-    this.subscriptionTier = SubscriptionTier.standard,
+    this.subscriptionTier = SubscriptionTier.active,
     this.identityVerifiedAt,
     this.gdprDeletedAt,
     required this.createdAt,
@@ -48,7 +48,7 @@ class AppIdentity {
 
   /// Check if user is eligible for blockchain identity
   bool get canEnrollBlockchainIdentity =>
-      subscriptionTier == SubscriptionTier.official && isIdentityVerified;
+      subscriptionTier == SubscriptionTier.active && isIdentityVerified;
 
   factory AppIdentity.fromJson(Map<String, dynamic> json) {
     return AppIdentity(
@@ -72,8 +72,8 @@ class AppIdentity {
   }
 
   static SubscriptionTier _parseTier(String? tier) {
-    if (tier == 'standard') return SubscriptionTier.standard;
-    return SubscriptionTier.official;
+    if (tier == 'expired') return SubscriptionTier.expired;
+    return SubscriptionTier.active;
   }
 
   Map<String, dynamic> toJson() => {

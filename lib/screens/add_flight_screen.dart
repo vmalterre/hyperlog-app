@@ -168,7 +168,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
 
   String get _tier {
     return Provider.of<SessionState>(context, listen: false)
-        .currentPilot?.subscriptionTier.name ?? 'standard';
+        .currentPilot?.subscriptionTier.name ?? 'active';
   }
 
   /// Check if a field should be visible based on the active screen config

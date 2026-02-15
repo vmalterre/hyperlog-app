@@ -1,7 +1,7 @@
-/// Subscription tier for HyperLog pricing
+/// Subscription tier for HyperLog
 enum SubscriptionTier {
-  standard, // 19/month - off-chain only
-  official, // 29/month - blockchain features
+  active, // Yearly subscription - all features
+  expired, // Expired - read-only, export only
 }
 
 /// Pilot model matching backend API response
@@ -28,7 +28,7 @@ class Pilot {
     required this.email,
     this.photoUrl,
     required this.status,
-    this.subscriptionTier = SubscriptionTier.official,
+    this.subscriptionTier = SubscriptionTier.active,
     this.identityVerifiedAt,
     required this.createdAt,
     required this.updatedAt,
@@ -56,8 +56,8 @@ class Pilot {
   }
 
   static SubscriptionTier _parseTier(String? tier) {
-    if (tier == 'standard') return SubscriptionTier.standard;
-    return SubscriptionTier.official; // Default to official for existing pilots
+    if (tier == 'expired') return SubscriptionTier.expired;
+    return SubscriptionTier.active; // Default to active for existing pilots
   }
 
   Map<String, dynamic> toJson() => {
@@ -83,10 +83,10 @@ class Pilot {
   }
 
   bool get isActive => status == 'active';
-  bool get isOfficialTier => subscriptionTier == SubscriptionTier.official;
-  bool get isStandardTier => subscriptionTier == SubscriptionTier.standard;
+  bool get isActiveTier => subscriptionTier == SubscriptionTier.active;
+  bool get isExpiredTier => subscriptionTier == SubscriptionTier.expired;
   bool get isIdentityVerified => identityVerifiedAt != null;
 
   /// Check if pilot can enroll for blockchain identity
-  bool get canEnrollBlockchainIdentity => isOfficialTier && isIdentityVerified;
+  bool get canEnrollBlockchainIdentity => isActiveTier && isIdentityVerified;
 }
