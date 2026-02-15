@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
@@ -106,6 +107,9 @@ class _AccountScreenState extends State<AccountScreen> {
 
     setState(() => _isLoading = true);
     try {
+      // Revoke OAuth token on Google's side (removes from "Third-party apps")
+      await GoogleSignIn().disconnect();
+      // Unlink provider from Firebase Auth
       await _authService.unlinkProvider('google.com');
       if (mounted) {
         setState(() {});
