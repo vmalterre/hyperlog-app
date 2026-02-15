@@ -40,11 +40,15 @@ class ApiService {
   }
 
   /// Get Firebase ID token for the current user.
-  /// Returns null if no user is signed in.
+  /// Returns null if no user is signed in or if Firebase is not initialized.
   Future<String?> _getAuthToken() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return null;
-    return await user.getIdToken();
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return null;
+      return await user.getIdToken();
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Internal request handler
@@ -96,11 +100,15 @@ class ApiService {
 
       // Handle 401 by refreshing token and retrying once
       if (response.statusCode == 401 && !isRetry) {
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          // Force token refresh
-          await user.getIdToken(true);
-          return _request(method, endpoint, body: body, isRetry: true);
+        try {
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            // Force token refresh
+            await user.getIdToken(true);
+            return _request(method, endpoint, body: body, isRetry: true);
+          }
+        } catch (_) {
+          // Firebase not available (e.g. in tests)
         }
       }
 
